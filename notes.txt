@@ -4,4 +4,13 @@ pax/12-gcc-plugins.patch:
 - misc/02-shared-object-support.patch
 - misc/13-fix-hostcflags-aflags.patch
 pax/15-rap.patch:
-- misc/20-properly-gate-features 
+- misc/20-properly-gate-features.patch
+
+procedure:
+
+- i'm definitely going for the lower-hanging fruit first, and then get to harder parts as i begin to understand them more properly;
+
+placement:
+
+- i put __read_only stuff as part of pax/constify, but i'm not sure if that's entirely correct;
+- i put all the < 0 checks as part of pax/size_overflow, but i'm not entirely sure that's the right place either;

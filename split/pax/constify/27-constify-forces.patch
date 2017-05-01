@@ -11,3 +11,97 @@ index 9e614a1..3302cca 100644
  
  struct dma_struct {
  	void		*addr;		/* single DMA address		*/
+diff --git a/arch/arm/mach-omap2/board-n8x0.c b/arch/arm/mach-omap2/board-n8x0.c
+index 6b6fda6..232df1e 100644
+--- a/arch/arm/mach-omap2/board-n8x0.c
++++ b/arch/arm/mach-omap2/board-n8x0.c
+@@ -568,7 +568,7 @@ static int n8x0_menelaus_late_init(struct device *dev)
+ }
+ #endif
+ 
+-struct menelaus_platform_data n8x0_menelaus_platform_data __initdata = {
++struct menelaus_platform_data n8x0_menelaus_platform_data __initconst = {
+ 	.late_init = n8x0_menelaus_late_init,
+ };
+ 
+diff --git a/arch/arm/mach-omap2/omap-mpuss-lowpower.c b/arch/arm/mach-omap2/omap-mpuss-lowpower.c
+index 7d62ad4..97774b1 100644
+--- a/arch/arm/mach-omap2/omap-mpuss-lowpower.c
++++ b/arch/arm/mach-omap2/omap-mpuss-lowpower.c
+@@ -107,7 +107,7 @@ static void dummy_cpu_resume(void)
+ static void dummy_scu_prepare(unsigned int cpu_id, unsigned int cpu_state)
+ {}
+ 
+-static struct cpu_pm_ops omap_pm_ops = {
++static struct cpu_pm_ops omap_pm_ops __read_only = {
+ 	.finish_suspend		= default_finish_suspend,
+ 	.resume			= dummy_cpu_resume,
+ 	.scu_prepare		= dummy_scu_prepare,
+diff --git a/arch/arm/mach-omap2/omap_device.c b/arch/arm/mach-omap2/omap_device.c
+index e920dd8..ef999171 100644
+--- a/arch/arm/mach-omap2/omap_device.c
++++ b/arch/arm/mach-omap2/omap_device.c
+@@ -530,7 +530,7 @@ void omap_device_delete(struct omap_device *od)
+ struct platform_device __init *omap_device_build(const char *pdev_name,
+ 						 int pdev_id,
+ 						 struct omap_hwmod *oh,
+-						 void *pdata, int pdata_len)
++						 const void *pdata, int pdata_len)
+ {
+ 	struct omap_hwmod *ohs[] = { oh };
+ 
+@@ -558,7 +558,7 @@ struct platform_device __init *omap_device_build(const char *pdev_name,
+ struct platform_device __init *omap_device_build_ss(const char *pdev_name,
+ 						    int pdev_id,
+ 						    struct omap_hwmod **ohs,
+-						    int oh_cnt, void *pdata,
++						    int oh_cnt, const void *pdata,
+ 						    int pdata_len)
+ {
+ 	int ret = -ENOMEM;
+diff --git a/arch/arm/mach-omap2/omap_device.h b/arch/arm/mach-omap2/omap_device.h
+index 78c02b3..c94109a 100644
+--- a/arch/arm/mach-omap2/omap_device.h
++++ b/arch/arm/mach-omap2/omap_device.h
+@@ -72,12 +72,12 @@ int omap_device_idle(struct platform_device *pdev);
+ /* Core code interface */
+ 
+ struct platform_device *omap_device_build(const char *pdev_name, int pdev_id,
+-					  struct omap_hwmod *oh, void *pdata,
++					  struct omap_hwmod *oh, const void *pdata,
+ 					  int pdata_len);
+ 
+ struct platform_device *omap_device_build_ss(const char *pdev_name, int pdev_id,
+ 					 struct omap_hwmod **oh, int oh_cnt,
+-					 void *pdata, int pdata_len);
++					 const void *pdata, int pdata_len);
+ 
+ struct omap_device *omap_device_alloc(struct platform_device *pdev,
+ 				      struct omap_hwmod **ohs, int oh_cnt);
+diff --git a/arch/arm/mach-omap2/omap_hwmod.c b/arch/arm/mach-omap2/omap_hwmod.c
+index 1052b29..54669b0 100644
+--- a/arch/arm/mach-omap2/omap_hwmod.c
++++ b/arch/arm/mach-omap2/omap_hwmod.c
+@@ -210,6 +210,6 @@ struct omap_hwmod_soc_ops {
+ } __no_const;
+ 
+ /* soc_ops: adapts the omap_hwmod code to the currently-booted SoC */
+-static struct omap_hwmod_soc_ops soc_ops;
++static struct omap_hwmod_soc_ops soc_ops __read_only;
+ 
+ /* omap_hwmod_list contains all registered struct omap_hwmods */
+ static LIST_HEAD(omap_hwmod_list);
+diff --git a/arch/arm/mach-s3c64xx/mach-smdk6410.c b/arch/arm/mach-s3c64xx/mach-smdk6410.c
+index 92ec8c3..3b09472 100644
+--- a/arch/arm/mach-s3c64xx/mach-smdk6410.c
++++ b/arch/arm/mach-s3c64xx/mach-smdk6410.c
+@@ -240,7 +240,7 @@ static struct platform_device smdk6410_b_pwr_5v = {
+ };
+ #endif
+ 
+-static struct s3c_ide_platdata smdk6410_ide_pdata __initdata = {
++static const struct s3c_ide_platdata smdk6410_ide_pdata __initconst = {
+ 	.setup_gpio	= s3c64xx_ide_setup_gpio,
+ };
+ 
+ 

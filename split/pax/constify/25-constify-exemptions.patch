@@ -58,3 +58,41 @@ index 3d6dc8b..1262ad3 100644
  
  struct of_cpu_method {
  	const char *method;
+diff --git a/arch/arm/mach-omap2/omap-mpuss-lowpower.c b/arch/arm/mach-omap2/omap-mpuss-lowpower.c
+index 7d62ad4..97774b1 100644
+--- a/arch/arm/mach-omap2/omap-mpuss-lowpower.c
++++ b/arch/arm/mach-omap2/omap-mpuss-lowpower.c
+@@ -89,7 +89,7 @@ struct cpu_pm_ops {
+ 	void (*resume)(void);
+ 	void (*scu_prepare)(unsigned int cpu_id, unsigned int cpu_state);
+ 	void (*hotplug_restart)(void);
+-};
++} __no_const;
+ 
+ static DEFINE_PER_CPU(struct omap4_cpu_pm_info, omap4_pm_info);
+ static struct powerdomain *mpuss_pd;
+diff --git a/arch/arm/mach-omap2/omap_hwmod.c b/arch/arm/mach-omap2/omap_hwmod.c
+index 1052b29..54669b0 100644
+--- a/arch/arm/mach-omap2/omap_hwmod.c
++++ b/arch/arm/mach-omap2/omap_hwmod.c
+@@ -206,6 +206,6 @@ struct omap_hwmod_soc_ops {
+ 	void (*update_context_lost)(struct omap_hwmod *oh);
+ 	int (*get_context_lost)(struct omap_hwmod *oh);
+ 	int (*disable_direct_prcm)(struct omap_hwmod *oh);
+-};
++} __no_const;
+ 
+ /* soc_ops: adapts the omap_hwmod code to the currently-booted SoC */
+diff --git a/arch/arm/mm/cache-l2x0.c b/arch/arm/mm/cache-l2x0.c
+index d1870c7..36d500f 100644
+--- a/arch/arm/mm/cache-l2x0.c
++++ b/arch/arm/mm/cache-l2x0.c
+@@ -44,7 +44,7 @@ struct l2c_init_data {
+ 	void (*configure)(void __iomem *);
+ 	void (*unlock)(void __iomem *, unsigned);
+ 	struct outer_cache_fns outer_cache;
+-};
++} __do_const;
+ 
+ #define CACHE_LINE_SIZE		32
+ 

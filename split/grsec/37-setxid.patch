@@ -1,0 +1,52 @@
+diff --git a/arch/arm/include/asm/thread_info.h b/arch/arm/include/asm/thread_info.h
+index 776757d..a552c1d 100644
+--- a/arch/arm/include/asm/thread_info.h
++++ b/arch/arm/include/asm/thread_info.h
+@@ -143,6 +146,10 @@ extern int vfp_restore_user_hwstate(struct user_vfp __user *,
+ #define TIF_SYSCALL_AUDIT	5	/* syscall auditing active */
+ #define TIF_SYSCALL_TRACEPOINT	6	/* syscall tracepoint instrumentation */
+ #define TIF_SECCOMP		7	/* seccomp syscall filtering active */
++/* within 8 bits of TIF_SYSCALL_TRACE
++ *  to meet flexible second operand requirements
++ */
++#define TIF_GRSEC_SETXID	8
+ 
+ #define TIF_NOHZ		12	/* in adaptive nohz mode */
+ #define TIF_USING_IWMMXT	17
+@@ -158,10 +165,11 @@ extern int vfp_restore_user_hwstate(struct user_vfp __user *,
+ #define _TIF_SYSCALL_TRACEPOINT	(1 << TIF_SYSCALL_TRACEPOINT)
+ #define _TIF_SECCOMP		(1 << TIF_SECCOMP)
+ #define _TIF_USING_IWMMXT	(1 << TIF_USING_IWMMXT)
++#define _TIF_GRSEC_SETXID	(1 << TIF_GRSEC_SETXID)
+ 
+ /* Checks for any syscall work in entry-common.S */
+ #define _TIF_SYSCALL_WORK (_TIF_SYSCALL_TRACE | _TIF_SYSCALL_AUDIT | \
+-			   _TIF_SYSCALL_TRACEPOINT | _TIF_SECCOMP)
++			   _TIF_SYSCALL_TRACEPOINT | _TIF_SECCOMP | _TIF_GRSEC_SETXID)
+ 
+ /*
+  * Change these and you break ASM code in entry-common.S
+diff --git a/arch/arm/kernel/ptrace.c b/arch/arm/kernel/ptrace.c
+index ae738a6..ee4d46f 100644
+--- a/arch/arm/kernel/ptrace.c
++++ b/arch/arm/kernel/ptrace.c
+@@ -928,10 +928,19 @@ static void tracehook_report_syscall(struct pt_regs *regs,
+ 	regs->ARM_ip = ip;
+ }
+ 
++#ifdef CONFIG_GRKERNSEC_SETXID
++extern void gr_delayed_cred_worker(void);
++#endif
++
+ asmlinkage int syscall_trace_enter(struct pt_regs *regs, int scno)
+ {
+ 	current_thread_info()->syscall = scno;
+ 
++#ifdef CONFIG_GRKERNSEC_SETXID
++	if (unlikely(test_and_clear_thread_flag(TIF_GRSEC_SETXID)))
++		gr_delayed_cred_worker();
++#endif
++
+ 	if (test_thread_flag(TIF_SYSCALL_TRACE))
+ 		tracehook_report_syscall(regs, PTRACE_SYSCALL_ENTER);
+ 

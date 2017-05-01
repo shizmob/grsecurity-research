@@ -1,0 +1,146 @@
+diff --git a/arch/alpha/kernel/osf_sys.c b/arch/alpha/kernel/osf_sys.c
+index ffb93f49..ced8233 100644
+--- a/arch/alpha/kernel/osf_sys.c
++++ b/arch/alpha/kernel/osf_sys.c
+@@ -1300,10 +1300,11 @@ SYSCALL_DEFINE1(old_adjtimex, struct timex32 __user *, txc_p)
+    generic version except that we know how to honor ADDR_LIMIT_32BIT.  */
+ 
+ static unsigned long
+-arch_get_unmapped_area_1(unsigned long addr, unsigned long len,
+-		         unsigned long limit)
++arch_get_unmapped_area_1(struct file *filp, unsigned long addr, unsigned long len,
++		         unsigned long limit, unsigned long flags)
+ {
+ 	struct vm_unmapped_area_info info;
++	unsigned long offset = gr_rand_threadstack_offset(current->mm, filp, flags);
+ 
+ 	info.flags = 0;
+ 	info.length = len;
+@@ -1311,6 +1312,7 @@ arch_get_unmapped_area_1(unsigned long addr, unsigned long len,
+ 	info.high_limit = limit;
+ 	info.align_mask = 0;
+ 	info.align_offset = 0;
++	info.threadstack_offset = offset;
+ 	return vm_unmapped_area(&info);
+ }
+ 
+@@ -1343,20 +1345,20 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
+ 	   this feature should be incorporated into all ports?  */
+ 
+ 	if (addr) {
+-		addr = arch_get_unmapped_area_1 (PAGE_ALIGN(addr), len, limit);
++		addr = arch_get_unmapped_area_1 (filp, PAGE_ALIGN(addr), len, limit, flags);
+ 		if (addr != (unsigned long) -ENOMEM)
+ 			return addr;
+ 	}
+ 
+ 	/* Next, try allocating at TASK_UNMAPPED_BASE.  */
+-	addr = arch_get_unmapped_area_1 (PAGE_ALIGN(TASK_UNMAPPED_BASE),
+-					 len, limit);
++	addr = arch_get_unmapped_area_1 (filp, PAGE_ALIGN(current->mm->mmap_base), len, limit, flags);
++
+ 	if (addr != (unsigned long) -ENOMEM)
+ 		return addr;
+ 
+ 	/* Finally, try allocating in low memory.  */
+-	addr = arch_get_unmapped_area_1 (PAGE_SIZE, len, limit);
++	addr = arch_get_unmapped_area_1 (filp, PAGE_SIZE, len, limit, flags);
+ 
+ 	return addr;
+ }
+ 
+diff --git a/arch/arm/mm/mmap.c b/arch/arm/mm/mmap.c
+index 66353ca..8aad9f8 100644
+--- a/arch/arm/mm/mmap.c
++++ b/arch/arm/mm/mmap.c
+@@ -59,6 +59,7 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
+ 	struct vm_area_struct *vma;
+ 	int do_align = 0;
+ 	int aliasing = cache_is_vipt_aliasing();
++	unsigned long offset = gr_rand_threadstack_offset(mm, filp, flags);
+ 	struct vm_unmapped_area_info info;
+ 
+ 	/*
+@@ -88,8 +93,7 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
+ 			addr = PAGE_ALIGN(addr);
+ 
+ 		vma = find_vma(mm, addr);
+-		if (TASK_SIZE - len >= addr &&
+-		    (!vma || addr + len <= vma->vm_start))
++		if (TASK_SIZE - len >= addr && check_heap_stack_gap(vma, addr, len, offset))
+ 			return addr;
+ 	}
+ 
+@@ -99,19 +103,21 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
+ 	info.high_limit = TASK_SIZE;
+ 	info.align_mask = do_align ? (PAGE_MASK & (SHMLBA - 1)) : 0;
+ 	info.align_offset = pgoff << PAGE_SHIFT;
++	info.threadstack_offset = offset;
+ 	return vm_unmapped_area(&info);
+ }
+ 
+ unsigned long
+-arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
+-			const unsigned long len, const unsigned long pgoff,
+-			const unsigned long flags)
++arch_get_unmapped_area_topdown(struct file *filp, unsigned long addr0,
++			unsigned long len, unsigned long pgoff,
++			unsigned long flags)
+ {
+ 	struct vm_area_struct *vma;
+ 	struct mm_struct *mm = current->mm;
+ 	unsigned long addr = addr0;
+ 	int do_align = 0;
+ 	int aliasing = cache_is_vipt_aliasing();
++	unsigned long offset = gr_rand_threadstack_offset(mm, filp, flags);
+ 	struct vm_unmapped_area_info info;
+ 
+ 	/*
+@@ -139,8 +149,7 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
+ 		else
+ 			addr = PAGE_ALIGN(addr);
+ 		vma = find_vma(mm, addr);
+-		if (TASK_SIZE - len >= addr &&
+-				(!vma || addr + len <= vma->vm_start))
++		if (TASK_SIZE - len >= addr && check_heap_stack_gap(vma, addr, len, offset))
+ 			return addr;
+ 	}
+ 
+@@ -150,6 +159,7 @@ arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
+ 	info.high_limit = mm->mmap_base;
+ 	info.align_mask = do_align ? (PAGE_MASK & (SHMLBA - 1)) : 0;
+ 	info.align_offset = pgoff << PAGE_SHIFT;
++	info.threadstack_offset = offset;
+ 	addr = vm_unmapped_area(&info);
+ 
+ 	/*
+diff --git a/arch/frv/mm/elf-fdpic.c b/arch/frv/mm/elf-fdpic.c
+index 836f1470..4cf23f5 100644
+--- a/arch/frv/mm/elf-fdpic.c
++++ b/arch/frv/mm/elf-fdpic.c
+@@ -61,6 +61,7 @@ unsigned long arch_get_unmapped_area(struct file *filp, unsigned long addr, unsi
+ {
+ 	struct vm_area_struct *vma;
+ 	struct vm_unmapped_area_info info;
++	unsigned long offset = gr_rand_threadstack_offset(current->mm, filp, flags);
+ 
+ 	if (len > TASK_SIZE)
+ 		return -ENOMEM;
+@@ -73,8 +74,7 @@ unsigned long arch_get_unmapped_area(struct file *filp, unsigned long addr, unsi
+ 	if (addr) {
+ 		addr = PAGE_ALIGN(addr);
+ 		vma = find_vma(current->mm, addr);
+-		if (TASK_SIZE - len >= addr &&
+-		    (!vma || addr + len <= vma->vm_start))
++		if (TASK_SIZE - len >= addr && check_heap_stack_gap(vma, addr, len, offset))
+ 			goto success;
+ 	}
+ 
+@@ -85,6 +85,7 @@ unsigned long arch_get_unmapped_area(struct file *filp, unsigned long addr, unsi
+ 	info.high_limit = (current->mm->start_stack - 0x00200000);
+ 	info.align_mask = 0;
+ 	info.align_offset = 0;
++	info.threadstack_offset = offset;
+ 	addr = vm_unmapped_area(&info);
+ 	if (!(addr & ~PAGE_MASK))
+ 		goto success;
