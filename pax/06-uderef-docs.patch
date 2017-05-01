@@ -1,0 +1,19 @@
+diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
+index a6fadef..fdf6042 100644
+--- a/Documentation/kernel-parameters.txt
++++ b/Documentation/kernel-parameters.txt
+@@ -2983,6 +2983,14 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
+ 			the specified number of seconds.  This is to be used if
+ 			your oopses keep scrolling off the screen.
+ 
++	pax_nouderef	[X86] disables UDEREF.  Most likely needed under certain
++			virtualization environments that don't cope well with the
++			expand down segment used by UDEREF on X86-32 or the frequent
++			page table updates on X86-64.
++
++	pax_weakuderef	[X86-64] enables the weaker but faster form of UDEREF
++			when the processor supports PCID.
++
+ 	pcbit=		[HW,ISDN]
+ 
+ 	pcd.		[PARIDE]

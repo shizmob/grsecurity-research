@@ -1,0 +1,7 @@
+dependencies (likely, incomplete):
+
+pax/12-gcc-plugins.patch:
+- misc/02-shared-object-support.patch
+- misc/13-fix-hostcflags-aflags.patch
+pax/15-rap.patch:
+- misc/20-properly-gate-features 
