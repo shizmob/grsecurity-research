@@ -1,0 +1,635 @@
+diff --git a/arch/alpha/include/asm/pgalloc.h b/arch/alpha/include/asm/pgalloc.h
+index c2ebb6f..93a0613 100644
+--- a/arch/alpha/include/asm/pgalloc.h
++++ b/arch/alpha/include/asm/pgalloc.h
+@@ -29,6 +29,12 @@ pgd_populate(struct mm_struct *mm, pgd_t *pgd, pmd_t *pmd)
+ 	pgd_set(pgd, pmd);
+ }
+ 
++static inline void
++pgd_populate_kernel(struct mm_struct *mm, pgd_t *pgd, pmd_t *pmd)
++{
++	pgd_populate(mm, pgd, pmd);
++}
++
+ extern pgd_t *pgd_alloc(struct mm_struct *mm);
+ 
+ static inline void
+diff --git a/arch/arm/include/asm/pgalloc.h b/arch/arm/include/asm/pgalloc.h
+index b2902a5..da11e4d 100644
+--- a/arch/arm/include/asm/pgalloc.h
++++ b/arch/arm/include/asm/pgalloc.h
+@@ -43,6 +44,11 @@ static inline void pud_populate(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
+ 	set_pud(pud, __pud(__pa(pmd) | PMD_TYPE_TABLE));
+ }
+ 
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
++{
++	pud_populate(mm, pud, pmd);
++}
++
+ #else	/* !CONFIG_ARM_LPAE */
+ 
+ /*
+@@ -51,6 +57,7 @@ static inline void pud_populate(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
+ #define pmd_alloc_one(mm,addr)		({ BUG(); ((pmd_t *)2); })
+ #define pmd_free(mm, pmd)		do { } while (0)
+ #define pud_populate(mm,pmd,pte)	BUG()
++#define pud_populate_kernel(mm,pmd,pte)	BUG()
+ 
+ #endif	/* CONFIG_ARM_LPAE */
+ 
+diff --git a/arch/arm64/include/asm/pgalloc.h b/arch/arm64/include/asm/pgalloc.h
+index d25f4f1..61d52da 100644
+--- a/arch/arm64/include/asm/pgalloc.h
++++ b/arch/arm64/include/asm/pgalloc.h
+@@ -51,6 +51,11 @@ static inline void pud_populate(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
+ {
+ 	__pud_populate(pud, __pa(pmd), PMD_TYPE_TABLE);
+ }
++
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
++{
++	pud_populate(mm, pud, pmd);
++}
+ #else
+ static inline void __pud_populate(pud_t *pud, phys_addr_t pmd, pudval_t prot)
+ {
+@@ -80,6 +85,11 @@ static inline void pgd_populate(struct mm_struct *mm, pgd_t *pgd, pud_t *pud)
+ {
+ 	__pgd_populate(pgd, __pa(pud), PUD_TYPE_TABLE);
+ }
++
++static inline void pgd_populate_kernel(struct mm_struct *mm, pgd_t *pgd, pud_t *pud)
++{
++	pgd_populate(mm, pgd, pud);
++}
+ #else
+ static inline void __pgd_populate(pgd_t *pgdp, phys_addr_t pud, pgdval_t prot)
+ {
+diff --git a/arch/ia64/include/asm/pgalloc.h b/arch/ia64/include/asm/pgalloc.h
+index f5e70e9..624fad5 100644
+--- a/arch/ia64/include/asm/pgalloc.h
++++ b/arch/ia64/include/asm/pgalloc.h
+@@ -39,6 +39,12 @@ pgd_populate(struct mm_struct *mm, pgd_t * pgd_entry, pud_t * pud)
+ 	pgd_val(*pgd_entry) = __pa(pud);
+ }
+ 
++static inline void
++pgd_populate_kernel(struct mm_struct *mm, pgd_t * pgd_entry, pud_t * pud)
++{
++	pgd_populate(mm, pgd_entry, pud);
++}
++
+ static inline pud_t *pud_alloc_one(struct mm_struct *mm, unsigned long addr)
+ {
+ 	return quicklist_alloc(0, GFP_KERNEL, NULL);
+@@ -57,6 +63,12 @@ pud_populate(struct mm_struct *mm, pud_t * pud_entry, pmd_t * pmd)
+ 	pud_val(*pud_entry) = __pa(pmd);
+ }
+ 
++static inline void
++pud_populate_kernel(struct mm_struct *mm, pud_t * pud_entry, pmd_t * pmd)
++{
++	pud_populate(mm, pud_entry, pmd);
++}
++
+ static inline pmd_t *pmd_alloc_one(struct mm_struct *mm, unsigned long addr)
+ {
+ 	return quicklist_alloc(0, GFP_KERNEL, NULL);
+diff --git a/arch/mips/include/asm/pgalloc.h b/arch/mips/include/asm/pgalloc.h
+index a03e869..e1928f5 100644
+--- a/arch/mips/include/asm/pgalloc.h
++++ b/arch/mips/include/asm/pgalloc.h
+@@ -37,6 +37,11 @@ static inline void pud_populate(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
+ {
+ 	set_pud(pud, __pud((unsigned long)pmd));
+ }
++
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
++{
++	pud_populate(mm, pud, pmd);
++}
+ #endif
+ 
+ /*
+diff --git a/arch/parisc/include/asm/pgalloc.h b/arch/parisc/include/asm/pgalloc.h
+index f08dda3..ea6aa1b 100644
+--- a/arch/parisc/include/asm/pgalloc.h
++++ b/arch/parisc/include/asm/pgalloc.h
+@@ -61,6 +61,11 @@ static inline void pgd_populate(struct mm_struct *mm, pgd_t *pgd, pmd_t *pmd)
+ 		        (__u32)(__pa((unsigned long)pmd) >> PxD_VALUE_SHIFT));
+ }
+ 
++static inline void pgd_populate_kernel(struct mm_struct *mm, pgd_t *pgd, pmd_t *pmd)
++{
++	pgd_populate(mm, pgd, pmd);
++}
++
+ static inline pmd_t *pmd_alloc_one(struct mm_struct *mm, unsigned long address)
+ {
+ 	pmd_t *pmd = (pmd_t *)__get_free_pages(GFP_KERNEL, PMD_ORDER);
+@@ -96,6 +101,7 @@ static inline void pmd_free(struct mm_struct *mm, pmd_t *pmd)
+ #define pmd_alloc_one(mm, addr)		({ BUG(); ((pmd_t *)2); })
+ #define pmd_free(mm, x)			do { } while (0)
+ #define pgd_populate(mm, pmd, pte)	BUG()
++#define pgd_populate_kernel(mm, pmd, pte)	BUG()
+ 
+ #endif
+ 
+diff --git a/arch/powerpc/include/asm/book3s/64/pgalloc.h b/arch/powerpc/include/asm/book3s/64/pgalloc.h
+index cd5e7aa..7709061 100644
+--- a/arch/powerpc/include/asm/book3s/64/pgalloc.h
++++ b/arch/powerpc/include/asm/book3s/64/pgalloc.h
+@@ -91,6 +91,11 @@ static inline void pgd_populate(struct mm_struct *mm, pgd_t *pgd, pud_t *pud)
+ 	pgd_set(pgd, __pgtable_ptr_val(pud) | PGD_VAL_BITS);
+ }
+ 
++static inline void pgd_populate_kernel(struct mm_struct *mm, pgd_t *pgd, pud_t *pud)
++{
++	pgd_populate(mm, pgd, pud);
++}
++
+ static inline pud_t *pud_alloc_one(struct mm_struct *mm, unsigned long addr)
+ {
+ 	return kmem_cache_alloc(PGT_CACHE(PUD_INDEX_SIZE), GFP_KERNEL);
+@@ -106,6 +111,11 @@ static inline void pud_populate(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
+ 	pud_set(pud, __pgtable_ptr_val(pmd) | PUD_VAL_BITS);
+ }
+ 
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
++{
++	pud_populate_kernel(mm, pud, pmd);
++}
++
+ static inline void __pud_free_tlb(struct mmu_gather *tlb, pud_t *pud,
+                                   unsigned long address)
+ {
+diff --git a/arch/powerpc/include/asm/nohash/64/pgalloc.h b/arch/powerpc/include/asm/nohash/64/pgalloc.h
+index 897d2e1..399f34f 100644
+--- a/arch/powerpc/include/asm/nohash/64/pgalloc.h
++++ b/arch/powerpc/include/asm/nohash/64/pgalloc.h
+@@ -54,6 +54,7 @@ static inline void pgd_free(struct mm_struct *mm, pgd_t *pgd)
+ #ifndef CONFIG_PPC_64K_PAGES
+ 
+ #define pgd_populate(MM, PGD, PUD)	pgd_set(PGD, (unsigned long)PUD)
++#define pgd_populate_kernel(MM, PGD, PUD)	pgd_populate((MM), (PGD), (PUD))
+ 
+ static inline pud_t *pud_alloc_one(struct mm_struct *mm, unsigned long addr)
+ {
+@@ -70,6 +71,11 @@ static inline void pud_populate(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
+ 	pud_set(pud, (unsigned long)pmd);
+ }
+ 
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
++{
++	pud_populate(mm, pud, pmd);
++}
++
+ static inline void pmd_populate_kernel(struct mm_struct *mm, pmd_t *pmd,
+ 				       pte_t *pte)
+ {
+@@ -139,6 +145,7 @@ extern void __tlb_remove_table(void *_table);
+ #endif
+ 
+ #define pud_populate(mm, pud, pmd)	pud_set(pud, (unsigned long)pmd)
++#define pud_populate_kernel(mm, pud, pmd)	pud_populate((mm), (pud), (pmd))
+ 
+ static inline void pmd_populate_kernel(struct mm_struct *mm, pmd_t *pmd,
+ 				       pte_t *pte)
+diff --git a/arch/sparc/include/asm/pgalloc_32.h b/arch/sparc/include/asm/pgalloc_32.h
+index 0346c7e..c5c25b9 100644
+--- a/arch/sparc/include/asm/pgalloc_32.h
++++ b/arch/sparc/include/asm/pgalloc_32.h
+@@ -35,6 +35,7 @@ static inline void pgd_set(pgd_t * pgdp, pmd_t * pmdp)
+ }
+ 
+ #define pgd_populate(MM, PGD, PMD)      pgd_set(PGD, PMD)
++#define pgd_populate_kernel(MM, PGD, PMD)      pgd_populate((MM), (PGD), (PMD))
+ 
+ static inline pmd_t *pmd_alloc_one(struct mm_struct *mm,
+ 				   unsigned long address)
+diff --git a/arch/sparc/include/asm/pgalloc_64.h b/arch/sparc/include/asm/pgalloc_64.h
+index 3529f13..d98a28c 100644
+--- a/arch/sparc/include/asm/pgalloc_64.h
++++ b/arch/sparc/include/asm/pgalloc_64.h
+@@ -21,6 +21,7 @@ static inline void __pgd_populate(pgd_t *pgd, pud_t *pud)
+ }
+ 
+ #define pgd_populate(MM, PGD, PUD)	__pgd_populate(PGD, PUD)
++#define pgd_populate_kernel(MM, PGD, PMD)	pgd_populate((MM), (PGD), (PMD))
+ 
+ static inline pgd_t *pgd_alloc(struct mm_struct *mm)
+ {
+@@ -38,6 +39,7 @@ static inline void __pud_populate(pud_t *pud, pmd_t *pmd)
+ }
+ 
+ #define pud_populate(MM, PUD, PMD)	__pud_populate(PUD, PMD)
++#define pud_populate_kernel(MM, PUD, PMD)	pud_populate((MM), (PUD), (PMD))
+ 
+ static inline pud_t *pud_alloc_one(struct mm_struct *mm, unsigned long addr)
+ {
+diff --git a/arch/um/include/asm/pgtable-3level.h b/arch/um/include/asm/pgtable-3level.h
+index bae8523..ba9484b 100644
+--- a/arch/um/include/asm/pgtable-3level.h
++++ b/arch/um/include/asm/pgtable-3level.h
+@@ -58,6 +58,7 @@
+ #define pud_present(x)	(pud_val(x) & _PAGE_PRESENT)
+ #define pud_populate(mm, pud, pmd) \
+ 	set_pud(pud, __pud(_PAGE_TABLE + __pa(pmd)))
++#define pud_populate_kernel(mm, pud, pmd) pud_populate((mm), (pud), (pmd))
+ 
+ #ifdef CONFIG_64BIT
+ #define set_pud(pudptr, pudval) set_64bit((u64 *) (pudptr), pud_val(pudval))
+diff --git a/arch/x86/include/asm/pgalloc.h b/arch/x86/include/asm/pgalloc.h
+index b6d4259..da6324e 100644
+--- a/arch/x86/include/asm/pgalloc.h
++++ b/arch/x86/include/asm/pgalloc.h
+@@ -63,6 +63,13 @@ static inline void pmd_populate_kernel(struct mm_struct *mm,
+ 				       pmd_t *pmd, pte_t *pte)
+ {
+ 	paravirt_alloc_pte(mm, __pa(pte) >> PAGE_SHIFT);
++	set_pmd(pmd, __pmd(__pa(pte) | _KERNPG_TABLE));
++}
++
++static inline void pmd_populate_user(struct mm_struct *mm,
++				       pmd_t *pmd, pte_t *pte)
++{
++	paravirt_alloc_pte(mm, __pa(pte) >> PAGE_SHIFT);
+ 	set_pmd(pmd, __pmd(__pa(pte) | _PAGE_TABLE));
+ }
+ 
+@@ -112,12 +119,22 @@ static inline void __pmd_free_tlb(struct mmu_gather *tlb, pmd_t *pmd,
+ 
+ #ifdef CONFIG_X86_PAE
+ extern void pud_populate(struct mm_struct *mm, pud_t *pudp, pmd_t *pmd);
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pudp, pmd_t *pmd)
++{
++	pud_populate(mm, pudp, pmd);
++}
+ #else	/* !CONFIG_X86_PAE */
+ static inline void pud_populate(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
+ {
+ 	paravirt_alloc_pmd(mm, __pa(pmd) >> PAGE_SHIFT);
+ 	set_pud(pud, __pud(_PAGE_TABLE | __pa(pmd)));
+ }
++
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
++{
++	paravirt_alloc_pmd(mm, __pa(pmd) >> PAGE_SHIFT);
++	set_pud(pud, __pud(_KERNPG_TABLE | __pa(pmd)));
++}
+ #endif	/* CONFIG_X86_PAE */
+ 
+ #if CONFIG_PGTABLE_LEVELS > 3
+@@ -127,6 +144,12 @@ static inline void pgd_populate(struct mm_struct *mm, pgd_t *pgd, pud_t *pud)
+ 	set_pgd(pgd, __pgd(_PAGE_TABLE | __pa(pud)));
+ }
+ 
++static inline void pgd_populate_kernel(struct mm_struct *mm, pgd_t *pgd, pud_t *pud)
++{
++	paravirt_alloc_pud(mm, __pa(pud) >> PAGE_SHIFT);
++	set_pgd(pgd, __pgd(_KERNPG_TABLE | __pa(pud)));
++}
++
+ static inline pud_t *pud_alloc_one(struct mm_struct *mm, unsigned long addr)
+ {
+ 	gfp_t gfp = GFP_KERNEL_ACCOUNT;
+diff --git a/arch/x86/mm/init_64.c b/arch/x86/mm/init_64.c
+index 14b9dd7..774d517 100644
+--- a/arch/x86/mm/init_64.c
++++ b/arch/x86/mm/init_64.c
+@@ -163,7 +191,7 @@ static pud_t *fill_pud(pgd_t *pgd, unsigned long vaddr)
+ {
+ 	if (pgd_none(*pgd)) {
+ 		pud_t *pud = (pud_t *)spp_getpage();
+-		pgd_populate(&init_mm, pgd, pud);
++		pgd_populate_kernel(&init_mm, pgd, pud);
+ 		if (pud != pud_offset(pgd, 0))
+ 			printk(KERN_ERR "PAGETABLE BUG #00! %p <-> %p\n",
+ 			       pud, pud_offset(pgd, 0));
+@@ -175,7 +203,7 @@ static pmd_t *fill_pmd(pud_t *pud, unsigned long vaddr)
+ {
+ 	if (pud_none(*pud)) {
+ 		pmd_t *pmd = (pmd_t *) spp_getpage();
+-		pud_populate(&init_mm, pud, pmd);
++		pud_populate_kernel(&init_mm, pud, pmd);
+ 		if (pmd != pmd_offset(pud, 0))
+ 			printk(KERN_ERR "PAGETABLE BUG #01! %p <-> %p\n",
+ 			       pmd, pmd_offset(pud, 0));
+@@ -543,7 +571,7 @@ phys_pud_init(pud_t *pud_page, unsigned long paddr, unsigned long paddr_end,
+ 					   page_size_mask, prot);
+ 
+ 		spin_lock(&init_mm.page_table_lock);
+-		pud_populate(&init_mm, pud, pmd);
++		pud_populate_kernel(&init_mm, pud, pmd);
+ 		spin_unlock(&init_mm.page_table_lock);
+ 	}
+ 	__flush_tlb_all();
+@@ -590,7 +618,7 @@ kernel_physical_mapping_init(unsigned long paddr_start,
+ 					   page_size_mask);
+ 
+ 		spin_lock(&init_mm.page_table_lock);
+-		pgd_populate(&init_mm, pgd, pud);
++		pgd_populate_kernel(&init_mm, pgd, pud);
+ 		spin_unlock(&init_mm.page_table_lock);
+ 		pgd_changed = true;
+ 	}
+diff --git a/arch/x86/mm/ioremap.c b/arch/x86/mm/ioremap.c
+index 7aaa263..e77438f 100644
+--- a/arch/x86/mm/ioremap.c
++++ b/arch/x86/mm/ioremap.c
+@@ -454,8 +460,14 @@ void __init early_ioremap_init(void)
+ 	early_ioremap_setup();
+ 
+ 	pmd = early_ioremap_pmd(fix_to_virt(FIX_BTMAP_BEGIN));
+-	memset(bm_pte, 0, sizeof(bm_pte));
+-	pmd_populate_kernel(&init_mm, pmd, bm_pte);
++	if (pmd_none(*pmd))
++#ifdef CONFIG_COMPAT_VDSO
++		pmd_populate_user(&init_mm, pmd, __bm_pte);
++#else
++		pmd_populate_kernel(&init_mm, pmd, __bm_pte);
++#endif
++	else
++		bm_pte = (pte_t *)pmd_page_vaddr(*pmd);
+ 
+ 	/*
+ 	 * The boot-ioremap range spans multiple pmds, for which
+diff --git a/include/asm-generic/4level-fixup.h b/include/asm-generic/4level-fixup.h
+index 5bdab6b..9ae82fe 100644
+--- a/include/asm-generic/4level-fixup.h
++++ b/include/asm-generic/4level-fixup.h
+@@ -14,8 +14,10 @@
+ #define pmd_alloc(mm, pud, address) \
+ 	((unlikely(pgd_none(*(pud))) && __pmd_alloc(mm, pud, address))? \
+  		NULL: pmd_offset(pud, address))
++#define pmd_alloc_kernel(mm, pud, address) pmd_alloc((mm), (pud), (address))
+ 
+ #define pud_alloc(mm, pgd, address)	(pgd)
++#define pud_alloc_kernel(mm, pgd, address)	pud_alloc((mm), (pgd), (address))
+ #define pud_offset(pgd, start)		(pgd)
+ #define pud_none(pud)			0
+ #define pud_bad(pud)			0
+diff --git a/include/asm-generic/pgtable-nopmd.h b/include/asm-generic/pgtable-nopmd.h
+index 725612b..8458d85 100644
+--- a/include/asm-generic/pgtable-nopmd.h
++++ b/include/asm-generic/pgtable-nopmd.h
+@@ -33,6 +33,7 @@ static inline void pud_clear(pud_t *pud)	{ }
+ #define pmd_ERROR(pmd)				(pud_ERROR((pmd).pud))
+ 
+ #define pud_populate(mm, pmd, pte)		do { } while (0)
++#define pud_populate_kernel(mm, pmd, pte)	do { } while (0)
+ 
+ /*
+  * (pmds are folded into puds so this doesn't get actually called,
+  
+diff --git a/include/asm-generic/pgtable-nopud.h b/include/asm-generic/pgtable-nopud.h
+index 810431d..0ec4804f 100644
+--- a/include/asm-generic/pgtable-nopud.h
++++ b/include/asm-generic/pgtable-nopud.h
+@@ -29,6 +29,7 @@ static inline void pgd_clear(pgd_t *pgd)	{ }
+ #define pud_ERROR(pud)				(pgd_ERROR((pud).pgd))
+ 
+ #define pgd_populate(mm, pgd, pud)		do { } while (0)
++#define pgd_populate_kernel(mm, pgd, pud)	do { } while (0)
+ /*
+  * (puds are folded into pgds so this doesn't get actually called,
+  * but the define is needed for a generic inline function.)
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 0b5b2e4..8f2773e 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1533,8 +1512,15 @@ static inline int __pud_alloc(struct mm_struct *mm, pgd_t *pgd,
+ {
+ 	return 0;
+ }
++
++static inline int __pud_alloc_kernel(struct mm_struct *mm, pgd_t *pgd,
++						unsigned long address)
++{
++	return 0;
++}
+ #else
+ int __pud_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long address);
++int __pud_alloc_kernel(struct mm_struct *mm, pgd_t *pgd, unsigned long address);
+ #endif
+ 
+ #if defined(__PAGETABLE_PMD_FOLDED) || !defined(CONFIG_MMU)
+@@ -1544,6 +1530,12 @@ static inline int __pmd_alloc(struct mm_struct *mm, pud_t *pud,
+ 	return 0;
+ }
+ 
++static inline int __pmd_alloc_kernel(struct mm_struct *mm, pud_t *pud,
++						unsigned long address)
++{
++	return 0;
++}
++
+ static inline void mm_nr_pmds_init(struct mm_struct *mm) {}
+ 
+ static inline unsigned long mm_nr_pmds(struct mm_struct *mm)
+@@ -1556,6 +1548,7 @@ static inline void mm_dec_nr_pmds(struct mm_struct *mm) {}
+ 
+ #else
+ int __pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address);
++int __pmd_alloc_kernel(struct mm_struct *mm, pud_t *pud, unsigned long address);
+ 
+ static inline void mm_nr_pmds_init(struct mm_struct *mm)
+ {
+@@ -1592,11 +1585,23 @@ static inline pud_t *pud_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long a
+ 		NULL: pud_offset(pgd, address);
+ }
+ 
++static inline pud_t *pud_alloc_kernel(struct mm_struct *mm, pgd_t *pgd, unsigned long address)
++{
++	return (unlikely(pgd_none(*pgd)) && __pud_alloc_kernel(mm, pgd, address))?
++		NULL: pud_offset(pgd, address);
++}
++
+ static inline pmd_t *pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address)
+ {
+ 	return (unlikely(pud_none(*pud)) && __pmd_alloc(mm, pud, address))?
+ 		NULL: pmd_offset(pud, address);
+ }
++
++static inline pmd_t *pmd_alloc_kernel(struct mm_struct *mm, pud_t *pud, unsigned long address)
++{
++	return (unlikely(pud_none(*pud)) && __pmd_alloc_kernel(mm, pud, address))?
++		NULL: pmd_offset(pud, address);
++}
+ #endif /* CONFIG_MMU && !__ARCH_HAS_4LEVEL_HACK */
+ 
+ #if USE_SPLIT_PTE_PTLOCKS
+diff --git a/lib/ioremap.c b/lib/ioremap.c
+index 86c8911..f5bfc34 100644
+--- a/lib/ioremap.c
++++ b/lib/ioremap.c
+@@ -75,7 +75,7 @@ static inline int ioremap_pmd_range(pud_t *pud, unsigned long addr,
+ 	unsigned long next;
+ 
+ 	phys_addr -= addr;
+-	pmd = pmd_alloc(&init_mm, pud, addr);
++	pmd = pmd_alloc_kernel(&init_mm, pud, addr);
+ 	if (!pmd)
+ 		return -ENOMEM;
+ 	do {
+@@ -101,7 +101,7 @@ static inline int ioremap_pud_range(pgd_t *pgd, unsigned long addr,
+ 	unsigned long next;
+ 
+ 	phys_addr -= addr;
+-	pud = pud_alloc(&init_mm, pgd, addr);
++	pud = pud_alloc_kernel(&init_mm, pgd, addr);
+ 	if (!pud)
+ 		return -ENOMEM;
+ 	do {
+diff --git a/mm/memory.c b/mm/memory.c
+index cbb1e5e..e8b4bc4 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -1907,7 +1933,9 @@ static int apply_to_pmd_range(struct mm_struct *mm, pud_t *pud,
+ 
+ 	BUG_ON(pud_huge(*pud));
+ 
+-	pmd = pmd_alloc(mm, pud, addr);
++	pmd = (mm == &init_mm) ?
++		pmd_alloc_kernel(mm, pud, addr) :
++		pmd_alloc(mm, pud, addr);
+ 	if (!pmd)
+ 		return -ENOMEM;
+ 	do {
+@@ -1927,7 +1955,9 @@ static int apply_to_pud_range(struct mm_struct *mm, pgd_t *pgd,
+ 	unsigned long next;
+ 	int err;
+ 
+-	pud = pud_alloc(mm, pgd, addr);
++	pud = (mm == &init_mm) ?
++		pud_alloc_kernel(mm, pgd, addr) :
++		pud_alloc(mm, pgd, addr);
+ 	if (!pud)
+ 		return -ENOMEM;
+ 	do {
+@@ -3684,7 +3946,7 @@ EXPORT_SYMBOL_GPL(handle_mm_fault);
+  * Allocate page upper directory.
+  * We've already handled the fast-path in-line.
+  */
+-int __pud_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long address)
++static int ____pud_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long address, bool kernel)
+ {
+ 	pud_t *new = pud_alloc_one(mm, address);
+ 	if (!new)
+@@ -3695,11 +3957,23 @@ int __pud_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long address)
+ 	spin_lock(&mm->page_table_lock);
+ 	if (pgd_present(*pgd))		/* Another has populated it */
+ 		pud_free(mm, new);
++	else if (kernel)
++		pgd_populate_kernel(mm, pgd, new);
+ 	else
+ 		pgd_populate(mm, pgd, new);
+ 	spin_unlock(&mm->page_table_lock);
+ 	return 0;
+ }
++
++int __pud_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long address)
++{
++	return ____pud_alloc(mm, pgd, address, false);
++}
++
++int __pud_alloc_kernel(struct mm_struct *mm, pgd_t *pgd, unsigned long address)
++{
++	return ____pud_alloc(mm, pgd, address, true);
++}
+ #endif /* __PAGETABLE_PUD_FOLDED */
+ 
+ #ifndef __PAGETABLE_PMD_FOLDED
+@@ -3707,7 +3981,7 @@ int __pud_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long address)
+  * Allocate page middle directory.
+  * We've already handled the fast-path in-line.
+  */
+-int __pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address)
++static int ____pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address, bool kernel)
+ {
+ 	pmd_t *new = pmd_alloc_one(mm, address);
+ 	if (!new)
+@@ -3719,19 +3993,35 @@ int __pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address)
+ #ifndef __ARCH_HAS_4LEVEL_HACK
+ 	if (!pud_present(*pud)) {
+ 		mm_inc_nr_pmds(mm);
+-		pud_populate(mm, pud, new);
++		if (kernel)
++			pud_populate_kernel(mm, pud, new);
++		else
++			pud_populate(mm, pud, new);
+ 	} else	/* Another has populated it */
+ 		pmd_free(mm, new);
+ #else
+ 	if (!pgd_present(*pud)) {
+ 		mm_inc_nr_pmds(mm);
+-		pgd_populate(mm, pud, new);
++		if (kernel)
++			pgd_populate_kernel(mm, pud, new);
++		else
++			pgd_populate(mm, pud, new);
+ 	} else /* Another has populated it */
+ 		pmd_free(mm, new);
+ #endif /* __ARCH_HAS_4LEVEL_HACK */
+ 	spin_unlock(&mm->page_table_lock);
+ 	return 0;
+ }
++
++int __pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address)
++{
++	return ____pmd_alloc(mm, pud, address, false);
++}
++
++int __pmd_alloc_kernel(struct mm_struct *mm, pud_t *pud, unsigned long address)
++{
++	return ____pmd_alloc(mm, pud, address, true);
++}
+ #endif /* __PAGETABLE_PMD_FOLDED */
+ 
+ static int __follow_pte(struct mm_struct *mm, unsigned long address,
+diff --git a/mm/sparse-vmemmap.c b/mm/sparse-vmemmap.c
+index 574c67b..e890af8 100644
+--- a/mm/sparse-vmemmap.c
++++ b/mm/sparse-vmemmap.c
+@@ -203,7 +203,7 @@ pud_t * __meminit vmemmap_pud_populate(pgd_t *pgd, unsigned long addr, int node)
+ 		void *p = vmemmap_alloc_block(PAGE_SIZE, node);
+ 		if (!p)
+ 			return NULL;
+-		pud_populate(&init_mm, pud, p);
++		pud_populate_kernel(&init_mm, pud, p);
+ 	}
+ 	return pud;
+ }
+@@ -215,7 +215,7 @@ pgd_t * __meminit vmemmap_pgd_populate(unsigned long addr, int node)
+ 		void *p = vmemmap_alloc_block(PAGE_SIZE, node);
+ 		if (!p)
+ 			return NULL;
+-		pgd_populate(&init_mm, pgd, p);
++		pgd_populate_kernel(&init_mm, pgd, p);
+ 	}
+ 	return pgd;
+ }
+diff --git a/mm/vmalloc.c b/mm/vmalloc.c
+index f2481cb..333cf43 100644
+--- a/mm/vmalloc.c
++++ b/mm/vmalloc.c
+@@ -149,7 +220,7 @@ static int vmap_pmd_range(pud_t *pud, unsigned long addr,
+ 	pmd_t *pmd;
+ 	unsigned long next;
+ 
+-	pmd = pmd_alloc(&init_mm, pud, addr);
++	pmd = pmd_alloc_kernel(&init_mm, pud, addr);
+ 	if (!pmd)
+ 		return -ENOMEM;
+ 	do {
+@@ -166,7 +237,7 @@ static int vmap_pud_range(pgd_t *pgd, unsigned long addr,
+ 	pud_t *pud;
+ 	unsigned long next;
+ 
+-	pud = pud_alloc(&init_mm, pgd, addr);
++	pud = pud_alloc_kernel(&init_mm, pgd, addr);
+ 	if (!pud)
+ 		return -ENOMEM;
+ 	do {
