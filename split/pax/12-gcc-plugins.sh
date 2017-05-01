@@ -39,3 +39,16 @@ index 659bdd0..4179181 100644
  	help
  	  GCC plugins are loadable modules that provide extra features to the
  	  compiler. They are useful for runtime instrumentation and static analysis.
+diff --git a/arch/arm/boot/compressed/Makefile b/arch/arm/boot/compressed/Makefile
+index d50430c..39509a6 100644
+--- a/arch/arm/boot/compressed/Makefile
++++ b/arch/arm/boot/compressed/Makefile
+@@ -24,6 +24,8 @@ endif
+ 
+ GCOV_PROFILE		:= n
+ 
++GCC_PLUGINS		:= n
++
+ #
+ # Architecture dependencies
+ #

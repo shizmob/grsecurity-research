@@ -16,3 +16,23 @@ index 968d999..d36b2df 100644
  /* $0 is set by ld.so to a pointer to a function which might be 
     registered using atexit.  This provides a mean for the dynamic
     linker to call DT_FINI functions for shared libraries that have
+diff --git a/arch/arm/include/asm/elf.h b/arch/arm/include/asm/elf.h
+index d2315ff..f60b47b 100644
+--- a/arch/arm/include/asm/elf.h
++++ b/arch/arm/include/asm/elf.h
+@@ -117,7 +117,14 @@ int dump_task_regs(struct task_struct *t, elf_gregset_t *elfregs);
+    the loader.  We need to make sure that it is out of the way of the program
+    that it will "exec", and that there is sufficient room for the brk.  */
+ 
+-#define ELF_ET_DYN_BASE	(TASK_SIZE / 3 * 2)
++#define ELF_ET_DYN_BASE		(TASK_SIZE / 3 * 2)
++
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	0x00008000UL
++
++#define PAX_DELTA_MMAP_LEN	((current->personality == PER_LINUX_32BIT) ? 16 : 10)
++#define PAX_DELTA_STACK_LEN	((current->personality == PER_LINUX_32BIT) ? 16 : 10)
++#endif
+ 
+ /* When the program starts, a1 contains a pointer to a function to be 
+    registered with atexit, as per the SVR4 ABI.  A value of 0 means we 

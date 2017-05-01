@@ -1,0 +1,60 @@
+diff --git a/arch/arm/include/asm/cpuidle.h b/arch/arm/include/asm/cpuidle.h
+index baefe1d..29cb35a 100644
+--- a/arch/arm/include/asm/cpuidle.h
++++ b/arch/arm/include/asm/cpuidle.h
+@@ -32,7 +32,7 @@ struct device_node;
+ struct cpuidle_ops {
+ 	int (*suspend)(unsigned long arg);
+ 	int (*init)(struct device_node *, int cpu);
+-};
++} __no_const;
+ 
+ struct of_cpuidle_method {
+ 	const char *method;
+diff --git a/arch/arm/include/asm/outercache.h b/arch/arm/include/asm/outercache.h
+index c2bf24f..69e437c 100644
+--- a/arch/arm/include/asm/outercache.h
++++ b/arch/arm/include/asm/outercache.h
+@@ -39,7 +39,7 @@ struct outer_cache_fns {
+ 	/* This is an ARM L2C thing */
+ 	void (*write_sec)(unsigned long, unsigned);
+ 	void (*configure)(const struct l2x0_regs *);
+-};
++} __no_const;
+ 
+ extern struct outer_cache_fns outer_cache;
+ 
+diff --git a/arch/arm/include/asm/page.h b/arch/arm/include/asm/page.h
+index 4355f0e..cd9168e 100644
+--- a/arch/arm/include/asm/page.h
++++ b/arch/arm/include/asm/page.h
+@@ -23,6 +23,7 @@
+ 
+ #else
+ 
++#include <linux/compiler.h>
+ #include <asm/glue.h>
+ 
+ /*
+@@ -114,7 +115,7 @@ struct cpu_user_fns {
+ 	void (*cpu_clear_user_highpage)(struct page *page, unsigned long vaddr);
+ 	void (*cpu_copy_user_highpage)(struct page *to, struct page *from,
+ 			unsigned long vaddr, struct vm_area_struct *vma);
+-};
++} __no_const;
+ 
+ #ifdef MULTI_USER
+ extern struct cpu_user_fns cpu_user;
+diff --git a/arch/arm/include/asm/smp.h b/arch/arm/include/asm/smp.h
+index 3d6dc8b..1262ad3 100644
+--- a/arch/arm/include/asm/smp.h
++++ b/arch/arm/include/asm/smp.h
+@@ -108,7 +108,7 @@ struct smp_operations {
+ 	int  (*cpu_disable)(unsigned int cpu);
+ #endif
+ #endif
+-};
++} __no_const;
+ 
+ struct of_cpu_method {
+ 	const char *method;

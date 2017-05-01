@@ -1,0 +1,228 @@
+diff --git a/arch/arm/crypto/sha1_glue.c b/arch/arm/crypto/sha1_glue.c
+index 6fc73bf..d0af3c7b 100644
+--- a/arch/arm/crypto/sha1_glue.c
++++ b/arch/arm/crypto/sha1_glue.c
+@@ -27,8 +27,8 @@
+ 
+ #include "sha1.h"
+ 
+-asmlinkage void sha1_block_data_order(u32 *digest,
+-		const unsigned char *data, unsigned int rounds);
++asmlinkage void sha1_block_data_order(struct sha1_state *digest,
++		const u8 *data, int rounds);
+ 
+ int sha1_update_arm(struct shash_desc *desc, const u8 *data,
+ 		    unsigned int len)
+@@ -36,22 +36,20 @@ int sha1_update_arm(struct shash_desc *desc, const u8 *data,
+ 	/* make sure casting to sha1_block_fn() is safe */
+ 	BUILD_BUG_ON(offsetof(struct sha1_state, state) != 0);
+ 
+-	return sha1_base_do_update(desc, data, len,
+-				   (sha1_block_fn *)sha1_block_data_order);
++	return sha1_base_do_update(desc, data, len, sha1_block_data_order);
+ }
+ EXPORT_SYMBOL_GPL(sha1_update_arm);
+ 
+ static int sha1_final(struct shash_desc *desc, u8 *out)
+ {
+-	sha1_base_do_finalize(desc, (sha1_block_fn *)sha1_block_data_order);
++	sha1_base_do_finalize(desc, sha1_block_data_order);
+ 	return sha1_base_finish(desc, out);
+ }
+ 
+ int sha1_finup_arm(struct shash_desc *desc, const u8 *data,
+ 		   unsigned int len, u8 *out)
+ {
+-	sha1_base_do_update(desc, data, len,
+-			    (sha1_block_fn *)sha1_block_data_order);
++	sha1_base_do_update(desc, data, len, sha1_block_data_order);
+ 	return sha1_final(desc, out);
+ }
+ EXPORT_SYMBOL_GPL(sha1_finup_arm);
+diff --git a/arch/arm/crypto/sha1_neon_glue.c b/arch/arm/crypto/sha1_neon_glue.c
+index 4e22f12..49902aa 100644
+--- a/arch/arm/crypto/sha1_neon_glue.c
++++ b/arch/arm/crypto/sha1_neon_glue.c
+@@ -31,8 +31,8 @@
+ 
+ #include "sha1.h"
+ 
+-asmlinkage void sha1_transform_neon(void *state_h, const char *data,
+-				    unsigned int rounds);
++asmlinkage void sha1_transform_neon(struct sha1_state *state_h, const u8 *data,
++				    int rounds);
+ 
+ static int sha1_neon_update(struct shash_desc *desc, const u8 *data,
+ 			  unsigned int len)
+@@ -45,7 +45,7 @@ static int sha1_neon_update(struct shash_desc *desc, const u8 *data,
+ 
+ 	kernel_neon_begin();
+ 	sha1_base_do_update(desc, data, len,
+-			    (sha1_block_fn *)sha1_transform_neon);
++			    sha1_transform_neon);
+ 	kernel_neon_end();
+ 
+ 	return 0;
+@@ -60,8 +60,8 @@ static int sha1_neon_finup(struct shash_desc *desc, const u8 *data,
+ 	kernel_neon_begin();
+ 	if (len)
+ 		sha1_base_do_update(desc, data, len,
+-				    (sha1_block_fn *)sha1_transform_neon);
+-	sha1_base_do_finalize(desc, (sha1_block_fn *)sha1_transform_neon);
++				    sha1_transform_neon);
++	sha1_base_do_finalize(desc, sha1_transform_neon);
+ 	kernel_neon_end();
+ 
+ 	return sha1_base_finish(desc, out);
+diff --git a/arch/arm/crypto/sha256_glue.c b/arch/arm/crypto/sha256_glue.c
+index a84e869..53a0c61 100644
+--- a/arch/arm/crypto/sha256_glue.c
++++ b/arch/arm/crypto/sha256_glue.c
+@@ -30,8 +30,8 @@
+ 
+ #include "sha256_glue.h"
+ 
+-asmlinkage void sha256_block_data_order(u32 *digest, const void *data,
+-					unsigned int num_blks);
++asmlinkage void sha256_block_data_order(struct sha256_state *digest, const u8 *data,
++					int num_blks);
+ 
+ int crypto_sha256_arm_update(struct shash_desc *desc, const u8 *data,
+ 			     unsigned int len)
+@@ -39,23 +39,20 @@ int crypto_sha256_arm_update(struct shash_desc *desc, const u8 *data,
+ 	/* make sure casting to sha256_block_fn() is safe */
+ 	BUILD_BUG_ON(offsetof(struct sha256_state, state) != 0);
+ 
+-	return sha256_base_do_update(desc, data, len,
+-				(sha256_block_fn *)sha256_block_data_order);
++	return sha256_base_do_update(desc, data, len, sha256_block_data_order);
+ }
+ EXPORT_SYMBOL(crypto_sha256_arm_update);
+ 
+ static int sha256_final(struct shash_desc *desc, u8 *out)
+ {
+-	sha256_base_do_finalize(desc,
+-				(sha256_block_fn *)sha256_block_data_order);
++	sha256_base_do_finalize(desc, sha256_block_data_order);
+ 	return sha256_base_finish(desc, out);
+ }
+ 
+ int crypto_sha256_arm_finup(struct shash_desc *desc, const u8 *data,
+ 			    unsigned int len, u8 *out)
+ {
+-	sha256_base_do_update(desc, data, len,
+-			      (sha256_block_fn *)sha256_block_data_order);
++	sha256_base_do_update(desc, data, len, sha256_block_data_order);
+ 	return sha256_final(desc, out);
+ }
+ EXPORT_SYMBOL(crypto_sha256_arm_finup);
+diff --git a/arch/arm/crypto/sha256_neon_glue.c b/arch/arm/crypto/sha256_neon_glue.c
+index 39ccd65..f9511cb 100644
+--- a/arch/arm/crypto/sha256_neon_glue.c
++++ b/arch/arm/crypto/sha256_neon_glue.c
+@@ -26,8 +26,8 @@
+ 
+ #include "sha256_glue.h"
+ 
+-asmlinkage void sha256_block_data_order_neon(u32 *digest, const void *data,
+-					     unsigned int num_blks);
++asmlinkage void sha256_block_data_order_neon(struct sha256_state *digest, const u8 *data,
++					     int num_blks);
+ 
+ static int sha256_update(struct shash_desc *desc, const u8 *data,
+ 			 unsigned int len)
+@@ -39,8 +39,7 @@ static int sha256_update(struct shash_desc *desc, const u8 *data,
+ 		return crypto_sha256_arm_update(desc, data, len);
+ 
+ 	kernel_neon_begin();
+-	sha256_base_do_update(desc, data, len,
+-			(sha256_block_fn *)sha256_block_data_order_neon);
++	sha256_base_do_update(desc, data, len, sha256_block_data_order_neon);
+ 	kernel_neon_end();
+ 
+ 	return 0;
+@@ -54,10 +53,8 @@ static int sha256_finup(struct shash_desc *desc, const u8 *data,
+ 
+ 	kernel_neon_begin();
+ 	if (len)
+-		sha256_base_do_update(desc, data, len,
+-			(sha256_block_fn *)sha256_block_data_order_neon);
+-	sha256_base_do_finalize(desc,
+-			(sha256_block_fn *)sha256_block_data_order_neon);
++		sha256_base_do_update(desc, data, len, sha256_block_data_order_neon);
++	sha256_base_do_finalize(desc, sha256_block_data_order_neon);
+ 	kernel_neon_end();
+ 
+ 	return sha256_base_finish(desc, out);
+diff --git a/arch/arm/crypto/sha512-glue.c b/arch/arm/crypto/sha512-glue.c
+index 269a394..c7a91f1 100644
+--- a/arch/arm/crypto/sha512-glue.c
++++ b/arch/arm/crypto/sha512-glue.c
+@@ -28,27 +28,24 @@ MODULE_ALIAS_CRYPTO("sha512");
+ MODULE_ALIAS_CRYPTO("sha384-arm");
+ MODULE_ALIAS_CRYPTO("sha512-arm");
+ 
+-asmlinkage void sha512_block_data_order(u64 *state, u8 const *src, int blocks);
++asmlinkage void sha512_block_data_order(struct sha512_state *state, u8 const *src, int blocks);
+ 
+ int sha512_arm_update(struct shash_desc *desc, const u8 *data,
+ 		      unsigned int len)
+ {
+-	return sha512_base_do_update(desc, data, len,
+-		(sha512_block_fn *)sha512_block_data_order);
++	return sha512_base_do_update(desc, data, len, sha512_block_data_order);
+ }
+ 
+ int sha512_arm_final(struct shash_desc *desc, u8 *out)
+ {
+-	sha512_base_do_finalize(desc,
+-		(sha512_block_fn *)sha512_block_data_order);
++	sha512_base_do_finalize(desc, sha512_block_data_order);
+ 	return sha512_base_finish(desc, out);
+ }
+ 
+ int sha512_arm_finup(struct shash_desc *desc, const u8 *data,
+ 		     unsigned int len, u8 *out)
+ {
+-	sha512_base_do_update(desc, data, len,
+-		(sha512_block_fn *)sha512_block_data_order);
++	sha512_base_do_update(desc, data, len, sha512_block_data_order);
+ 	return sha512_arm_final(desc, out);
+ }
+ 
+diff --git a/arch/arm/crypto/sha512-neon-glue.c b/arch/arm/crypto/sha512-neon-glue.c
+index 3269368..9fcbc00 100644
+--- a/arch/arm/crypto/sha512-neon-glue.c
++++ b/arch/arm/crypto/sha512-neon-glue.c
+@@ -22,7 +22,7 @@
+ MODULE_ALIAS_CRYPTO("sha384-neon");
+ MODULE_ALIAS_CRYPTO("sha512-neon");
+ 
+-asmlinkage void sha512_block_data_order_neon(u64 *state, u8 const *src,
++asmlinkage void sha512_block_data_order_neon(struct sha512_state *state, u8 const *src,
+ 					     int blocks);
+ 
+ static int sha512_neon_update(struct shash_desc *desc, const u8 *data,
+@@ -35,8 +35,7 @@ static int sha512_neon_update(struct shash_desc *desc, const u8 *data,
+ 		return sha512_arm_update(desc, data, len);
+ 
+ 	kernel_neon_begin();
+-	sha512_base_do_update(desc, data, len,
+-		(sha512_block_fn *)sha512_block_data_order_neon);
++	sha512_base_do_update(desc, data, len, sha512_block_data_order_neon);
+ 	kernel_neon_end();
+ 
+ 	return 0;
+@@ -50,10 +49,8 @@ static int sha512_neon_finup(struct shash_desc *desc, const u8 *data,
+ 
+ 	kernel_neon_begin();
+ 	if (len)
+-		sha512_base_do_update(desc, data, len,
+-			(sha512_block_fn *)sha512_block_data_order_neon);
+-	sha512_base_do_finalize(desc,
+-		(sha512_block_fn *)sha512_block_data_order_neon);
++		sha512_base_do_update(desc, data, len, sha512_block_data_order_neon);
++	sha512_base_do_finalize(desc, sha512_block_data_order_neon);
+ 	kernel_neon_end();
+ 
+ 	return sha512_base_finish(desc, out);
