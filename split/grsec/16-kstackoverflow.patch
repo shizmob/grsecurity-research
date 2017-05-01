@@ -2,7 +2,7 @@ diff --git a/arch/Kconfig b/arch/Kconfig
 index 659bdd0..4179181 100644
 --- a/arch/Kconfig
 +++ b/arch/Kconfig
-@@ -759,6 +760,7 @@ config VMAP_STACK
+@@ -760,6 +761,7 @@ config VMAP_STACK
  	default y
  	bool "Use a virtually-mapped stack"
  	depends on HAVE_ARCH_VMAP_STACK && !KASAN

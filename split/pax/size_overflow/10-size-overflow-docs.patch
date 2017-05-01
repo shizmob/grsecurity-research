@@ -2,7 +2,7 @@ diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-paramete
 index a6fadef..fdf6042 100644
 --- a/Documentation/kernel-parameters.txt
 +++ b/Documentation/kernel-parameters.txt
-@@ -3007,6 +3007,11 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
+@@ -3004,6 +3004,11 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
  			from the first 4GB of memory as the bootmem allocator
  			passes the memory pages to the buddy allocator.
  

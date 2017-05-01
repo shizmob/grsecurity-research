@@ -2,7 +2,7 @@ diff --git a/arch/arm/include/asm/uaccess.h b/arch/arm/include/asm/uaccess.h
 index f6fcc67..5895d62 100644
 --- a/arch/arm/include/asm/uaccess.h
 +++ b/arch/arm/include/asm/uaccess.h
-@@ -474,10 +506,10 @@ do {									\
+@@ -478,10 +478,10 @@ do {									\
  
  
  #ifdef CONFIG_MMU
@@ -15,7 +15,7 @@ index f6fcc67..5895d62 100644
  __copy_from_user(void *to, const void __user *from, unsigned long n)
  {
  	unsigned int __ua_flags;
-@@ -489,9 +521,9 @@ __copy_from_user(void *to, const void __user *from, unsigned long n)
+@@ -493,9 +493,9 @@ __copy_from_user(void *to, const void __user *from, unsigned long n)
  	return n;
  }
  
@@ -27,7 +27,7 @@ index f6fcc67..5895d62 100644
  __copy_to_user_std(void __user *to, const void *from, unsigned long n);
  
  static inline unsigned long __must_check
-@@ -511,9 +543,9 @@ __copy_to_user(void __user *to, const void *from, unsigned long n)
+@@ -515,9 +515,9 @@ __copy_to_user(void __user *to, const void *from, unsigned long n)
  #endif
  }
  

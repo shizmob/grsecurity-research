@@ -2,7 +2,7 @@ diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-paramete
 index a6fadef..fdf6042 100644
 --- a/Documentation/kernel-parameters.txt
 +++ b/Documentation/kernel-parameters.txt
-@@ -3002,6 +3002,11 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
+@@ -2999,6 +2999,11 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
  
  	pax_softmode=	0/1 to disable/enable PaX softmode on boot already.
  

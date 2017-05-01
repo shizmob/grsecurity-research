@@ -2,7 +2,7 @@ diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-paramete
 index a6fadef..fdf6042 100644
 --- a/Documentation/kernel-parameters.txt
 +++ b/Documentation/kernel-parameters.txt
-@@ -2991,6 +2991,15 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
+@@ -2988,6 +2988,15 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
  			expand down segment used by UDEREF on X86-32 or the frequent
  			page table updates on X86-64.
  

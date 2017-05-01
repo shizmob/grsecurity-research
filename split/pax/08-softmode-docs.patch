@@ -2,7 +2,7 @@ diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-paramete
 index a6fadef..fdf6042 100644
 --- a/Documentation/kernel-parameters.txt
 +++ b/Documentation/kernel-parameters.txt
-@@ -3000,6 +3000,8 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
+@@ -2997,6 +2997,8 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
  				whitelisted slabs (default)
  			full  : sanitize all slabs, even the whitelisted ones
  

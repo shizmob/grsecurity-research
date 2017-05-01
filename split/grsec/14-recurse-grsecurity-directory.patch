@@ -2,7 +2,7 @@ diff --git a/Makefile b/Makefile
 index 50436f5..435d355 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -910,7 +912,7 @@ export mod_sign_cmd
+@@ -914,7 +914,7 @@ export mod_sign_cmd
  
  
  ifeq ($(KBUILD_EXTMOD),)
