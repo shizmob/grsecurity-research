@@ -8,7 +8,8 @@ fi
 
 # Undo applied patches.
 find linux-$kernver -name '.applied-*.patch' | sort -r | while read patch ; do
-	echo ">> reverting $(basename "$patch")..."
+	base="$(basename "$patch")"
+	echo ">> reverting ${base#.applied-}..."
 	patch -stRd linux-$kernver -p1 < "$patch" || exit 1
 	rm "$patch"
 done

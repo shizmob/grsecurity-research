@@ -204,3 +204,16 @@ index 19d646a..e20a9b2 100644
  	struct attribute **attrs;
  	size_t size;
  	int i, j;
+diff --git a/arch/x86/include/asm/mce.h b/arch/x86/include/asm/mce.h
+index 9bd7ff5..d9c8715 100644
+--- a/arch/x86/include/asm/mce.h
++++ b/arch/x86/include/asm/mce.h
+@@ -187,7 +187,7 @@ struct mca_msr_regs {
+ 	u32 (*status)	(int bank);
+ 	u32 (*addr)	(int bank);
+ 	u32 (*misc)	(int bank);
+-};
++} __no_const;
+ 
+ extern struct mce_vendor_flags mce_flags;
+ 

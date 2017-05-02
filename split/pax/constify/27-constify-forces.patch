@@ -168,3 +168,29 @@ index 8f82b02..b10c4b0 100644
  	.name = "events",
  	.attrs = NULL,
  };
+diff --git a/arch/x86/include/asm/hypervisor.h b/arch/x86/include/asm/hypervisor.h
+index 67942b6..176a8b4 100644
+--- a/arch/x86/include/asm/hypervisor.h
++++ b/arch/x86/include/asm/hypervisor.h
+@@ -46,7 +46,7 @@ struct hypervisor_x86 {
+ 
+ 	/* pin current vcpu to specified physical cpu (run rarely) */
+ 	void		(*pin_vcpu)(int);
+-};
++} __do_const;
+ 
+ extern const struct hypervisor_x86 *x86_hyper;
+ 
+diff --git a/arch/x86/include/asm/i8259.h b/arch/x86/include/asm/i8259.h
+index 39bcefc..272d904 100644
+--- a/arch/x86/include/asm/i8259.h
++++ b/arch/x86/include/asm/i8259.h
+@@ -63,7 +63,7 @@ struct legacy_pic {
+ 	int (*probe)(void);
+ 	int (*irq_pending)(unsigned int irq);
+ 	void (*make_irq)(unsigned int irq);
+-};
++} __do_const;
+ 
+ extern struct legacy_pic *legacy_pic;
+ extern struct legacy_pic null_legacy_pic;

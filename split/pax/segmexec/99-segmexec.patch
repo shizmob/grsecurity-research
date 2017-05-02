@@ -1,0 +1,21 @@
+diff --git a/arch/x86/include/asm/mman.h b/arch/x86/include/asm/mman.h
+new file mode 100644
+index 0000000..2bfd3ba
+--- /dev/null
++++ b/arch/x86/include/asm/mman.h
+@@ -0,0 +1,15 @@
++#ifndef _X86_MMAN_H
++#define _X86_MMAN_H
++
++#include <uapi/asm/mman.h>
++
++#ifdef __KERNEL__
++#ifndef __ASSEMBLY__
++#ifdef CONFIG_X86_32
++#define arch_mmap_check	i386_mmap_check
++int i386_mmap_check(unsigned long addr, unsigned long len, unsigned long flags);
++#endif
++#endif
++#endif
++
++#endif /* X86_MMAN_H */

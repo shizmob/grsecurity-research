@@ -103,3 +103,31 @@ index bdd9cc5..486d4bf 100644
 +void pax_exit_kernel(void) __rap_hash;
 +void pax_exit_kernel_user(void) __rap_hash;
  
+diff --git a/arch/x86/kernel/tboot.c b/arch/x86/kernel/tboot.c
+index 8402907..b0e4a72 100644
+--- a/arch/x86/kernel/tboot.c
++++ b/arch/x86/kernel/tboot.c
+@@ -215,8 +220,6 @@ static int tboot_setup_sleep(void)
+ 
+ void tboot_shutdown(u32 shutdown_type)
+ {
+-	void (*shutdown)(void);
+-
+ 	if (!tboot_enabled())
+ 		return;
+ 
+@@ -236,9 +239,12 @@ void tboot_shutdown(u32 shutdown_type)
+ 	tboot->shutdown_type = shutdown_type;
+ 
+ 	switch_to_tboot_pt();
++	__write_cr4(__read_cr4() & ~X86_CR4_PCIDE);
+ 
+-	shutdown = (void(*)(void))(unsigned long)tboot->shutdown_entry;
+-	shutdown();
++	/*
++	 * PaX: can't be a C indirect function call due to KERNEXEC
++	 */
++	asm volatile("jmp *%0" : : "r"((unsigned long)tboot->shutdown_entry));
+ 
+ 	/* should not reach here */
+ 	while (1)
