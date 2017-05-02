@@ -425,3 +425,58 @@ index 5bb6991..5c2132e 100644
  
  #ifdef CONFIG_SPARC32
  #define SMP_CACHE_BYTES_SHIFT 5
+diff --git a/arch/tile/include/asm/cache.h b/arch/tile/include/asm/cache.h
+index 4810e48..08b733b 100644
+--- a/arch/tile/include/asm/cache.h
++++ b/arch/tile/include/asm/cache.h
+@@ -15,11 +15,12 @@
+ #ifndef _ASM_TILE_CACHE_H
+ #define _ASM_TILE_CACHE_H
+ 
++#include <linux/const.h>
+ #include <arch/chip.h>
+ 
+ /* bytes per L1 data cache line */
+ #define L1_CACHE_SHIFT		CHIP_L1D_LOG_LINE_SIZE()
+-#define L1_CACHE_BYTES		(1 << L1_CACHE_SHIFT)
++#define L1_CACHE_BYTES		(_AC(1,UL) << L1_CACHE_SHIFT)
+ 
+ /* bytes per L2 cache line */
+ #define L2_CACHE_SHIFT		CHIP_L2_LOG_LINE_SIZE()
+diff --git a/arch/um/include/asm/cache.h b/arch/um/include/asm/cache.h
+index 19e1bdd..3665b77 100644
+--- a/arch/um/include/asm/cache.h
++++ b/arch/um/include/asm/cache.h
+@@ -1,6 +1,7 @@
+ #ifndef __UM_CACHE_H
+ #define __UM_CACHE_H
+ 
++#include <linux/const.h>
+ 
+ #if defined(CONFIG_UML_X86) && !defined(CONFIG_64BIT)
+ # define L1_CACHE_SHIFT		(CONFIG_X86_L1_CACHE_SHIFT)
+@@ -12,6 +13,6 @@
+ # define L1_CACHE_SHIFT		5
+ #endif
+ 
+-#define L1_CACHE_BYTES		(1 << L1_CACHE_SHIFT)
++#define L1_CACHE_BYTES		(_AC(1,UL) << L1_CACHE_SHIFT)
+ 
+ #endif
+diff --git a/arch/unicore32/include/asm/cache.h b/arch/unicore32/include/asm/cache.h
+index ad8f795..2c7eec6 100644
+--- a/arch/unicore32/include/asm/cache.h
++++ b/arch/unicore32/include/asm/cache.h
+@@ -12,8 +12,10 @@
+ #ifndef __UNICORE_CACHE_H__
+ #define __UNICORE_CACHE_H__
+ 
+-#define L1_CACHE_SHIFT		(5)
+-#define L1_CACHE_BYTES		(1 << L1_CACHE_SHIFT)
++#include <linux/const.h>
++
++#define L1_CACHE_SHIFT		5
++#define L1_CACHE_BYTES		(_AC(1,UL) << L1_CACHE_SHIFT)
+ 
+ /*
+  * Memory returned by kmalloc() may be used for DMA, so we must make

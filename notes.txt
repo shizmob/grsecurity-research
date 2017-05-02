@@ -1,6 +1,6 @@
 dependencies (likely, incomplete):
 
-pax/12-gcc-plugins.patch:
+pax/12-gcc-plugin-infra.patch:
 - misc/02-shared-object-support.patch
 - misc/13-fix-hostcflags-aflags.patch
 pax/15-rap.patch:
@@ -12,5 +12,11 @@ procedure:
 
 placement:
 
-- i put __read_only stuff as part of pax/constify, but i'm not sure if that's entirely correct;
+- i put __read_only additions/__refdata removal stuff as part of pax/constify, but i'm not sure if that's entirely correct;
 - i put all the < 0 checks as part of pax/size_overflow, but i'm not entirely sure that's the right place either;
+- i put the info.low_limit/info.high_limit changes as part of grsec/rand_threadstack, but i'm not sure if that's the right place;
+
+further splits:
+
+- the check_heap_stack_gap() stuff that's in grsec/rand_threadstack right now probably needs splitting up so that the call gets added separately;
+- pax/aslr.patch needs more splitting

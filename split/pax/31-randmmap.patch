@@ -420,3 +420,44 @@ index fe8b8ee..3f17a96 100644
  		mm->get_unmapped_area = arch_get_unmapped_area_topdown;
  	}
  }
+diff --git a/arch/sparc/mm/hugetlbpage.c b/arch/sparc/mm/hugetlbpage.c
+index 988acc8b..f26345c 100644
+--- a/arch/sparc/mm/hugetlbpage.c
++++ b/arch/sparc/mm/hugetlbpage.c
+@@ -46,6 +48,12 @@ static unsigned long hugetlb_get_unmapped_area_bottomup(struct file *filp,
+ 	if ((addr & ~PAGE_MASK) && task_size > VA_EXCLUDE_END) {
+ 		VM_BUG_ON(addr != -ENOMEM);
+ 		info.low_limit = VA_EXCLUDE_END;
++
++#ifdef CONFIG_PAX_RANDMMAP
++		if (mm->pax_flags & MF_PAX_RANDMMAP)
++			info.low_limit += mm->delta_mmap;
++#endif
++
+ 		info.high_limit = task_size;
+ 		addr = vm_unmapped_area(&info);
+ 	}
+@@ -83,6 +94,12 @@ hugetlb_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
+ 		VM_BUG_ON(addr != -ENOMEM);
+ 		info.flags = 0;
+ 		info.low_limit = TASK_UNMAPPED_BASE;
++
++#ifdef CONFIG_PAX_RANDMMAP
++		if (mm->pax_flags & MF_PAX_RANDMMAP)
++			info.low_limit += mm->delta_mmap;
++#endif
++
+ 		info.high_limit = STACK_TOP32;
+ 		addr = vm_unmapped_area(&info);
+ 	}
+@@ -112,6 +130,10 @@ hugetlb_get_unmapped_area(struct file *file, unsigned long addr,
+ 		return addr;
+ 	}
+ 
++#ifdef CONFIG_PAX_RANDMMAP
++	if (!(mm->pax_flags & MF_PAX_RANDMMAP))
++#endif
++
+ 	if (addr) {
+ 		addr = ALIGN(addr, HPAGE_SIZE);
+ 		vma = find_vma(mm, addr);
