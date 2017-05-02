@@ -19,6 +19,9 @@ find split -name '*.patch' | while read f; do printf "%s:%s\n" "$(basename "$f")
 	test -f linux-$kernver/.applied-"$base" && continue
 
 	echo ">> applying ${patch#split/}..."
-	patch -stNd linux-$kernver -p1 < "$patch" || exit 1
+	if ! patch -stNd linux-$kernver -p1 < "$patch" ; then
+		patch -stRd linux-$kernver -p1 < "$patch"
+		exit 1
+	fi
 	cp "$patch" linux-$kernver/.applied-"$base"
 done
