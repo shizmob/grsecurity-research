@@ -15,6 +15,7 @@ placement:
 - i put __read_only additions/__refdata removal stuff as part of pax/constify, but i'm not sure if that's entirely correct;
 - i put all the < 0 checks as part of pax/size_overflow, but i'm not entirely sure that's the right place either;
 - i put the info.low_limit/info.high_limit changes as part of grsec/rand_threadstack, but i'm not sure if that's the right place;
+- i merged uderef and kernexec for the initial splitting phase as they seem heavily intertwined - proper splitting will follow after the initial split;
 
 further splits:
 
