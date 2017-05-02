@@ -80,6 +80,180 @@ index 99d9f63..ec44cb5 100644
  #else
  static inline void modify_domain(unsigned dom, unsigned type)	{ }
  #endif
+diff --git a/arch/arm/include/asm/pgalloc.h b/arch/arm/include/asm/pgalloc.h
+index b2902a5..da11e4d 100644
+--- a/arch/arm/include/asm/pgalloc.h
++++ b/arch/arm/include/asm/pgalloc.h
+@@ -17,6 +17,7 @@
+ #include <asm/processor.h>
+ #include <asm/cacheflush.h>
+ #include <asm/tlbflush.h>
++#include <asm/system_info.h>
+ 
+ #define check_pgt_cache()		do { } while (0)
+ 
+@@ -128,6 +135,19 @@ static inline void pte_free(struct mm_struct *mm, pgtable_t pte)
+ 	__free_page(pte);
+ }
+ 
++static inline void __section_update(pmd_t *pmdp, unsigned long addr, pmdval_t prot)
++{
++#ifdef CONFIG_ARM_LPAE
++	pmdp[0] = __pmd(pmd_val(pmdp[0]) | prot);
++#else
++	if (addr & SECTION_SIZE)
++		pmdp[1] = __pmd(pmd_val(pmdp[1]) | prot);
++	else
++		pmdp[0] = __pmd(pmd_val(pmdp[0]) | prot);
++#endif
++	flush_pmd_entry(pmdp);
++}
++
+ static inline void __pmd_populate(pmd_t *pmdp, phys_addr_t pte,
+ 				  pmdval_t prot)
+ {
+diff --git a/arch/arm/include/asm/pgtable.h b/arch/arm/include/asm/pgtable.h
+index a8d656d..2febb8a 100644
+--- a/arch/arm/include/asm/pgtable.h
++++ b/arch/arm/include/asm/pgtable.h
+@@ -48,6 +51,9 @@
+ #define LIBRARY_TEXT_START	0x0c000000
+ 
+ #ifndef __ASSEMBLY__
++extern pteval_t __supported_pte_mask;
++extern pmdval_t __supported_pmd_mask;
++
+ extern void __pte_error(const char *file, int line, pte_t);
+ extern void __pmd_error(const char *file, int line, pmd_t);
+ extern void __pgd_error(const char *file, int line, pgd_t);
+@@ -56,6 +62,48 @@ extern void __pgd_error(const char *file, int line, pgd_t);
+ #define pmd_ERROR(pmd)		__pmd_error(__FILE__, __LINE__, pmd)
+ #define pgd_ERROR(pgd)		__pgd_error(__FILE__, __LINE__, pgd)
+ 
++#define  __HAVE_ARCH_PAX_OPEN_KERNEL
++#define  __HAVE_ARCH_PAX_CLOSE_KERNEL
++
++#if defined(CONFIG_PAX_KERNEXEC) || defined(CONFIG_PAX_MEMORY_UDEREF)
++#include <asm/domain.h>
++#include <linux/thread_info.h>
++#include <linux/preempt.h>
++
++static inline int test_domain(int domain, int domaintype)
++{
++	return ((current_thread_info()->cpu_domain) & domain_val(domain, 3)) == domain_val(domain, domaintype);
++}
++#endif
++
++#ifdef CONFIG_PAX_KERNEXEC
++static inline unsigned long pax_open_kernel(void) {
++#ifdef CONFIG_ARM_LPAE
++	/* TODO */
++#else
++	preempt_disable();
++	BUG_ON(test_domain(DOMAIN_KERNEL, DOMAIN_KERNEXEC));
++	modify_domain(DOMAIN_KERNEL, DOMAIN_KERNEXEC);
++#endif
++	return 0;
++}
++
++static inline unsigned long pax_close_kernel(void) {
++#ifdef CONFIG_ARM_LPAE
++	/* TODO */
++#else
++	BUG_ON(test_domain(DOMAIN_KERNEL, DOMAIN_MANAGER));
++	/* DOMAIN_MANAGER = "client" under KERNEXEC */
++	modify_domain(DOMAIN_KERNEL, DOMAIN_MANAGER);
++	preempt_enable_no_resched();
++#endif
++	return 0;
++}
++#else
++static inline unsigned long pax_open_kernel(void) { return 0; }
++static inline unsigned long pax_close_kernel(void) { return 0; }
++#endif
++
+ /*
+  * This is the lowest virtual address we can permit any user space
+  * mapping to be mapped at.  This is particularly important for
+@@ -75,8 +123,8 @@ extern void __pgd_error(const char *file, int line, pgd_t);
+ /*
+  * The pgprot_* and protection_map entries will be fixed up in runtime
+  * to include the cachable and bufferable bits based on memory policy,
+- * as well as any architecture dependent bits like global/ASID and SMP
+- * shared mapping bits.
++ * as well as any architecture dependent bits like global/ASID, PXN,
++ * and SMP shared mapping bits.
+  */
+ #define _L_PTE_DEFAULT	L_PTE_PRESENT | L_PTE_YOUNG
+ 
+@@ -308,7 +356,7 @@ static inline pte_t pte_mknexec(pte_t pte)
+ static inline pte_t pte_modify(pte_t pte, pgprot_t newprot)
+ {
+ 	const pteval_t mask = L_PTE_XN | L_PTE_RDONLY | L_PTE_USER |
+-		L_PTE_NONE | L_PTE_VALID;
++		L_PTE_NONE | L_PTE_VALID | __supported_pte_mask;
+ 	pte_val(pte) = (pte_val(pte) & ~mask) | (pgprot_val(newprot) & mask);
+ 	return pte;
+ }
+diff --git a/arch/arm/include/asm/pgtable-2level-hwdef.h b/arch/arm/include/asm/pgtable-2level-hwdef.h
+index 3f82e9d..2a85e8b 100644
+--- a/arch/arm/include/asm/pgtable-2level-hwdef.h
++++ b/arch/arm/include/asm/pgtable-2level-hwdef.h
+@@ -40,6 +40,7 @@
+ #define PMD_SECT_nG		(_AT(pmdval_t, 1) << 17)	/* v6 */
+ #define PMD_SECT_SUPER		(_AT(pmdval_t, 1) << 18)	/* v6 */
+ #define PMD_SECT_AF		(_AT(pmdval_t, 0))
++#define PMD_SECT_RDONLY		(_AT(pmdval_t, 0))
+ 
+ #define PMD_SECT_UNCACHED	(_AT(pmdval_t, 0))
+ #define PMD_SECT_BUFFERED	(PMD_SECT_BUFFERABLE)
+@@ -70,6 +71,7 @@
+  *   - extended small page/tiny page
+  */
+ #define PTE_EXT_XN		(_AT(pteval_t, 1) << 0)		/* v6 */
++#define PTE_EXT_PXN		(_AT(pteval_t, 1) << 2)		/* v7 */
+ #define PTE_EXT_AP_MASK		(_AT(pteval_t, 3) << 4)
+ #define PTE_EXT_AP0		(_AT(pteval_t, 1) << 4)
+ #define PTE_EXT_AP1		(_AT(pteval_t, 2) << 4)
+diff --git a/arch/arm/include/asm/pgtable-2level.h b/arch/arm/include/asm/pgtable-2level.h
+index 92fd2c8..061dae1 100644
+--- a/arch/arm/include/asm/pgtable-2level.h
++++ b/arch/arm/include/asm/pgtable-2level.h
+@@ -127,6 +127,9 @@
+ #define L_PTE_SHARED		(_AT(pteval_t, 1) << 10)	/* shared(v6), coherent(xsc3) */
+ #define L_PTE_NONE		(_AT(pteval_t, 1) << 11)
+ 
++/* Two-level page tables only have PXN in the PGD, not in the PTE. */
++#define L_PTE_PXN		(_AT(pteval_t, 0))
++
+ /*
+  * These are the memory types, defined to be compatible with
+  * pre-ARMv6 CPUs cacheable and bufferable bits: n/a,n/a,C,B
+diff --git a/arch/arm/include/asm/pgtable-3level.h b/arch/arm/include/asm/pgtable-3level.h
+index 2a029bc..a0524c7 100644
+--- a/arch/arm/include/asm/pgtable-3level.h
++++ b/arch/arm/include/asm/pgtable-3level.h
+@@ -80,6 +80,7 @@
+ #define L_PTE_USER		(_AT(pteval_t, 1) << 6)		/* AP[1] */
+ #define L_PTE_SHARED		(_AT(pteval_t, 3) << 8)		/* SH[1:0], inner shareable */
+ #define L_PTE_YOUNG		(_AT(pteval_t, 1) << 10)	/* AF */
++#define L_PTE_PXN		(_AT(pteval_t, 1) << 53)	/* PXN */
+ #define L_PTE_XN		(_AT(pteval_t, 1) << 54)	/* XN */
+ #define L_PTE_DIRTY		(_AT(pteval_t, 1) << 55)
+ #define L_PTE_SPECIAL		(_AT(pteval_t, 1) << 56)
+@@ -90,10 +91,12 @@
+ #define L_PMD_SECT_DIRTY	(_AT(pmdval_t, 1) << 55)
+ #define L_PMD_SECT_NONE		(_AT(pmdval_t, 1) << 57)
+ #define L_PMD_SECT_RDONLY	(_AT(pteval_t, 1) << 58)
++#define PMD_SECT_RDONLY		PMD_SECT_AP2
+ 
+ /*
+  * To be used in assembly code with the upper page attributes.
+  */
++#define L_PTE_PXN_HIGH		(1 << (53 - 32))
+ #define L_PTE_XN_HIGH		(1 << (54 - 32))
+ #define L_PTE_DIRTY_HIGH	(1 << (55 - 32))
+ 
 diff --git a/arch/arm/include/asm/thread_info.h b/arch/arm/include/asm/thread_info.h
 index 776757d..a552c1d 100644
 --- a/arch/arm/include/asm/thread_info.h
@@ -561,6 +735,35 @@ index 91d2d5b..042c26e 100644
  	/*
  	 * Copy the initial value of the domain access control register
  	 * from the current thread: thread->addr_limit will have been
+diff --git a/arch/arm/kernel/setup.c b/arch/arm/kernel/setup.c
+index 34e3f3c..3d2dada 100644
+--- a/arch/arm/kernel/setup.c
++++ b/arch/arm/kernel/setup.c
+@@ -112,6 +112,8 @@ EXPORT_SYMBOL(elf_hwcap);
+ unsigned int elf_hwcap2 __read_mostly;
+ EXPORT_SYMBOL(elf_hwcap2);
+ 
++pteval_t __supported_pte_mask __read_only;
++pmdval_t __supported_pmd_mask __read_only;
+ 
+ #ifdef MULTI_CPU
+ struct processor processor __ro_after_init;
+@@ -257,9 +259,13 @@ static int __get_cpu_architecture(void)
+ 		 * Register 0 and check for VMSAv7 or PMSAv7 */
+ 		unsigned int mmfr0 = read_cpuid_ext(CPUID_EXT_MMFR0);
+ 		if ((mmfr0 & 0x0000000f) >= 0x00000003 ||
+-		    (mmfr0 & 0x000000f0) >= 0x00000030)
++		    (mmfr0 & 0x000000f0) >= 0x00000030) {
+ 			cpu_arch = CPU_ARCH_ARMv7;
+-		else if ((mmfr0 & 0x0000000f) == 0x00000002 ||
++			if ((mmfr0 & 0x0000000f) == 0x00000005 || (mmfr0 & 0x0000000f) == 0x00000004) {
++				__supported_pte_mask |= L_PTE_PXN;
++				__supported_pmd_mask |= PMD_PXNTABLE;
++			}
++		} else if ((mmfr0 & 0x0000000f) == 0x00000002 ||
+ 			 (mmfr0 & 0x000000f0) == 0x00000020)
+ 			cpu_arch = CPU_ARCH_ARMv6;
+ 		else
 diff --git a/arch/arm/mm/Kconfig b/arch/arm/mm/Kconfig
 index c1799dd..9111dcc 100644
 --- a/arch/arm/mm/Kconfig
@@ -708,3 +911,98 @@ index 370581a..b985cc1 100644
  	poison_init_mem(&__tcm_start, &__tcm_end - &__tcm_start);
  	free_reserved_area(&__tcm_start, &__tcm_end, -1, "TCM link");
  #endif
+diff --git a/arch/arm/mm/mmu.c b/arch/arm/mm/mmu.c
+index 4001dd1..c6dce7b 100644
+--- a/arch/arm/mm/mmu.c
++++ b/arch/arm/mm/mmu.c
+@@ -651,6 +687,8 @@ static void __init build_mem_type_table(void)
+ 	user_pgprot |= PTE_EXT_PXN;
+ #endif
+ 
++	user_pgprot |= __supported_pte_mask;
++
+ 	for (i = 0; i < 16; i++) {
+ 		pteval_t v = pgprot_val(protection_map[i]);
+ 		protection_map[i] = __pgprot(v | user_pgprot);
+@@ -1437,12 +1475,14 @@ static void __init kmap_init(void)
+ static void __init map_lowmem(void)
+ {
+ 	struct memblock_region *reg;
++#ifndef CONFIG_PAX_KERNEXEC
+ #ifdef CONFIG_XIP_KERNEL
+ 	phys_addr_t kernel_x_start = round_down(__pa(_sdata), SECTION_SIZE);
+ #else
+ 	phys_addr_t kernel_x_start = round_down(__pa(_stext), SECTION_SIZE);
+ #endif
+ 	phys_addr_t kernel_x_end = round_up(__pa(__init_end), SECTION_SIZE);
++#endif
+ 
+ 	/* Map all the lowmem memory banks. */
+ 	for_each_memblock(memory, reg) {
+@@ -1458,11 +1498,48 @@ static void __init map_lowmem(void)
+ 		if (start >= end)
+ 			break;
+ 
++#ifdef CONFIG_PAX_KERNEXEC
++		map.pfn = __phys_to_pfn(start);
++		map.virtual = __phys_to_virt(start);
++		map.length = end - start;
++
++		if (map.virtual <= (unsigned long)_stext && ((unsigned long)_end < (map.virtual + map.length))) {
++			struct map_desc kernel;
++			struct map_desc initmap;
++
++			/* when freeing initmem we will make this RW */
++			initmap.pfn = __phys_to_pfn(__pa(__init_begin));
++			initmap.virtual = (unsigned long)__init_begin;
++			initmap.length = _sdata - __init_begin;
++			initmap.type = __MT_MEMORY_RWX;
++			create_mapping(&initmap);
++
++			/* when freeing initmem we will make this RX */
++			kernel.pfn = __phys_to_pfn(__pa(_stext));
++			kernel.virtual = (unsigned long)_stext;
++			kernel.length = __init_begin - _stext;
++			kernel.type = __MT_MEMORY_RWX;
++			create_mapping(&kernel);
++
++			if (map.virtual < (unsigned long)_stext) {
++				map.length = (unsigned long)_stext - map.virtual;
++				map.type = __MT_MEMORY_RWX;
++				create_mapping(&map);
++			}
++
++			map.pfn = __phys_to_pfn(__pa(_sdata));
++			map.virtual = (unsigned long)_sdata;
++			map.length = end - __pa(_sdata);
++		}
++
++		map.type = MT_MEMORY_RW;
++		create_mapping(&map);
++#else
+ 		if (end < kernel_x_start) {
+ 			map.pfn = __phys_to_pfn(start);
+ 			map.virtual = __phys_to_virt(start);
+ 			map.length = end - start;
+-			map.type = MT_MEMORY_RWX;
++			map.type = __MT_MEMORY_RWX;
+ 
+ 			create_mapping(&map);
+ 		} else if (start >= kernel_x_end) {
+@@ -1486,7 +1563,7 @@ static void __init map_lowmem(void)
+ 			map.pfn = __phys_to_pfn(kernel_x_start);
+ 			map.virtual = __phys_to_virt(kernel_x_start);
+ 			map.length = kernel_x_end - kernel_x_start;
+-			map.type = MT_MEMORY_RWX;
++			map.type = __MT_MEMORY_RWX;
+ 
+ 			create_mapping(&map);
+ 
+@@ -1499,6 +1576,7 @@ static void __init map_lowmem(void)
+ 				create_mapping(&map);
+ 			}
+ 		}
++#endif
+ 	}
+ }
+ 

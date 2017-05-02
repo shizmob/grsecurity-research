@@ -312,3 +312,33 @@ index c68694b..12bf0cb 100644
  
  static struct kprobe trampoline_p = {
  	.addr = (kprobe_opcode_t *)kretprobe_trampoline,
+diff --git a/arch/x86/kernel/kprobes/core.c b/arch/x86/kernel/kprobes/core.c
+index d9d8d16..139e5a0 100644
+--- a/arch/x86/kernel/kprobes/core.c
++++ b/arch/x86/kernel/kprobes/core.c
+@@ -512,6 +519,7 @@ static nokprobe_inline void restore_btf(void)
+ 	}
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ void arch_prepare_kretprobe(struct kretprobe_instance *ri, struct pt_regs *regs)
+ {
+ 	unsigned long *sara = stack_addr(regs);
+@@ -522,6 +530,7 @@ void arch_prepare_kretprobe(struct kretprobe_instance *ri, struct pt_regs *regs)
+ 	*sara = (unsigned long) &kretprobe_trampoline;
+ }
+ NOKPROBE_SYMBOL(arch_prepare_kretprobe);
++#endif
+ 
+ static void setup_singlestep(struct kprobe *p, struct pt_regs *regs,
+ 			     struct kprobe_ctlblk *kcb, int reenter)
+@@ -1144,7 +1159,9 @@ int __init arch_init_kprobes(void)
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ int arch_trampoline_kprobe(struct kprobe *p)
+ {
+ 	return 0;
+ }
++#endif

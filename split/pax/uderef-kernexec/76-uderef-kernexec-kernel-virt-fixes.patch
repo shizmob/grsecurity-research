@@ -1,0 +1,521 @@
+diff --git a/arch/x86/include/asm/setup.h b/arch/x86/include/asm/setup.h
+index ac1d5da..6c4be50 100644
+--- a/arch/x86/include/asm/setup.h
++++ b/arch/x86/include/asm/setup.h
+@@ -61,6 +61,7 @@ static inline void x86_ce4100_early_setup(void) { }
+ #ifndef _SETUP
+ 
+ #include <asm/espfix.h>
++#include <asm/uaccess.h>
+ #include <linux/kernel.h>
+ 
+ /*
+@@ -76,7 +77,7 @@ static inline bool kaslr_enabled(void)
+ 
+ static inline unsigned long kaslr_offset(void)
+ {
+-	return (unsigned long)&_text - __START_KERNEL;
++	return ktla_ktva((unsigned long)&_text) - __START_KERNEL;
+ }
+ 
+ /*
+diff --git a/arch/x86/kernel/dumpstack_32.c b/arch/x86/kernel/dumpstack_32.c
+index 06eb322..ca545b8 100644
+--- a/arch/x86/kernel/dumpstack_32.c
++++ b/arch/x86/kernel/dumpstack_32.c
+@@ -198,6 +200,7 @@ int is_valid_bugaddr(unsigned long ip)
+ {
+ 	unsigned short ud2;
+ 
++	ip = ktla_ktva(ip);
+ 	if (ip < PAGE_OFFSET)
+ 		return 0;
+ 	if (probe_kernel_address((unsigned short *)ip, ud2))
+diff --git a/arch/x86/kernel/ftrace.c b/arch/x86/kernel/ftrace.c
+index 8639bb2..aaa97ae 100644
+--- a/arch/x86/kernel/ftrace.c
++++ b/arch/x86/kernel/ftrace.c
+@@ -89,7 +89,7 @@ static unsigned long text_ip_addr(unsigned long ip)
+ 	 * kernel identity mapping to modify code.
+ 	 */
+ 	if (within(ip, (unsigned long)_text, (unsigned long)_etext))
+-		ip = (unsigned long)__va(__pa_symbol(ip));
++		ip = (unsigned long)__va(__pa_symbol(ktla_ktva(ip)));
+ 
+ 	return ip;
+ }
+@@ -105,6 +105,8 @@ ftrace_modify_code_direct(unsigned long ip, unsigned const char *old_code,
+ {
+ 	unsigned char replaced[MCOUNT_INSN_SIZE];
+ 
++	ip = ktla_ktva(ip);
++
+ 	ftrace_expected = old_code;
+ 
+ 	/*
+@@ -233,7 +235,7 @@ static int update_ftrace_func(unsigned long ip, void *new)
+ 	unsigned char old[MCOUNT_INSN_SIZE];
+ 	int ret;
+ 
+-	memcpy(old, (void *)ip, MCOUNT_INSN_SIZE);
++	memcpy(old, (void *)ktla_ktva(ip), MCOUNT_INSN_SIZE);
+ 
+ 	ftrace_update_func = ip;
+ 	/* Make sure the breakpoints see the ftrace_update_func update */
+@@ -314,7 +316,7 @@ static int add_break(unsigned long ip, const char *old)
+ 	unsigned char replaced[MCOUNT_INSN_SIZE];
+ 	unsigned char brk = BREAKPOINT_INSTRUCTION;
+ 
+-	if (probe_kernel_read(replaced, (void *)ip, MCOUNT_INSN_SIZE))
++	if (probe_kernel_read(replaced, (void *)ktla_ktva(ip), MCOUNT_INSN_SIZE))
+ 		return -EFAULT;
+ 
+ 	ftrace_expected = old;
+diff --git a/arch/x86/kernel/jump_label.c b/arch/x86/kernel/jump_label.c
+index fc25f69..d31d60c 100644
+--- a/arch/x86/kernel/jump_label.c
++++ b/arch/x86/kernel/jump_label.c
+@@ -32,6 +32,8 @@ static void bug_at(unsigned char *ip, int line)
+ 	 * Something went wrong. Crash the box, as something could be
+ 	 * corrupting the kernel.
+ 	 */
++	ip = (unsigned char *)ktla_ktva((unsigned long)ip);
++	pr_warning("Unexpected op at %pS [%p] %s:%d\n", ip, ip, __FILE__, line);
+ 	pr_warning("Unexpected op at %pS [%p] (%02x %02x %02x %02x %02x) %s:%d\n",
+ 	       ip, ip, ip[0], ip[1], ip[2], ip[3], ip[4], __FILE__, line);
+ 	BUG();
+@@ -52,7 +54,7 @@ static void __jump_label_transform(struct jump_entry *entry,
+ 			 * Jump label is enabled for the first time.
+ 			 * So we expect a default_nop...
+ 			 */
+-			if (unlikely(memcmp((void *)entry->code, default_nop, 5)
++			if (unlikely(memcmp((void *)ktla_ktva(entry->code), default_nop, 5)
+ 				     != 0))
+ 				bug_at((void *)entry->code, __LINE__);
+ 		} else {
+@@ -60,7 +62,7 @@ static void __jump_label_transform(struct jump_entry *entry,
+ 			 * ...otherwise expect an ideal_nop. Otherwise
+ 			 * something went horribly wrong.
+ 			 */
+-			if (unlikely(memcmp((void *)entry->code, ideal_nop, 5)
++			if (unlikely(memcmp((void *)ktla_ktva(entry->code), ideal_nop, 5)
+ 				     != 0))
+ 				bug_at((void *)entry->code, __LINE__);
+ 		}
+@@ -76,13 +78,13 @@ static void __jump_label_transform(struct jump_entry *entry,
+ 		 * are converting the default nop to the ideal nop.
+ 		 */
+ 		if (init) {
+-			if (unlikely(memcmp((void *)entry->code, default_nop, 5) != 0))
++			if (unlikely(memcmp((void *)ktla_ktva(entry->code), default_nop, 5) != 0))
+ 				bug_at((void *)entry->code, __LINE__);
+ 		} else {
+ 			code.jump = 0xe9;
+ 			code.offset = entry->target -
+ 				(entry->code + JUMP_LABEL_NOP_SIZE);
+-			if (unlikely(memcmp((void *)entry->code, &code, 5) != 0))
++			if (unlikely(memcmp((void *)ktla_ktva(entry->code), &code, 5) != 0))
+ 				bug_at((void *)entry->code, __LINE__);
+ 		}
+ 		memcpy(&code, ideal_nops[NOP_ATOMIC5], JUMP_LABEL_NOP_SIZE);
+diff --git a/arch/x86/kernel/kgdb.c b/arch/x86/kernel/kgdb.c
+index 8e36f24..dd9064b 100644
+--- a/arch/x86/kernel/kgdb.c
++++ b/arch/x86/kernel/kgdb.c
+@@ -229,7 +229,10 @@ static void kgdb_correct_hw_break(void)
+ 		bp->attr.bp_addr = breakinfo[breakno].addr;
+ 		bp->attr.bp_len = breakinfo[breakno].len;
+ 		bp->attr.bp_type = breakinfo[breakno].type;
+-		info->address = breakinfo[breakno].addr;
++		if (breakinfo[breakno].type == X86_BREAKPOINT_EXECUTE)
++			info->address = ktla_ktva(breakinfo[breakno].addr);
++		else
++			info->address = breakinfo[breakno].addr;
+ 		info->len = breakinfo[breakno].len;
+ 		info->type = breakinfo[breakno].type;
+ 		val = arch_install_hw_breakpoint(bp);
+@@ -754,11 +757,11 @@ int kgdb_arch_set_breakpoint(struct kgdb_bkpt *bpt)
+ 	char opc[BREAK_INSTR_SIZE];
+ 
+ 	bpt->type = BP_BREAKPOINT;
+-	err = probe_kernel_read(bpt->saved_instr, (char *)bpt->bpt_addr,
++	err = probe_kernel_read(bpt->saved_instr, (const void *)ktla_ktva(bpt->bpt_addr),
+ 				BREAK_INSTR_SIZE);
+ 	if (err)
+ 		return err;
+-	err = probe_kernel_write((char *)bpt->bpt_addr,
++	err = probe_kernel_write((void *)ktla_ktva(bpt->bpt_addr),
+ 				 arch_kgdb_ops.gdb_bpt_instr, BREAK_INSTR_SIZE);
+ 	if (!err)
+ 		return err;
+@@ -770,7 +773,7 @@ int kgdb_arch_set_breakpoint(struct kgdb_bkpt *bpt)
+ 		return -EBUSY;
+ 	text_poke((void *)bpt->bpt_addr, arch_kgdb_ops.gdb_bpt_instr,
+ 		  BREAK_INSTR_SIZE);
+-	err = probe_kernel_read(opc, (char *)bpt->bpt_addr, BREAK_INSTR_SIZE);
++	err = probe_kernel_read(opc, (const void *)ktla_ktva(bpt->bpt_addr), BREAK_INSTR_SIZE);
+ 	if (err)
+ 		return err;
+ 	if (memcmp(opc, arch_kgdb_ops.gdb_bpt_instr, BREAK_INSTR_SIZE))
+@@ -794,13 +797,13 @@ int kgdb_arch_remove_breakpoint(struct kgdb_bkpt *bpt)
+ 	if (mutex_is_locked(&text_mutex))
+ 		goto knl_write;
+ 	text_poke((void *)bpt->bpt_addr, bpt->saved_instr, BREAK_INSTR_SIZE);
+-	err = probe_kernel_read(opc, (char *)bpt->bpt_addr, BREAK_INSTR_SIZE);
++	err = probe_kernel_read(opc, (const void *)ktla_ktva(bpt->bpt_addr), BREAK_INSTR_SIZE);
+ 	if (err || memcmp(opc, bpt->saved_instr, BREAK_INSTR_SIZE))
+ 		goto knl_write;
+ 	return err;
+ 
+ knl_write:
+-	return probe_kernel_write((char *)bpt->bpt_addr,
++	return probe_kernel_write((void *)ktla_ktva(bpt->bpt_addr),
+ 				  (char *)bpt->saved_instr, BREAK_INSTR_SIZE);
+ }
+ 
+diff --git a/arch/x86/kernel/kprobes/core.c b/arch/x86/kernel/kprobes/core.c
+index d9d8d16..139e5a0 100644
+--- a/arch/x86/kernel/kprobes/core.c
++++ b/arch/x86/kernel/kprobes/core.c
+@@ -123,9 +123,12 @@ __synthesize_relative_insn(void *from, void *to, u8 op)
+ 		s32 raddr;
+ 	} __packed *insn;
+ 
+-	insn = (struct __arch_relative_insn *)from;
++	insn = (struct __arch_relative_insn *)ktla_ktva((unsigned long)from);
++
++	pax_open_kernel();
+ 	insn->raddr = (s32)((long)(to) - ((long)(from) + 5));
+ 	insn->op = op;
++	pax_close_kernel();
+ }
+ 
+ /* Insert a jump instruction at address 'from', which jumps to address 'to'.*/
+@@ -171,7 +174,7 @@ int can_boost(kprobe_opcode_t *opcodes)
+ 	kprobe_opcode_t opcode;
+ 	kprobe_opcode_t *orig_opcodes = opcodes;
+ 
+-	if (search_exception_tables((unsigned long)opcodes))
++	if (search_exception_tables(ktva_ktla((unsigned long)opcodes)))
+ 		return 0;	/* Page fault may occur on this address. */
+ 
+ retry:
+@@ -263,12 +266,12 @@ __recover_probed_insn(kprobe_opcode_t *buf, unsigned long addr)
+ 	 * Fortunately, we know that the original code is the ideal 5-byte
+ 	 * long NOP.
+ 	 */
+-	memcpy(buf, (void *)addr, MAX_INSN_SIZE * sizeof(kprobe_opcode_t));
++	memcpy(buf, (void *)ktla_ktva(addr), MAX_INSN_SIZE * sizeof(kprobe_opcode_t));
+ 	if (faddr)
+ 		memcpy(buf, ideal_nops[NOP_ATOMIC5], 5);
+ 	else
+ 		buf[0] = kp->opcode;
+-	return (unsigned long)buf;
++	return ktva_ktla((unsigned long)buf);
+ }
+ 
+ /*
+@@ -539,7 +548,7 @@ static void setup_singlestep(struct kprobe *p, struct pt_regs *regs,
+ 		 * nor set current_kprobe, because it doesn't use single
+ 		 * stepping.
+ 		 */
+-		regs->ip = (unsigned long)p->ainsn.insn;
++		regs->ip = ktva_ktla((unsigned long)p->ainsn.insn);
+ 		preempt_enable_no_resched();
+ 		return;
+ 	}
+@@ -556,9 +565,9 @@ static void setup_singlestep(struct kprobe *p, struct pt_regs *regs,
+ 	regs->flags &= ~X86_EFLAGS_IF;
+ 	/* single step inline if the instruction is an int3 */
+ 	if (p->opcode == BREAKPOINT_INSTRUCTION)
+-		regs->ip = (unsigned long)p->addr;
++		regs->ip = ktla_ktva((unsigned long)p->addr);
+ 	else
+-		regs->ip = (unsigned long)p->ainsn.insn;
++		regs->ip = ktva_ktla((unsigned long)p->ainsn.insn);
+ }
+ NOKPROBE_SYMBOL(setup_singlestep);
+ 
+@@ -643,7 +652,7 @@ int kprobe_int3_handler(struct pt_regs *regs)
+ 				setup_singlestep(p, regs, kcb, 0);
+ 			return 1;
+ 		}
+-	} else if (*addr != BREAKPOINT_INSTRUCTION) {
++	} else if (*(kprobe_opcode_t *)ktla_ktva((unsigned long)addr) != BREAKPOINT_INSTRUCTION) {
+ 		/*
+ 		 * The breakpoint instruction was removed right
+ 		 * after we hit it.  Another cpu has removed
+@@ -830,7 +845,7 @@ static void resume_execution(struct kprobe *p, struct pt_regs *regs,
+ 			     struct kprobe_ctlblk *kcb)
+ {
+ 	unsigned long *tos = stack_addr(regs);
+-	unsigned long copy_ip = (unsigned long)p->ainsn.insn;
++	unsigned long copy_ip = ktva_ktla((unsigned long)p->ainsn.insn);
+ 	unsigned long orig_ip = (unsigned long)p->addr;
+ 	kprobe_opcode_t *insn = p->ainsn.insn;
+ 
+diff --git a/arch/x86/kernel/kprobes/opt.c b/arch/x86/kernel/kprobes/opt.c
+index 3bb4c5f..657db4e 100644
+--- a/arch/x86/kernel/kprobes/opt.c
++++ b/arch/x86/kernel/kprobes/opt.c
+@@ -343,7 +345,7 @@ int arch_prepare_optimized_kprobe(struct optimized_kprobe *op,
+ 	 * Verify if the address gap is in 2GB range, because this uses
+ 	 * a relative jump.
+ 	 */
+-	rel = (long)op->optinsn.insn - (long)op->kp.addr + RELATIVEJUMP_SIZE;
++	rel = (long)op->optinsn.insn - ktla_ktva((long)op->kp.addr) + RELATIVEJUMP_SIZE;
+ 	if (abs(rel) > 0x7fffffff) {
+ 		__arch_remove_optimized_kprobe(op, 0);
+ 		return -ERANGE;
+@@ -360,16 +362,18 @@ int arch_prepare_optimized_kprobe(struct optimized_kprobe *op,
+ 	op->optinsn.size = ret;
+ 
+ 	/* Copy arch-dep-instance from template */
+-	memcpy(buf, &optprobe_template_entry, TMPL_END_IDX);
++	pax_open_kernel();
++	memcpy(buf, (u8 *)ktla_ktva((unsigned long)&optprobe_template_entry), TMPL_END_IDX);
++	pax_close_kernel();
+ 
+ 	/* Set probe information */
+ 	synthesize_set_arg1(buf + TMPL_MOVE_IDX, (unsigned long)op);
+ 
+ 	/* Set probe function call */
+-	synthesize_relcall(buf + TMPL_CALL_IDX, optimized_callback);
++	synthesize_relcall((u8 *)ktva_ktla((unsigned long)buf) + TMPL_CALL_IDX, optimized_callback);
+ 
+ 	/* Set returning jmp instruction at the tail of out-of-line buffer */
+-	synthesize_reljump(buf + TMPL_END_IDX + op->optinsn.size,
++	synthesize_reljump((u8 *)ktva_ktla((unsigned long)buf) + TMPL_END_IDX + op->optinsn.size,
+ 			   (u8 *)op->kp.addr + op->optinsn.size);
+ 
+ 	flush_icache_range((unsigned long) buf,
+@@ -394,7 +398,7 @@ void arch_optimize_kprobes(struct list_head *oplist)
+ 		WARN_ON(kprobe_disabled(&op->kp));
+ 
+ 		/* Backup instructions which will be replaced by jump address */
+-		memcpy(op->optinsn.copied_insn, op->kp.addr + INT3_SIZE,
++		memcpy(op->optinsn.copied_insn, (u8 *)ktla_ktva((unsigned long)op->kp.addr) + INT3_SIZE,
+ 		       RELATIVE_ADDR_SIZE);
+ 
+ 		insn_buf[0] = RELATIVEJUMP_OPCODE;
+@@ -442,7 +446,7 @@ int setup_detour_execution(struct kprobe *p, struct pt_regs *regs, int reenter)
+ 		/* This kprobe is really able to run optimized path. */
+ 		op = container_of(p, struct optimized_kprobe, kp);
+ 		/* Detour through copied instructions */
+-		regs->ip = (unsigned long)op->optinsn.insn + TMPL_END_IDX;
++		regs->ip = ktva_ktla((unsigned long)op->optinsn.insn) + TMPL_END_IDX;
+ 		if (!reenter)
+ 			reset_current_kprobe();
+ 		preempt_enable_no_resched();
+diff --git a/arch/x86/kernel/machine_kexec_32.c b/arch/x86/kernel/machine_kexec_32.c
+index 469b23d..5449cfe 100644
+--- a/arch/x86/kernel/machine_kexec_32.c
++++ b/arch/x86/kernel/machine_kexec_32.c
+@@ -216,7 +216,7 @@ void machine_kexec(struct kimage *image)
+ 	}
+ 
+ 	control_page = page_address(image->control_code_page);
+-	memcpy(control_page, relocate_kernel, KEXEC_CONTROL_CODE_MAX_SIZE);
++	memcpy(control_page, (void *)ktla_ktva((unsigned long)relocate_kernel), KEXEC_CONTROL_CODE_MAX_SIZE);
+ 
+ 	relocate_kernel_ptr = control_page;
+ 	page_list[PA_CONTROL_PAGE] = __pa(control_page);
+diff --git a/arch/x86/kernel/paravirt.c b/arch/x86/kernel/paravirt.c
+index bbf3d59..904b637 100644
+--- a/arch/x86/kernel/paravirt.c
++++ b/arch/x86/kernel/paravirt.c
+@@ -171,7 +260,7 @@ unsigned paravirt_patch_insns(void *insnbuf, unsigned len,
+ 	if (insn_len > len || start == NULL)
+ 		insn_len = len;
+ 	else
+-		memcpy(insnbuf, start, insn_len);
++		memcpy(insnbuf, (const char *)ktla_ktva((unsigned long)start), insn_len);
+ 
+ 	return insn_len;
+ }
+diff --git a/arch/x86/kernel/setup.c b/arch/x86/kernel/setup.c
+index 9c337b0..16b315a 100644
+--- a/arch/x86/kernel/setup.c
++++ b/arch/x86/kernel/setup.c
+@@ -769,7 +772,7 @@ static void __init trim_bios_range(void)
+ /* called before trim_bios_range() to spare extra sanitize */
+ static void __init e820_add_kernel_range(void)
+ {
+-	u64 start = __pa_symbol(_text);
++	u64 start = __pa_symbol(ktla_ktva((unsigned long)_text));
+ 	u64 size = __pa_symbol(_end) - start;
+ 
+ 	/*
+@@ -850,8 +853,8 @@ dump_kernel_offset(struct notifier_block *self, unsigned long v, void *p)
+ 
+ void __init setup_arch(char **cmdline_p)
+ {
+-	memblock_reserve(__pa_symbol(_text),
+-			 (unsigned long)__bss_stop - (unsigned long)_text);
++	memblock_reserve(__pa_symbol(ktla_ktva((unsigned long)_text)),
++			 (unsigned long)__bss_stop - ktla_ktva((unsigned long)_text));
+ 
+ 	early_reserve_initrd();
+ 
+@@ -944,16 +947,16 @@ void __init setup_arch(char **cmdline_p)
+ 
+ 	if (!boot_params.hdr.root_flags)
+ 		root_mountflags &= ~MS_RDONLY;
+-	init_mm.start_code = (unsigned long) _text;
+-	init_mm.end_code = (unsigned long) _etext;
+-	init_mm.end_data = (unsigned long) _edata;
++	init_mm.start_code = ktla_ktva((unsigned long)_text);
++	init_mm.end_code = ktla_ktva((unsigned long)_etext);
++	init_mm.end_data = (unsigned long)_edata;
+ 	init_mm.brk = _brk_end;
+ 
+ 	mpx_mm_init(&init_mm);
+ 
+-	code_resource.start = __pa_symbol(_text);
+-	code_resource.end = __pa_symbol(_etext)-1;
+-	data_resource.start = __pa_symbol(_etext);
++	code_resource.start = __pa_symbol(ktla_ktva((unsigned long)_text));
++	code_resource.end = __pa_symbol(ktla_ktva((unsigned long)_etext))-1;
++	data_resource.start = __pa_symbol(_sdata);
+ 	data_resource.end = __pa_symbol(_edata)-1;
+ 	bss_resource.start = __pa_symbol(__bss_start);
+ 	bss_resource.end = __pa_symbol(__bss_stop)-1;
+diff --git a/arch/x86/kernel/step.c b/arch/x86/kernel/step.c
+index a23ce84..88541d52 100644
+--- a/arch/x86/kernel/step.c
++++ b/arch/x86/kernel/step.c
+@@ -45,7 +45,8 @@ unsigned long convert_ip_to_linear(struct task_struct *child, struct pt_regs *re
+ 			addr += base;
+ 		}
+ 		mutex_unlock(&child->mm->context.lock);
+-	}
++	} else if (seg == __KERNEL_CS || seg == __KERNEXEC_KERNEL_CS)
++		addr = ktla_ktva(addr);
+ #endif
+ 
+ 	return addr;
+diff --git a/arch/x86/kernel/time.c b/arch/x86/kernel/time.c
+index d39c091..1df4349 100644
+--- a/arch/x86/kernel/time.c
++++ b/arch/x86/kernel/time.c
+@@ -32,7 +32,7 @@ unsigned long profile_pc(struct pt_regs *regs)
+ 
+ 	if (!user_mode(regs) && in_lock_functions(pc)) {
+ #ifdef CONFIG_FRAME_POINTER
+-		return *(unsigned long *)(regs->bp + sizeof(long));
++		return ktla_ktva(*(unsigned long *)(regs->bp + sizeof(long)));
+ #else
+ 		unsigned long *sp =
+ 			(unsigned long *)kernel_stack_pointer(regs);
+diff --git a/arch/x86/kvm/vmx.c b/arch/x86/kvm/vmx.c
+index 43b55ef..b88294e 100644
+--- a/arch/x86/kvm/vmx.c
++++ b/arch/x86/kvm/vmx.c
+@@ -4875,7 +4886,7 @@ static void vmx_set_constant_host_state(struct vcpu_vmx *vmx)
+ 	vmcs_writel(HOST_IDTR_BASE, dt.address);   /* 22.2.4 */
+ 	vmx->host_idt_base = dt.address;
+ 
+-	vmcs_writel(HOST_RIP, vmx_return); /* 22.2.5 */
++	vmcs_writel(HOST_RIP, ktla_ktva(vmx_return)); /* 22.2.5 */
+ 
+ 	rdmsr(MSR_IA32_SYSENTER_CS, low32, high32);
+ 	vmcs_write32(HOST_IA32_SYSENTER_CS, low32);
+diff --git a/arch/x86/lib/insn.c b/arch/x86/lib/insn.c
+index 1088eb8..fac8468 100644
+--- a/arch/x86/lib/insn.c
++++ b/arch/x86/lib/insn.c
+@@ -60,9 +62,9 @@ void insn_init(struct insn *insn, const void *kaddr, int buf_len, int x86_64)
+ 		buf_len = MAX_INSN_SIZE;
+ 
+ 	memset(insn, 0, sizeof(*insn));
+-	insn->kaddr = kaddr;
+-	insn->end_kaddr = kaddr + buf_len;
+-	insn->next_byte = kaddr;
++	insn->kaddr = (void *)ktla_ktva((unsigned long)kaddr);
++	insn->end_kaddr = insn->kaddr + buf_len;
++	insn->next_byte = insn->kaddr;
+ 	insn->x86_64 = x86_64 ? 1 : 0;
+ 	insn->opnd_bytes = 4;
+ 	if (x86_64)
+diff --git a/arch/x86/mm/init_32.c b/arch/x86/mm/init_32.c
+index cf80590..de69971 100644
+--- a/arch/x86/mm/init_32.c
++++ b/arch/x86/mm/init_32.c
+@@ -235,11 +230,20 @@ page_table_range_init(unsigned long start, unsigned long end, pgd_t *pgd_base)
+ 	}
+ }
+ 
+-static inline int is_kernel_text(unsigned long addr)
++static inline int is_kernel_text(unsigned long start, unsigned long end)
+ {
+-	if (addr >= (unsigned long)_text && addr <= (unsigned long)__init_end)
+-		return 1;
+-	return 0;
++	if ((start >= ktla_ktva((unsigned long)_etext) ||
++	     end <= ktla_ktva((unsigned long)_stext)) &&
++	    (start >= ktla_ktva((unsigned long)_einittext) ||
++	     end <= ktla_ktva((unsigned long)_sinittext)) &&
++
++#ifdef CONFIG_ACPI_SLEEP
++	    (start >= (unsigned long)__va(acpi_wakeup_address) + 0x4000 || end <= (unsigned long)__va(acpi_wakeup_address)) &&
++#endif
++
++	    (start > (unsigned long)__va(0xfffff) || end <= (unsigned long)__va(0xc0000)))
++		return 0;
++	return 1;
+ }
+ 
+ /*
+@@ -877,6 +880,7 @@ void set_kernel_text_rw(void)
+ 	if (!kernel_set_to_readonly)
+ 		return;
+ 
++	start = ktla_ktva(start);
+ 	pr_debug("Set kernel text: %lx - %lx for read write\n",
+ 		 start, start+size);
+ 
+@@ -891,6 +895,7 @@ void set_kernel_text_ro(void)
+ 	if (!kernel_set_to_readonly)
+ 		return;
+ 
++	start = ktla_ktva(start);
+ 	pr_debug("Set kernel text: %lx - %lx for read only\n",
+ 		 start, start+size);
+ 
+@@ -903,7 +908,7 @@ static void mark_nxdata_nx(void)
+ 	 * When this called, init has already been executed and released,
+ 	 * so everything past _etext should be NX.
+ 	 */
+-	unsigned long start = PFN_ALIGN(_etext);
++	unsigned long start = ktla_ktva(PFN_ALIGN(_etext));
+ 	/*
+ 	 * This comes from is_kernel_text upper limit. Also HPAGE where used:
+ 	 */
+diff --git a/arch/x86/mm/mmio-mod.c b/arch/x86/mm/mmio-mod.c
+index bef3662..c5b2523 100644
+--- a/arch/x86/mm/mmio-mod.c
++++ b/arch/x86/mm/mmio-mod.c
+@@ -194,7 +194,7 @@ static void pre(struct kmmio_probe *p, struct pt_regs *regs,
+ 		break;
+ 	default:
+ 		{
+-			unsigned char *ip = (unsigned char *)instptr;
++			unsigned char *ip = (unsigned char *)ktla_ktva(instptr);
+ 			my_trace->opcode = MMIO_UNKNOWN_OP;
+ 			my_trace->width = 0;
+ 			my_trace->value = (*ip) << 16 | *(ip + 1) << 8 |
+diff --git a/arch/x86/mm/pageattr.c b/arch/x86/mm/pageattr.c
+index e3353c9..2a8fbe5 100644
+--- a/arch/x86/mm/pageattr.c
++++ b/arch/x86/mm/pageattr.c
+@@ -273,8 +273,8 @@ static inline pgprot_t static_protections(pgprot_t prot, unsigned long address,
+ 	 * Does not cover __inittext since that is gone later on. On
+ 	 * 64bit we do not enforce !NX on the low mapping
+ 	 */
+-	if (within(address, (unsigned long)_text, (unsigned long)_etext))
+-		pgprot_val(forbidden) |= _PAGE_NX;
++	if (within(address, ktla_ktva((unsigned long)_text), ktla_ktva((unsigned long)_etext)))
++		pgprot_val(forbidden) |= _PAGE_NX & __supported_pte_mask;
+ 
+ 	/*
+ 	 * The .rodata section needs to be read-only. Using the pfn
