@@ -86,3 +86,304 @@ index c8c8b9e..c55cc79 100644
  		asid = new_context(mm, cpu);
  		atomic64_set(&mm->context.id, asid);
  	}
+diff --git a/arch/mips/include/asm/hw_irq.h b/arch/mips/include/asm/hw_irq.h
+index 9e8ef59..1139d6b 100644
+--- a/arch/mips/include/asm/hw_irq.h
++++ b/arch/mips/include/asm/hw_irq.h
+@@ -10,7 +10,7 @@
+ 
+ #include <linux/atomic.h>
+ 
+-extern atomic_t irq_err_count;
++extern atomic_unchecked_t irq_err_count;
+ 
+ /*
+  * interrupt-retrigger: NOP for now. This may not be appropriate for all
+diff --git a/arch/mips/kernel/irq-gt641xx.c b/arch/mips/kernel/irq-gt641xx.c
+index 44a1f79..2bd6aa3 100644
+--- a/arch/mips/kernel/irq-gt641xx.c
++++ b/arch/mips/kernel/irq-gt641xx.c
+@@ -110,7 +110,7 @@ void gt641xx_irq_dispatch(void)
+ 		}
+ 	}
+ 
+-	atomic_inc(&irq_err_count);
++	atomic_inc_unchecked(&irq_err_count);
+ }
+ 
+ void __init gt641xx_irq_init(void)
+diff --git a/arch/mips/kernel/irq.c b/arch/mips/kernel/irq.c
+index 2b0a371..1e272b7 100644
+--- a/arch/mips/kernel/irq.c
++++ b/arch/mips/kernel/irq.c
+@@ -36,17 +36,17 @@ void ack_bad_irq(unsigned int irq)
+ 	printk("unexpected IRQ # %d\n", irq);
+ }
+ 
+-atomic_t irq_err_count;
++atomic_unchecked_t irq_err_count;
+ 
+ int arch_show_interrupts(struct seq_file *p, int prec)
+ {
+-	seq_printf(p, "%*s: %10u\n", prec, "ERR", atomic_read(&irq_err_count));
++	seq_printf(p, "%*s: %10u\n", prec, "ERR", atomic_read_unchecked(&irq_err_count));
+ 	return 0;
+ }
+ 
+ asmlinkage void spurious_interrupt(void)
+ {
+-	atomic_inc(&irq_err_count);
++	atomic_inc_unchecked(&irq_err_count);
+ }
+ 
+ void __init init_IRQ(void)
+diff --git a/arch/mips/kernel/sync-r4k.c b/arch/mips/kernel/sync-r4k.c
+index 4472a7f..c5905e6 100644
+--- a/arch/mips/kernel/sync-r4k.c
++++ b/arch/mips/kernel/sync-r4k.c
+@@ -18,8 +18,8 @@
+ #include <asm/mipsregs.h>
+ 
+ static unsigned int initcount = 0;
+-static atomic_t count_count_start = ATOMIC_INIT(0);
+-static atomic_t count_count_stop = ATOMIC_INIT(0);
++static atomic_unchecked_t count_count_start = ATOMIC_INIT(0);
++static atomic_unchecked_t count_count_stop = ATOMIC_INIT(0);
+ 
+ #define COUNTON 100
+ #define NR_LOOPS 3
+@@ -46,13 +46,13 @@ void synchronise_count_master(int cpu)
+ 
+ 	for (i = 0; i < NR_LOOPS; i++) {
+ 		/* slaves loop on '!= 2' */
+-		while (atomic_read(&count_count_start) != 1)
++		while (atomic_read_unchecked(&count_count_start) != 1)
+ 			mb();
+-		atomic_set(&count_count_stop, 0);
++		atomic_set_unchecked(&count_count_stop, 0);
+ 		smp_wmb();
+ 
+ 		/* Let the slave writes its count register */
+-		atomic_inc(&count_count_start);
++		atomic_inc_unchecked(&count_count_start);
+ 
+ 		/* Count will be initialised to current timer */
+ 		if (i == 1)
+@@ -67,11 +67,11 @@ void synchronise_count_master(int cpu)
+ 		/*
+ 		 * Wait for slave to leave the synchronization point:
+ 		 */
+-		while (atomic_read(&count_count_stop) != 1)
++		while (atomic_read_unchecked(&count_count_stop) != 1)
+ 			mb();
+-		atomic_set(&count_count_start, 0);
++		atomic_set_unchecked(&count_count_start, 0);
+ 		smp_wmb();
+-		atomic_inc(&count_count_stop);
++		atomic_inc_unchecked(&count_count_stop);
+ 	}
+ 	/* Arrange for an interrupt in a short while */
+ 	write_c0_compare(read_c0_count() + COUNTON);
+@@ -96,8 +96,8 @@ void synchronise_count_slave(int cpu)
+ 	 */
+ 
+ 	for (i = 0; i < NR_LOOPS; i++) {
+-		atomic_inc(&count_count_start);
+-		while (atomic_read(&count_count_start) != 2)
++		atomic_inc_unchecked(&count_count_start);
++		while (atomic_read_unchecked(&count_count_start) != 2)
+ 			mb();
+ 
+ 		/*
+@@ -106,8 +106,8 @@ void synchronise_count_slave(int cpu)
+ 		if (i == NR_LOOPS-1)
+ 			write_c0_count(initcount);
+ 
+-		atomic_inc(&count_count_stop);
+-		while (atomic_read(&count_count_stop) != 2)
++		atomic_inc_unchecked(&count_count_stop);
++		while (atomic_read_unchecked(&count_count_stop) != 2)
+ 			mb();
+ 	}
+ 	/* Arrange for an interrupt in a short while */
+diff --git a/arch/mips/sgi-ip27/ip27-nmi.c b/arch/mips/sgi-ip27/ip27-nmi.c
+index cfceaea..65deeb4 100644
+--- a/arch/mips/sgi-ip27/ip27-nmi.c
++++ b/arch/mips/sgi-ip27/ip27-nmi.c
+@@ -187,9 +187,9 @@ void
+ cont_nmi_dump(void)
+ {
+ #ifndef REAL_NMI_SIGNAL
+-	static atomic_t nmied_cpus = ATOMIC_INIT(0);
++	static atomic_unchecked_t nmied_cpus = ATOMIC_INIT(0);
+ 
+-	atomic_inc(&nmied_cpus);
++	atomic_inc_unchecked(&nmied_cpus);
+ #endif
+ 	/*
+ 	 * Only allow 1 cpu to proceed
+@@ -233,7 +233,7 @@ cont_nmi_dump(void)
+ 		udelay(10000);
+ 	}
+ #else
+-	while (atomic_read(&nmied_cpus) != num_online_cpus());
++	while (atomic_read_unchecked(&nmied_cpus) != num_online_cpus());
+ #endif
+ 
+ 	/*
+diff --git a/arch/mips/sni/rm200.c b/arch/mips/sni/rm200.c
+index 160b880..3b53fdc 100644
+--- a/arch/mips/sni/rm200.c
++++ b/arch/mips/sni/rm200.c
+@@ -270,7 +270,7 @@ void sni_rm200_mask_and_ack_8259A(struct irq_data *d)
+ 			       "spurious RM200 8259A interrupt: IRQ%d.\n", irq);
+ 			spurious_irq_mask |= irqmask;
+ 		}
+-		atomic_inc(&irq_err_count);
++		atomic_inc_unchecked(&irq_err_count);
+ 		/*
+ 		 * Theoretically we do not have to handle this IRQ,
+ 		 * but in Linux this does not cause problems and is
+diff --git a/arch/mips/vr41xx/common/icu.c b/arch/mips/vr41xx/common/icu.c
+index 41e873b..34d33a7 100644
+--- a/arch/mips/vr41xx/common/icu.c
++++ b/arch/mips/vr41xx/common/icu.c
+@@ -653,7 +653,7 @@ static int icu_get_irq(unsigned int irq)
+ 
+ 	printk(KERN_ERR "spurious ICU interrupt: %04x,%04x\n", pend1, pend2);
+ 
+-	atomic_inc(&irq_err_count);
++	atomic_inc_unchecked(&irq_err_count);
+ 
+ 	return -1;
+ }
+diff --git a/arch/mips/vr41xx/common/irq.c b/arch/mips/vr41xx/common/irq.c
+index ae0e4ee..e8f0692 100644
+--- a/arch/mips/vr41xx/common/irq.c
++++ b/arch/mips/vr41xx/common/irq.c
+@@ -64,7 +64,7 @@ static void irq_dispatch(unsigned int irq)
+ 	irq_cascade_t *cascade;
+ 
+ 	if (irq >= NR_IRQS) {
+-		atomic_inc(&irq_err_count);
++		atomic_inc_unchecked(&irq_err_count);
+ 		return;
+ 	}
+ 
+@@ -84,7 +84,7 @@ static void irq_dispatch(unsigned int irq)
+ 		ret = cascade->get_irq(irq);
+ 		irq = ret;
+ 		if (ret < 0)
+-			atomic_inc(&irq_err_count);
++			atomic_inc_unchecked(&irq_err_count);
+ 		else
+ 			irq_dispatch(irq);
+ 		if (!irqd_irq_disabled(idata) && chip->irq_unmask)
+diff --git a/arch/sparc/include/asm/setup.h b/arch/sparc/include/asm/setup.h
+index 29d64b1..4272fe8 100644
+--- a/arch/sparc/include/asm/setup.h
++++ b/arch/sparc/include/asm/setup.h
+@@ -55,8 +55,8 @@ int handle_ldf_stq(u32 insn, struct pt_regs *regs);
+ void handle_ld_nf(u32 insn, struct pt_regs *regs);
+ 
+ /* init_64.c */
+-extern atomic_t dcpage_flushes;
+-extern atomic_t dcpage_flushes_xcall;
++extern atomic_unchecked_t dcpage_flushes;
++extern atomic_unchecked_t dcpage_flushes_xcall;
+ 
+ extern int sysctl_tsb_ratio;
+ #endif
+diff --git a/arch/sparc/kernel/smp_64.c b/arch/sparc/kernel/smp_64.c
+index 8182f7c..a5ab37f 100644
+--- a/arch/sparc/kernel/smp_64.c
++++ b/arch/sparc/kernel/smp_64.c
+@@ -895,7 +895,7 @@ void smp_flush_dcache_page_impl(struct page *page, int cpu)
+ 		return;
+ 
+ #ifdef CONFIG_DEBUG_DCFLUSH
+-	atomic_inc(&dcpage_flushes);
++	atomic_inc_unchecked(&dcpage_flushes);
+ #endif
+ 
+ 	this_cpu = get_cpu();
+@@ -919,7 +919,7 @@ void smp_flush_dcache_page_impl(struct page *page, int cpu)
+ 			xcall_deliver(data0, __pa(pg_addr),
+ 				      (u64) pg_addr, cpumask_of(cpu));
+ #ifdef CONFIG_DEBUG_DCFLUSH
+-			atomic_inc(&dcpage_flushes_xcall);
++			atomic_inc_unchecked(&dcpage_flushes_xcall);
+ #endif
+ 		}
+ 	}
+@@ -938,7 +938,7 @@ void flush_dcache_page_all(struct mm_struct *mm, struct page *page)
+ 	preempt_disable();
+ 
+ #ifdef CONFIG_DEBUG_DCFLUSH
+-	atomic_inc(&dcpage_flushes);
++	atomic_inc_unchecked(&dcpage_flushes);
+ #endif
+ 	data0 = 0;
+ 	pg_addr = page_address(page);
+@@ -955,7 +955,7 @@ void flush_dcache_page_all(struct mm_struct *mm, struct page *page)
+ 		xcall_deliver(data0, __pa(pg_addr),
+ 			      (u64) pg_addr, cpu_online_mask);
+ #ifdef CONFIG_DEBUG_DCFLUSH
+-		atomic_inc(&dcpage_flushes_xcall);
++		atomic_inc_unchecked(&dcpage_flushes_xcall);
+ #endif
+ 	}
+ 	__local_flush_dcache_page(page);
+diff --git a/arch/sparc/kernel/traps_64.c b/arch/sparc/kernel/traps_64.c
+index 4094a51..4a360da 100644
+--- a/arch/sparc/kernel/traps_64.c
++++ b/arch/sparc/kernel/traps_64.c
+@@ -1839,8 +1850,8 @@ struct sun4v_error_entry {
+ /*0x38*/u64		reserved_5;
+ };
+ 
+-static atomic_t sun4v_resum_oflow_cnt = ATOMIC_INIT(0);
+-static atomic_t sun4v_nonresum_oflow_cnt = ATOMIC_INIT(0);
++static atomic_unchecked_t sun4v_resum_oflow_cnt = ATOMIC_INIT(0);
++static atomic_unchecked_t sun4v_nonresum_oflow_cnt = ATOMIC_INIT(0);
+ 
+ static const char *sun4v_err_type_to_str(u8 type)
+ {
+@@ -1932,7 +1943,7 @@ static void sun4v_report_real_raddr(const char *pfx, struct pt_regs *regs)
+ }
+ 
+ static void sun4v_log_error(struct pt_regs *regs, struct sun4v_error_entry *ent,
+-			    int cpu, const char *pfx, atomic_t *ocnt)
++			    int cpu, const char *pfx, atomic_unchecked_t *ocnt)
+ {
+ 	u64 *raw_ptr = (u64 *) ent;
+ 	u32 attrs;
+@@ -1990,8 +2001,8 @@ static void sun4v_log_error(struct pt_regs *regs, struct sun4v_error_entry *ent,
+ 
+ 	show_regs(regs);
+ 
+-	if ((cnt = atomic_read(ocnt)) != 0) {
+-		atomic_set(ocnt, 0);
++	if ((cnt = atomic_read_unchecked(ocnt)) != 0) {
++		atomic_set_unchecked(ocnt, 0);
+ 		wmb();
+ 		printk("%s: Queue overflowed %d times.\n",
+ 		       pfx, cnt);
+@@ -2048,7 +2059,7 @@ void sun4v_resum_error(struct pt_regs *regs, unsigned long offset)
+  */
+ void sun4v_resum_overflow(struct pt_regs *regs)
+ {
+-	atomic_inc(&sun4v_resum_oflow_cnt);
++	atomic_inc_unchecked(&sun4v_resum_oflow_cnt);
+ }
+ 
+ /* We run with %pil set to PIL_NORMAL_MAX and PSTATE_IE enabled in %pstate.
+@@ -2101,7 +2112,7 @@ void sun4v_nonresum_overflow(struct pt_regs *regs)
+ 	/* XXX Actually even this can make not that much sense.  Perhaps
+ 	 * XXX we should just pull the plug and panic directly from here?
+ 	 */
+-	atomic_inc(&sun4v_nonresum_oflow_cnt);
++	atomic_inc_unchecked(&sun4v_nonresum_oflow_cnt);
+ }
+ 
+ static void sun4v_tlb_error(struct pt_regs *regs)

@@ -1,0 +1,17 @@
+diff --git a/arch/ia64/mm/init.c b/arch/ia64/mm/init.c
+index dbc5dc9..d31fcea 100644
+--- a/arch/ia64/mm/init.c
++++ b/arch/ia64/mm/init.c
+@@ -123,6 +123,12 @@ ia64_init_addr_space (void)
+ #ifdef CONFIG_PAX_PAGEEXEC
+ 		if (current->mm->pax_flags & MF_PAX_PAGEEXEC) {
+ 			vma->vm_flags &= ~VM_EXEC;
++
++#ifdef CONFIG_PAX_MPROTECT
++			if (current->mm->pax_flags & MF_PAX_MPROTECT)
++				vma->vm_flags &= ~VM_MAYEXEC;
++#endif
++
+ 		}
+ #endif
+ 

@@ -96,3 +96,236 @@ index bfe1319..da0014b 100644
  	check_object_size(to, count, false);
  
  	return __copy_user((__force void __user *) to, from, count);
+diff --git a/arch/m32r/lib/usercopy.c b/arch/m32r/lib/usercopy.c
+index 82abd15..d95ae5d 100644
+--- a/arch/m32r/lib/usercopy.c
++++ b/arch/m32r/lib/usercopy.c
+@@ -14,6 +14,9 @@
+ unsigned long
+ __generic_copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	prefetch(from);
+ 	if (access_ok(VERIFY_WRITE, to, n))
+ 		__copy_user(to,from,n);
+@@ -23,6 +26,9 @@ __generic_copy_to_user(void __user *to, const void *from, unsigned long n)
+ unsigned long
+ __generic_copy_from_user(void *to, const void __user *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	prefetchw(to);
+ 	if (access_ok(VERIFY_READ, from, n))
+ 		__copy_user_zeroing(to,from,n);
+diff --git a/arch/powerpc/include/asm/uaccess.h b/arch/powerpc/include/asm/uaccess.h
+index c266227..f3dc6bb 100644
+--- a/arch/powerpc/include/asm/uaccess.h
++++ b/arch/powerpc/include/asm/uaccess.h
+@@ -303,43 +304,6 @@ do {								\
+ extern unsigned long __copy_tofrom_user(void __user *to,
+ 		const void __user *from, unsigned long size);
+ 
+-#ifndef __powerpc64__
+-
+-static inline unsigned long copy_from_user(void *to,
+-		const void __user *from, unsigned long n)
+-{
+-	if (likely(access_ok(VERIFY_READ, from, n))) {
+-		check_object_size(to, n, false);
+-		return __copy_tofrom_user((__force void __user *)to, from, n);
+-	}
+-	memset(to, 0, n);
+-	return n;
+-}
+-
+-static inline unsigned long copy_to_user(void __user *to,
+-		const void *from, unsigned long n)
+-{
+-	if (access_ok(VERIFY_WRITE, to, n)) {
+-		check_object_size(from, n, true);
+-		return __copy_tofrom_user(to, (__force void __user *)from, n);
+-	}
+-	return n;
+-}
+-
+-#else /* __powerpc64__ */
+-
+-#define __copy_in_user(to, from, size) \
+-	__copy_tofrom_user((to), (from), (size))
+-
+-extern unsigned long copy_from_user(void *to, const void __user *from,
+-				    unsigned long n);
+-extern unsigned long copy_to_user(void __user *to, const void *from,
+-				  unsigned long n);
+-extern unsigned long copy_in_user(void __user *to, const void __user *from,
+-				  unsigned long n);
+-
+-#endif /* __powerpc64__ */
+-
+ static inline unsigned long __copy_from_user_inatomic(void *to,
+ 		const void __user *from, unsigned long n)
+ {
+@@ -412,6 +376,70 @@ static inline unsigned long __copy_to_user(void __user *to,
+ 	return __copy_to_user_inatomic(to, from, size);
+ }
+ 
++#ifndef __powerpc64__
++
++static inline unsigned long __must_check copy_from_user(void *to,
++		const void __user *from, unsigned long n)
++{
++	if ((long)n < 0)
++		return n;
++
++	if (likely(access_ok(VERIFY_READ, from, n))) {
++		check_object_size(to, n, false);
++		return __copy_tofrom_user((void __force_user *)to, from, n);
++	}
++	memset(to, 0, n);
++	return n;
++}
++
++static inline unsigned long __must_check copy_to_user(void __user *to,
++		const void *from, unsigned long n)
++{
++	if ((long)n < 0)
++		return n;
++
++	if (likely(access_ok(VERIFY_WRITE, to, n))) {
++		check_object_size(from, n, true);
++		return __copy_tofrom_user(to, (void __force_user *)from, n);
++	}
++	return n;
++}
++
++#else /* __powerpc64__ */
++
++#define __copy_in_user(to, from, size) \
++	__copy_tofrom_user((to), (from), (size))
++
++static inline unsigned long __must_check copy_from_user(void *to, const void __user *from, unsigned long n)
++{
++	if ((long)n < 0 || n > INT_MAX)
++		return n;
++
++	if (likely(access_ok(VERIFY_READ, from, n))) {
++		check_object_size(to, n, false);
++		n = __copy_from_user(to, from, n);
++	} else
++		memset(to, 0, n);
++	return n;
++}
++
++static inline unsigned long __must_check copy_to_user(void __user *to, const void *from, unsigned long n)
++{
++	if ((long)n < 0 || n > INT_MAX)
++		return n;
++
++	if (likely(access_ok(VERIFY_WRITE, to, n))) {
++		check_object_size(from, n, true);
++		n = __copy_to_user(to, from, n);
++	}
++	return n;
++}
++
++extern unsigned long copy_in_user(void __user *to, const void __user *from,
++				  unsigned long n);
++
++#endif /* __powerpc64__ */
++
+ extern unsigned long __clear_user(void __user *addr, unsigned long size);
+ 
+ static inline unsigned long clear_user(void __user *addr, unsigned long size)
+diff --git a/arch/s390/include/asm/uaccess.h b/arch/s390/include/asm/uaccess.h
+index a7ef702..8c25ce4 100644
+--- a/arch/s390/include/asm/uaccess.h
++++ b/arch/s390/include/asm/uaccess.h
+@@ -337,6 +338,10 @@ static inline unsigned long __must_check
+ copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
+ 	might_fault();
++
++	if ((long)n < 0)
++		return n;
++
+ 	return __copy_to_user(to, from, n);
+ }
+ 
+diff --git a/arch/sparc/include/asm/uaccess_32.h b/arch/sparc/include/asm/uaccess_32.h
+index ea55f86..dbf15cf 100644
+--- a/arch/sparc/include/asm/uaccess_32.h
++++ b/arch/sparc/include/asm/uaccess_32.h
+@@ -248,6 +249,9 @@ unsigned long __copy_user(void __user *to, const void __user *from, unsigned lon
+ 
+ static inline unsigned long copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	if (n && __access_ok((unsigned long) to, n)) {
+ 		check_object_size(from, n, true);
+ 		return __copy_user(to, (__force void __user *) from, n);
+@@ -257,12 +261,18 @@ static inline unsigned long copy_to_user(void __user *to, const void *from, unsi
+ 
+ static inline unsigned long __copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	check_object_size(from, n, true);
+ 	return __copy_user(to, (__force void __user *) from, n);
+ }
+ 
+ static inline unsigned long copy_from_user(void *to, const void __user *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	if (n && __access_ok((unsigned long) from, n)) {
+ 		check_object_size(to, n, false);
+ 		return __copy_user((__force void __user *) to, from, n);
+@@ -274,6 +284,9 @@ static inline unsigned long copy_from_user(void *to, const void __user *from, un
+ 
+ static inline unsigned long __copy_from_user(void *to, const void __user *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	return __copy_user((__force void __user *) to, from, n);
+ }
+ 
+diff --git a/arch/sparc/include/asm/uaccess_64.h b/arch/sparc/include/asm/uaccess_64.h
+index 5373136..c528f7e 100644
+--- a/arch/sparc/include/asm/uaccess_64.h
++++ b/arch/sparc/include/asm/uaccess_64.h
+@@ -10,6 +10,7 @@
+ #include <linux/compiler.h>
+ #include <linux/string.h>
+ #include <linux/thread_info.h>
++#include <linux/kernel.h>
+ #include <asm/asi.h>
+ #include <asm/spitfire.h>
+ #include <asm-generic/uaccess-unaligned.h>
+@@ -191,6 +197,9 @@ unsigned long __must_check ___copy_from_user(void *to,
+ static inline unsigned long __must_check
+ copy_from_user(void *to, const void __user *from, unsigned long size)
+ {
++	if ((long)size < 0 || size > INT_MAX)
++		return size;
++
+ 	check_object_size(to, size, false);
+ 
+ 	return ___copy_from_user(to, from, size);
+@@ -203,6 +212,9 @@ unsigned long __must_check ___copy_to_user(void __user *to,
+ static inline unsigned long __must_check
+ copy_to_user(void __user *to, const void *from, unsigned long size)
+ {
++	if ((long)size < 0 || size > INT_MAX)
++		return size;
++
+ 	check_object_size(from, size, true);
+ 
+ 	return ___copy_to_user(to, from, size);

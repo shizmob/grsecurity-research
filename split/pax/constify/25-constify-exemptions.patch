@@ -96,3 +96,50 @@ index d1870c7..36d500f 100644
  
  #define CACHE_LINE_SIZE		32
  
+diff --git a/arch/powerpc/include/asm/smp.h b/arch/powerpc/include/asm/smp.h
+index 0d02c11..33a8f08 100644
+--- a/arch/powerpc/include/asm/smp.h
++++ b/arch/powerpc/include/asm/smp.h
+@@ -51,7 +51,7 @@ struct smp_ops_t {
+ 	int   (*cpu_disable)(void);
+ 	void  (*cpu_die)(unsigned int nr);
+ 	int   (*cpu_bootable)(unsigned int nr);
+-};
++} __no_const;
+ 
+ extern void smp_send_debugger_break(void);
+ extern void start_secondary_resume(void);
+diff --git a/arch/s390/mm/mmap.c b/arch/s390/mm/mmap.c
+index eb9df28..7b686ba 100644
+--- a/arch/s390/mm/mmap.c
++++ b/arch/s390/mm/mmap.c
+@@ -201,9 +201,9 @@ s390_get_unmapped_area(struct file *filp, unsigned long addr,
+ }
+ 
+ static unsigned long
+-s390_get_unmapped_area_topdown(struct file *filp, const unsigned long addr,
+-			  const unsigned long len, const unsigned long pgoff,
+-			  const unsigned long flags)
++s390_get_unmapped_area_topdown(struct file *filp, unsigned long addr,
++			  unsigned long len, unsigned long pgoff,
++			  unsigned long flags)
+ {
+ 	struct mm_struct *mm = current->mm;
+ 	unsigned long area;
+diff --git a/arch/sh/mm/mmap.c b/arch/sh/mm/mmap.c
+index 6777177..d44b592 100644
+--- a/arch/sh/mm/mmap.c
++++ b/arch/sh/mm/mmap.c
+@@ -77,9 +77,9 @@ unsigned long arch_get_unmapped_area(struct file *filp, unsigned long addr,
+ }
+ 
+ unsigned long
+-arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
+-			  const unsigned long len, const unsigned long pgoff,
+-			  const unsigned long flags)
++arch_get_unmapped_area_topdown(struct file *filp, unsigned long addr0,
++			  unsigned long len, unsigned long pgoff,
++			  unsigned long flags)
+ {
+ 	struct vm_area_struct *vma;
+ 	struct mm_struct *mm = current->mm;

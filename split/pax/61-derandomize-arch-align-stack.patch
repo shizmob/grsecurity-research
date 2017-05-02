@@ -1,0 +1,120 @@
+diff --git a/arch/mips/include/asm/exec.h b/arch/mips/include/asm/exec.h
+index c1f6afa..38cc6e9 100644
+--- a/arch/mips/include/asm/exec.h
++++ b/arch/mips/include/asm/exec.h
+@@ -12,6 +12,6 @@
+ #ifndef _ASM_EXEC_H
+ #define _ASM_EXEC_H
+ 
+-extern unsigned long arch_align_stack(unsigned long sp);
++#define arch_align_stack(x) ((x) & ~0xfUL)
+ 
+ #endif /* _ASM_EXEC_H */
+diff --git a/arch/mips/kernel/process.c b/arch/mips/kernel/process.c
+index fbbf5fc..eec61dd 100644
+--- a/arch/mips/kernel/process.c
++++ b/arch/mips/kernel/process.c
+@@ -603,18 +603,6 @@ unsigned long get_wchan(struct task_struct *task)
+ 	return pc;
+ }
+ 
+-/*
+- * Don't forget that the stack pointer must be aligned on a 8 bytes
+- * boundary for 32-bits ABI and 16 bytes for 64-bits ABI.
+- */
+-unsigned long arch_align_stack(unsigned long sp)
+-{
+-	if (!(current->personality & ADDR_NO_RANDOMIZE) && randomize_va_space)
+-		sp -= get_random_int() & ~PAGE_MASK;
+-
+-	return sp & ALMASK;
+-}
+-
+ static void arch_dump_stack(void *info)
+ {
+ 	struct pt_regs *regs;
+diff --git a/arch/powerpc/include/asm/exec.h b/arch/powerpc/include/asm/exec.h
+index 8196e9c..d83a9f3 100644
+--- a/arch/powerpc/include/asm/exec.h
++++ b/arch/powerpc/include/asm/exec.h
+@@ -4,6 +4,6 @@
+ #ifndef _ASM_POWERPC_EXEC_H
+ #define _ASM_POWERPC_EXEC_H
+ 
+-extern unsigned long arch_align_stack(unsigned long sp);
++#define arch_align_stack(x) ((x) & ~0xfUL)
+ 
+ #endif /* _ASM_POWERPC_EXEC_H */
+diff --git a/arch/powerpc/kernel/process.c b/arch/powerpc/kernel/process.c
+index 49a680d..2514bbcb 100644
+--- a/arch/powerpc/kernel/process.c
++++ b/arch/powerpc/kernel/process.c
+@@ -1957,13 +1957,6 @@ void notrace __ppc64_runlatch_off(void)
+ }
+ #endif /* CONFIG_PPC64 */
+ 
+-unsigned long arch_align_stack(unsigned long sp)
+-{
+-	if (!(current->personality & ADDR_NO_RANDOMIZE) && randomize_va_space)
+-		sp -= get_random_int() & ~PAGE_MASK;
+-	return sp & ~0xf;
+-}
+-
+ static inline unsigned long brk_rnd(void)
+ {
+         unsigned long rnd = 0;
+diff --git a/arch/s390/include/asm/exec.h b/arch/s390/include/asm/exec.h
+index c4a93d6..4d2a9b4 100644
+--- a/arch/s390/include/asm/exec.h
++++ b/arch/s390/include/asm/exec.h
+@@ -7,6 +7,6 @@
+ #ifndef __ASM_EXEC_H
+ #define __ASM_EXEC_H
+ 
+-extern unsigned long arch_align_stack(unsigned long sp);
++#define arch_align_stack(x) ((x) & ~0xfUL)
+ 
+ #endif /* __ASM_EXEC_H */
+diff --git a/arch/s390/kernel/process.c b/arch/s390/kernel/process.c
+index bba4fa7..9c32b3c 100644
+--- a/arch/s390/kernel/process.c
++++ b/arch/s390/kernel/process.c
+@@ -217,13 +217,6 @@ unsigned long get_wchan(struct task_struct *p)
+ 	return 0;
+ }
+ 
+-unsigned long arch_align_stack(unsigned long sp)
+-{
+-	if (!(current->personality & ADDR_NO_RANDOMIZE) && randomize_va_space)
+-		sp -= get_random_int() & ~PAGE_MASK;
+-	return sp & ~0xf;
+-}
+-
+ static inline unsigned long brk_rnd(void)
+ {
+ 	return (get_random_int() & BRK_RND_MASK) << PAGE_SHIFT;
+diff --git a/arch/score/include/asm/exec.h b/arch/score/include/asm/exec.h
+index f9f3cd5..58ff438 100644
+--- a/arch/score/include/asm/exec.h
++++ b/arch/score/include/asm/exec.h
+@@ -1,6 +1,6 @@
+ #ifndef _ASM_SCORE_EXEC_H
+ #define _ASM_SCORE_EXEC_H
+ 
+-extern unsigned long arch_align_stack(unsigned long sp);
++#define arch_align_stack(x) (x)
+ 
+ #endif /* _ASM_SCORE_EXEC_H */
+diff --git a/arch/score/kernel/process.c b/arch/score/kernel/process.c
+index aae9480..93e40a4 100644
+--- a/arch/score/kernel/process.c
++++ b/arch/score/kernel/process.c
+@@ -114,8 +114,3 @@ unsigned long get_wchan(struct task_struct *task)
+ 
+ 	return task_pt_regs(task)->cp0_epc;
+ }
+-
+-unsigned long arch_align_stack(unsigned long sp)
+-{
+-	return sp;
+-}

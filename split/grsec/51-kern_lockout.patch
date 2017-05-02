@@ -1,0 +1,138 @@
+diff --git a/arch/arm/kernel/traps.c b/arch/arm/kernel/traps.c
+index 9688ec0..dd072c0 100644
+--- a/arch/arm/kernel/traps.c
++++ b/arch/arm/kernel/traps.c
+@@ -287,6 +287,8 @@ static arch_spinlock_t die_lock = __ARCH_SPIN_LOCK_UNLOCKED;
+ static int die_owner = -1;
+ static unsigned int die_nest_count;
+ 
++extern void gr_handle_kernel_exploit(void);
++
+ static unsigned long oops_begin(void)
+ {
+ 	int cpu;
+@@ -329,6 +331,9 @@ static void oops_end(unsigned long flags, struct pt_regs *regs, int signr)
+ 		panic("Fatal exception in interrupt");
+ 	if (panic_on_oops)
+ 		panic("Fatal exception");
++
++	gr_handle_kernel_exploit();
++
+ 	if (signr)
+ 		do_exit(signr);
+ }
+diff --git a/arch/mips/kernel/irq.c b/arch/mips/kernel/irq.c
+index 2b0a371..1e272b7 100644
+--- a/arch/mips/kernel/irq.c
++++ b/arch/mips/kernel/irq.c
+@@ -72,6 +72,8 @@ void __init init_IRQ(void)
+ }
+ 
+ #ifdef CONFIG_DEBUG_STACKOVERFLOW
++
++extern void gr_handle_kernel_exploit(void);
+ static inline void check_stack_overflow(void)
+ {
+ 	unsigned long sp;
+@@ -87,6 +89,7 @@ static inline void check_stack_overflow(void)
+ 		printk("do_IRQ: stack overflow: %ld\n",
+ 		       sp - sizeof(struct thread_info));
+ 		dump_stack();
++		gr_handle_kernel_exploit();
+ 	}
+ }
+ #else
+diff --git a/arch/powerpc/kernel/irq.c b/arch/powerpc/kernel/irq.c
+index 3c05c31..a8e6888 100644
+--- a/arch/powerpc/kernel/irq.c
++++ b/arch/powerpc/kernel/irq.c
+@@ -482,6 +482,8 @@ void migrate_irqs(void)
+ }
+ #endif
+ 
++extern void gr_handle_kernel_exploit(void);
++
+ static inline void check_stack_overflow(void)
+ {
+ #ifdef CONFIG_DEBUG_STACKOVERFLOW
+@@ -494,6 +496,7 @@ static inline void check_stack_overflow(void)
+ 		pr_err("do_IRQ: stack overflow: %ld\n",
+ 			sp - sizeof(struct thread_info));
+ 		dump_stack();
++		gr_handle_kernel_exploit();
+ 	}
+ #endif
+ }
+diff --git a/arch/powerpc/kernel/traps.c b/arch/powerpc/kernel/traps.c
+index 023a462..9d940854 100644
+--- a/arch/powerpc/kernel/traps.c
++++ b/arch/powerpc/kernel/traps.c
+@@ -146,6 +147,8 @@ static unsigned long oops_begin(struct pt_regs *regs)
+ }
+ NOKPROBE_SYMBOL(oops_begin);
+ 
++extern void gr_handle_kernel_exploit(void);
++
+ static void oops_end(unsigned long flags, struct pt_regs *regs,
+ 			       int signr)
+ {
+@@ -195,6 +198,9 @@ static void oops_end(unsigned long flags, struct pt_regs *regs,
+ 		panic("Fatal exception in interrupt");
+ 	if (panic_on_oops)
+ 		panic("Fatal exception");
++
++	gr_handle_kernel_exploit();
++
+ 	do_exit(signr);
+ }
+ NOKPROBE_SYMBOL(oops_end);
+diff --git a/arch/sparc/kernel/traps_32.c b/arch/sparc/kernel/traps_32.c
+index 4f21df7..0a374da 100644
+--- a/arch/sparc/kernel/traps_32.c
++++ b/arch/sparc/kernel/traps_32.c
+@@ -44,6 +44,8 @@ static void instruction_dump(unsigned long *pc)
+ #define __SAVE __asm__ __volatile__("save %sp, -0x40, %sp\n\t")
+ #define __RESTORE __asm__ __volatile__("restore %g0, %g0, %g0\n\t")
+ 
++extern void gr_handle_kernel_exploit(void);
++
+ void __noreturn die_if_kernel(char *str, struct pt_regs *regs)
+ {
+ 	static int die_counter;
+@@ -76,8 +78,10 @@ void __noreturn die_if_kernel(char *str, struct pt_regs *regs)
+ 	}
+ 	printk("Instruction DUMP:");
+ 	instruction_dump ((unsigned long *) regs->pc);
+-	if(regs->psr & PSR_PS)
++	if(regs->psr & PSR_PS) {
++		gr_handle_kernel_exploit();
+ 		do_exit(SIGKILL);
++	}
+ 	do_exit(SIGSEGV);
+ }
+ 
+diff --git a/arch/sparc/kernel/traps_64.c b/arch/sparc/kernel/traps_64.c
+index 4094a51..4a360da 100644
+--- a/arch/sparc/kernel/traps_64.c
++++ b/arch/sparc/kernel/traps_64.c
+@@ -2386,6 +2397,8 @@ static inline struct reg_window *kernel_stack_up(struct reg_window *rw)
+ 	return (struct reg_window *) (fp + STACK_BIAS);
+ }
+ 
++extern void gr_handle_kernel_exploit(void);
++
+ void __noreturn die_if_kernel(char *str, struct pt_regs *regs)
+ {
+ 	static int die_counter;
+@@ -2429,8 +2442,10 @@ void __noreturn die_if_kernel(char *str, struct pt_regs *regs)
+ 	}
+ 	if (panic_on_oops)
+ 		panic("Fatal exception");
+-	if (regs->tstate & TSTATE_PRIV)
++	if (regs->tstate & TSTATE_PRIV) {
++		gr_handle_kernel_exploit();
+ 		do_exit(SIGKILL);
++	}
+ 	do_exit(SIGSEGV);
+ }
+ EXPORT_SYMBOL(die_if_kernel);

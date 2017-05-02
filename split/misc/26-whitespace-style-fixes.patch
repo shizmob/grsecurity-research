@@ -36,3 +36,39 @@ index 01753cd..b65d17a 100644
  EXPORT_SYMBOL_GPL(pm_power_off);
  
  void (*arm_pm_restart)(enum reboot_mode reboot_mode, const char *cmd);
+diff --git a/arch/sparc/include/asm/uaccess.h b/arch/sparc/include/asm/uaccess.h
+index bd56c28..4b63d83 100644
+--- a/arch/sparc/include/asm/uaccess.h
++++ b/arch/sparc/include/asm/uaccess.h
+@@ -1,5 +1,6 @@
+ #ifndef ___ASM_SPARC_UACCESS_H
+ #define ___ASM_SPARC_UACCESS_H
++
+ #if defined(__sparc__) && defined(__arch64__)
+ #include <asm/uaccess_64.h>
+ #else
+diff --git a/arch/sparc/kernel/traps_64.c b/arch/sparc/kernel/traps_64.c
+index 4094a51..4a360da 100644
+--- a/arch/sparc/kernel/traps_64.c
++++ b/arch/sparc/kernel/traps_64.c
+@@ -117,7 +117,7 @@ void bad_trap(struct pt_regs *regs, long lvl)
+ void bad_trap_tl1(struct pt_regs *regs, long lvl)
+ {
+ 	char buffer[32];
+-	
++
+ 	if (notify_die(DIE_TRAP_TL1, "bad trap tl1", regs,
+ 		       0, lvl, SIGTRAP) == NOTIFY_STOP)
+ 		return;
+diff --git a/arch/powerpc/kernel/ptrace.c b/arch/powerpc/kernel/ptrace.c
+index 4094a51..4a360da 100644
+--- a/arch/powerpc/kernel/ptrace.c
++++ b/arch/powerpc/kernel/ptrace.c
+@@ -3210,6 +3219,7 @@ long do_syscall_trace_enter(struct pt_regs *regs)
+ 	if (regs->gpr[0] >= NR_syscalls)
+ 		goto skip;
+ 
++
+ 	if (unlikely(test_thread_flag(TIF_SYSCALL_TRACEPOINT)))
+ 		trace_sys_enter(regs, regs->gpr[0]);
+ 

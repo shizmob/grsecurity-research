@@ -186,3 +186,242 @@ index 988254a..e1ee885 100644
  
  #ifdef CONFIG_SMP
  # define SMP_CACHE_SHIFT	L1_CACHE_SHIFT
+diff --git a/arch/m32r/include/asm/cache.h b/arch/m32r/include/asm/cache.h
+index 40b3ee98..8c2c112 100644
+--- a/arch/m32r/include/asm/cache.h
++++ b/arch/m32r/include/asm/cache.h
+@@ -1,8 +1,10 @@
+ #ifndef _ASM_M32R_CACHE_H
+ #define _ASM_M32R_CACHE_H
+ 
++#include <linux/const.h>
++
+ /* L1 cache line size */
+ #define L1_CACHE_SHIFT		4
+-#define L1_CACHE_BYTES		(1 << L1_CACHE_SHIFT)
++#define L1_CACHE_BYTES		(_AC(1,UL) << L1_CACHE_SHIFT)
+ 
+ #endif  /* _ASM_M32R_CACHE_H */
+diff --git a/arch/m68k/include/asm/cache.h b/arch/m68k/include/asm/cache.h
+index 0395c51..5f26031 100644
+--- a/arch/m68k/include/asm/cache.h
++++ b/arch/m68k/include/asm/cache.h
+@@ -4,9 +4,11 @@
+ #ifndef __ARCH_M68K_CACHE_H
+ #define __ARCH_M68K_CACHE_H
+ 
++#include <linux/const.h>
++
+ /* bytes per L1 cache line */
+ #define        L1_CACHE_SHIFT  4
+-#define        L1_CACHE_BYTES  (1<< L1_CACHE_SHIFT)
++#define        L1_CACHE_BYTES  (_AC(1,UL) << L1_CACHE_SHIFT)
+ 
+ #define ARCH_DMA_MINALIGN	L1_CACHE_BYTES
+ 
+diff --git a/arch/microblaze/include/asm/cache.h b/arch/microblaze/include/asm/cache.h
+index 4efe96a..60e8699 100644
+--- a/arch/microblaze/include/asm/cache.h
++++ b/arch/microblaze/include/asm/cache.h
+@@ -13,11 +13,12 @@
+ #ifndef _ASM_MICROBLAZE_CACHE_H
+ #define _ASM_MICROBLAZE_CACHE_H
+ 
++#include <linux/const.h>
+ #include <asm/registers.h>
+ 
+ #define L1_CACHE_SHIFT 5
+ /* word-granular cache in microblaze */
+-#define L1_CACHE_BYTES	(1 << L1_CACHE_SHIFT)
++#define L1_CACHE_BYTES	(_AC(1,UL) << L1_CACHE_SHIFT)
+ 
+ #define SMP_CACHE_BYTES	L1_CACHE_BYTES
+ 
+diff --git a/arch/mips/include/asm/cache.h b/arch/mips/include/asm/cache.h
+index b4db69f..8f3b093 100644
+--- a/arch/mips/include/asm/cache.h
++++ b/arch/mips/include/asm/cache.h
+@@ -9,10 +9,11 @@
+ #ifndef _ASM_CACHE_H
+ #define _ASM_CACHE_H
+ 
++#include <linux/const.h>
+ #include <kmalloc.h>
+ 
+ #define L1_CACHE_SHIFT		CONFIG_MIPS_L1_CACHE_SHIFT
+-#define L1_CACHE_BYTES		(1 << L1_CACHE_SHIFT)
++#define L1_CACHE_BYTES		(_AC(1,UL) << L1_CACHE_SHIFT)
+ 
+ #define SMP_CACHE_SHIFT		L1_CACHE_SHIFT
+ #define SMP_CACHE_BYTES		L1_CACHE_BYTES
+diff --git a/arch/mn10300/proc-mn103e010/include/proc/cache.h b/arch/mn10300/proc-mn103e010/include/proc/cache.h
+index 967d144..db12197 100644
+--- a/arch/mn10300/proc-mn103e010/include/proc/cache.h
++++ b/arch/mn10300/proc-mn103e010/include/proc/cache.h
+@@ -11,12 +11,14 @@
+ #ifndef _ASM_PROC_CACHE_H
+ #define _ASM_PROC_CACHE_H
+ 
++#include <linux/const.h>
++
+ /* L1 cache */
+ 
+ #define L1_CACHE_NWAYS		4	/* number of ways in caches */
+ #define L1_CACHE_NENTRIES	256	/* number of entries in each way */
+-#define L1_CACHE_BYTES		16	/* bytes per entry */
+ #define L1_CACHE_SHIFT		4	/* shift for bytes per entry */
++#define L1_CACHE_BYTES		(_AC(1,UL) << L1_CACHE_SHIFT)	/* bytes per entry */
+ #define L1_CACHE_WAYDISP	0x1000	/* displacement of one way from the next */
+ 
+ #define L1_CACHE_TAG_VALID	0x00000001	/* cache tag valid bit */
+diff --git a/arch/mn10300/proc-mn2ws0050/include/proc/cache.h b/arch/mn10300/proc-mn2ws0050/include/proc/cache.h
+index bcb5df2..84fabd2 100644
+--- a/arch/mn10300/proc-mn2ws0050/include/proc/cache.h
++++ b/arch/mn10300/proc-mn2ws0050/include/proc/cache.h
+@@ -16,13 +16,15 @@
+ #ifndef _ASM_PROC_CACHE_H
+ #define _ASM_PROC_CACHE_H
+ 
++#include <linux/const.h>
++
+ /*
+  * L1 cache
+  */
+ #define L1_CACHE_NWAYS		4		/* number of ways in caches */
+ #define L1_CACHE_NENTRIES	128		/* number of entries in each way */
+-#define L1_CACHE_BYTES		32		/* bytes per entry */
+ #define L1_CACHE_SHIFT		5		/* shift for bytes per entry */
++#define L1_CACHE_BYTES		(_AC(1,UL) << L1_CACHE_SHIFT)	/* bytes per entry */
+ #define L1_CACHE_WAYDISP	0x1000		/* distance from one way to the next */
+ 
+ #define L1_CACHE_TAG_VALID	0x00000001	/* cache tag valid bit */
+diff --git a/arch/openrisc/include/asm/cache.h b/arch/openrisc/include/asm/cache.h
+index 5f55da9..7ce9437 100644
+--- a/arch/openrisc/include/asm/cache.h
++++ b/arch/openrisc/include/asm/cache.h
+@@ -19,13 +19,15 @@
+ #ifndef __ASM_OPENRISC_CACHE_H
+ #define __ASM_OPENRISC_CACHE_H
+ 
++#include <linux/const.h>
++
+ /* FIXME: How can we replace these with values from the CPU...
+  * they shouldn't be hard-coded!
+  */
+ 
+ #define __ro_after_init __read_mostly
+ 
+-#define L1_CACHE_BYTES 16
+ #define L1_CACHE_SHIFT 4
++#define L1_CACHE_BYTES (_AC(1,UL) << L1_CACHE_SHIFT)
+ 
+ #endif /* __ASM_OPENRISC_CACHE_H */
+diff --git a/arch/parisc/include/asm/cache.h b/arch/parisc/include/asm/cache.h
+index df0f52b..810699b 100644
+--- a/arch/parisc/include/asm/cache.h
++++ b/arch/parisc/include/asm/cache.h
+@@ -5,6 +5,7 @@
+ #ifndef __ARCH_PARISC_CACHE_H
+ #define __ARCH_PARISC_CACHE_H
+ 
++#include <linux/const.h>
+ 
+ /*
+  * PA 2.0 processors have 64 and 128-byte L2 cachelines; PA 1.1 processors
+@@ -14,6 +15,8 @@
+ #define L1_CACHE_BYTES 16
+ #define L1_CACHE_SHIFT 4
+ 
++#define L1_CACHE_BYTES (_AC(1,UL) << L1_CACHE_SHIFT)
++
+ #ifndef __ASSEMBLY__
+ 
+ #define SMP_CACHE_BYTES L1_CACHE_BYTES
+diff --git a/arch/powerpc/include/asm/cache.h b/arch/powerpc/include/asm/cache.h
+index ffbafbf..71d037fb 100644
+--- a/arch/powerpc/include/asm/cache.h
++++ b/arch/powerpc/include/asm/cache.h
+@@ -3,6 +3,8 @@
+ 
+ #ifdef __KERNEL__
+ 
++#include <asm/reg.h>
++#include <linux/const.h>
+ 
+ /* bytes per L1 cache line */
+ #if defined(CONFIG_8xx) || defined(CONFIG_403GCX)
+@@ -22,7 +24,7 @@
+ #define L1_CACHE_SHIFT		7
+ #endif
+ 
+-#define	L1_CACHE_BYTES		(1 << L1_CACHE_SHIFT)
++#define	L1_CACHE_BYTES		(_AC(1,UL) << L1_CACHE_SHIFT)
+ 
+ #define	SMP_CACHE_BYTES		L1_CACHE_BYTES
+ 
+diff --git a/arch/s390/include/asm/cache.h b/arch/s390/include/asm/cache.h
+index 05219a5..032f5f0 100644
+--- a/arch/s390/include/asm/cache.h
++++ b/arch/s390/include/asm/cache.h
+@@ -9,8 +9,10 @@
+ #ifndef __ARCH_S390_CACHE_H
+ #define __ARCH_S390_CACHE_H
+ 
+-#define L1_CACHE_BYTES     256
++#include <linux/const.h>
++
+ #define L1_CACHE_SHIFT     8
++#define L1_CACHE_BYTES     (_AC(1,UL) << L1_CACHE_SHIFT)
+ #define NET_SKB_PAD	   32
+ 
+ #define __read_mostly __section(.data..read_mostly)
+diff --git a/arch/score/include/asm/cache.h b/arch/score/include/asm/cache.h
+index ae3d59f..f65f075 100644
+--- a/arch/score/include/asm/cache.h
++++ b/arch/score/include/asm/cache.h
+@@ -1,7 +1,9 @@
+ #ifndef _ASM_SCORE_CACHE_H
+ #define _ASM_SCORE_CACHE_H
+ 
++#include <linux/const.h>
++
+ #define L1_CACHE_SHIFT		4
+-#define L1_CACHE_BYTES		(1 << L1_CACHE_SHIFT)
++#define L1_CACHE_BYTES		(_AC(1,UL) << L1_CACHE_SHIFT)
+ 
+ #endif /* _ASM_SCORE_CACHE_H */
+diff --git a/arch/sh/include/asm/cache.h b/arch/sh/include/asm/cache.h
+index ef9e555..331bd29 100644
+--- a/arch/sh/include/asm/cache.h
++++ b/arch/sh/include/asm/cache.h
+@@ -9,10 +9,11 @@
+ #define __ASM_SH_CACHE_H
+ #ifdef __KERNEL__
+ 
++#include <linux/const.h>
+ #include <linux/init.h>
+ #include <cpu/cache.h>
+ 
+-#define L1_CACHE_BYTES		(1 << L1_CACHE_SHIFT)
++#define L1_CACHE_BYTES		(_AC(1,UL) << L1_CACHE_SHIFT)
+ 
+ #define __read_mostly __attribute__((__section__(".data..read_mostly")))
+ 
+diff --git a/arch/sparc/include/asm/cache.h b/arch/sparc/include/asm/cache.h
+index 5bb6991..5c2132e 100644
+--- a/arch/sparc/include/asm/cache.h
++++ b/arch/sparc/include/asm/cache.h
+@@ -7,10 +7,12 @@
+ #ifndef _SPARC_CACHE_H
+ #define _SPARC_CACHE_H
+ 
++#include <linux/const.h>
++
+ #define ARCH_SLAB_MINALIGN	__alignof__(unsigned long long)
+ 
+ #define L1_CACHE_SHIFT 5
+-#define L1_CACHE_BYTES 32
++#define L1_CACHE_BYTES (_AC(1,UL) << L1_CACHE_SHIFT)
+ 
+ #ifdef CONFIG_SPARC32
+ #define SMP_CACHE_BYTES_SHIFT 5
