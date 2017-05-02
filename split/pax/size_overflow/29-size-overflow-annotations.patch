@@ -61,3 +61,52 @@ index 6bd1089..e999400 100644
  __clear_user_memset(void __user *addr, unsigned long n)
  {
  	unsigned long ua_flags;
+diff --git a/arch/x86/include/asm/bitops.h b/arch/x86/include/asm/bitops.h
+index 68557f52..d9828ec 100644
+--- a/arch/x86/include/asm/bitops.h
++++ b/arch/x86/include/asm/bitops.h
+@@ -343,7 +343,7 @@ static bool test_bit(int nr, const volatile unsigned long *addr);
+  *
+  * Undefined if no bit exists, so code should check against 0 first.
+  */
+-static __always_inline unsigned long __ffs(unsigned long word)
++static __always_inline unsigned long __intentional_overflow(-1) __ffs(unsigned long word)
+ {
+ 	asm("rep; bsf %1,%0"
+ 		: "=r" (word)
+@@ -357,7 +357,7 @@ static __always_inline unsigned long __ffs(unsigned long word)
+  *
+  * Undefined if no zero exists, so code should check against ~0UL first.
+  */
+-static __always_inline unsigned long ffz(unsigned long word)
++static __always_inline unsigned long __intentional_overflow(-1) ffz(unsigned long word)
+ {
+ 	asm("rep; bsf %1,%0"
+ 		: "=r" (word)
+@@ -371,7 +371,7 @@ static __always_inline unsigned long ffz(unsigned long word)
+  *
+  * Undefined if no set bit exists, so code should check against 0 first.
+  */
+-static __always_inline unsigned long __fls(unsigned long word)
++static __always_inline unsigned long __intentional_overflow(-1) __fls(unsigned long word)
+ {
+ 	asm("bsr %1,%0"
+ 	    : "=r" (word)
+@@ -434,7 +434,7 @@ static __always_inline int ffs(int x)
+  * set bit if value is nonzero. The last (most significant) bit is
+  * at position 32.
+  */
+-static __always_inline int fls(int x)
++static __always_inline int __intentional_overflow(-1) fls(int x)
+ {
+ 	int r;
+ 
+@@ -476,7 +476,7 @@ static __always_inline int fls(int x)
+  * at position 64.
+  */
+ #ifdef CONFIG_X86_64
+-static __always_inline int fls64(__u64 x)
++static __always_inline __intentional_overflow(-1) int fls64(__u64 x)
+ {
+ 	int bitpos = -1;
+ 	/*

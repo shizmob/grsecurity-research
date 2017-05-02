@@ -143,3 +143,64 @@ index 6777177..d44b592 100644
  {
  	struct vm_area_struct *vma;
  	struct mm_struct *mm = current->mm;
+diff --git a/arch/x86/events/amd/iommu.c b/arch/x86/events/amd/iommu.c
+index b28200d..e93e14d 100644
+--- a/arch/x86/events/amd/iommu.c
++++ b/arch/x86/events/amd/iommu.c
+@@ -407,7 +407,7 @@ static void perf_iommu_del(struct perf_event *event, int flags)
+ static __init int _init_events_attrs(struct perf_amd_iommu *perf_iommu)
+ {
+ 	struct attribute **attrs;
+-	struct attribute_group *attr_group;
++	attribute_group_no_const *attr_group;
+ 	int i = 0, j;
+ 
+ 	while (amd_iommu_v2_event_descs[i].attr.attr.name)
+diff --git a/arch/x86/events/core.c b/arch/x86/events/core.c
+index 38623e2..7eae820 100644
+--- a/arch/x86/events/core.c
++++ b/arch/x86/events/core.c
+@@ -1570,7 +1570,7 @@ static void __init pmu_check_apic(void)
+ 
+ }
+ 
+-static struct attribute_group x86_pmu_format_group = {
++static attribute_group_no_const x86_pmu_format_group = {
+ 	.name = "format",
+ 	.attrs = NULL,
+ };
+@@ -1701,7 +1701,7 @@ static struct attribute *events_attr[] = {
+ 	NULL,
+ };
+ 
+-static struct attribute_group x86_pmu_events_group = {
++static attribute_group_no_const x86_pmu_events_group = {
+ 	.name = "events",
+ 	.attrs = events_attr,
+ };
+diff --git a/arch/x86/events/intel/rapl.c b/arch/x86/events/intel/rapl.c
+index 0a535ce..b8d9b16 100644
+--- a/arch/x86/events/intel/rapl.c
++++ b/arch/x86/events/intel/rapl.c
+@@ -535,7 +535,7 @@ static struct attribute *rapl_events_knl_attr[] = {
+ 	NULL,
+ };
+ 
+-static struct attribute_group rapl_pmu_events_group = {
++static attribute_group_no_const rapl_pmu_events_group __read_only = {
+ 	.name = "events",
+ 	.attrs = NULL, /* patched at runtime */
+ };
+diff --git a/arch/x86/events/intel/uncore.c b/arch/x86/events/intel/uncore.c
+index 19d646a..e20a9b2 100644
+--- a/arch/x86/events/intel/uncore.c
++++ b/arch/x86/events/intel/uncore.c
+@@ -798,7 +798,7 @@ static void uncore_types_exit(struct intel_uncore_type **types)
+ static int __init uncore_type_init(struct intel_uncore_type *type, bool setid)
+ {
+ 	struct intel_uncore_pmu *pmus;
+-	struct attribute_group *attr_group;
++	attribute_group_no_const *attr_group;
+ 	struct attribute **attrs;
+ 	size_t size;
+ 	int i, j;

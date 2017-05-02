@@ -7,6 +7,8 @@ pax/15-rap.patch:
 - misc/20-properly-gate-features.patch
 pax/uderef-kernexec:
 - pax/78-access-ok-without-pre-faulting.patch
+pax/uderef-kernexec/79-uderef-kernexec-x86.patch:
+- pax/94-rename-LOAD_PHYSICAL_ADDR.patch
 
 procedure:
 
@@ -23,3 +25,39 @@ further splits:
 
 - the check_heap_stack_gap() stuff that's in grsec/rand_threadstack right now probably needs splitting up so that the call gets added separately;
 - pax/aslr.patch needs more splitting
+
+reference docs:
+
+- pax:
+  - https://pax.grsecurity.net/docs/pax.txt
+  - https://pax.grsecurity.net/docs/PaXTeam-SSTIC12-keynote-20-years-of-PaX.pdf
+  - https://pax.grsecurity.net/docs/PaXTeam-LATINOWARE12-PaX-linux-security.pdf
+  - https://pax.grsecurity.net/docs/PaXTeam-H2HC12-PaX-kernel-self-protection.pdf
+  - https://pax.grsecurity.net/docs/PaXTeam-H2HC13-PaX-gcc-plugins.pdf
+- pax/noexec (pageexec/segmexec/mprotect): https://pax.grsecurity.net/docs/noexec.txt
+- pax/pageexec: https://pax.grsecurity.net/docs/pageexec.txt
+- pax/segmexec:
+  - https://pax.grsecurity.net/docs/segmexec.txt
+  - https://pax.grsecurity.net/docs/vmmirror.txt
+- pax/kernexec/uderef:
+  - https://forums.grsecurity.net/viewtopic.php?f=7&t=4309
+  - https://forums.grsecurity.net/viewtopic.php?f=7&t=3292
+  - https://grsecurity.net/~spender/uderef.txt
+  - https://forums.grsecurity.net/viewtopic.php?f=7&t=3046
+- pax/randustack: https://pax.grsecurity.net/docs/randustack.txt
+- pax/randkstack: https://pax.grsecurity.net/docs/randkstack.txt
+- pax/randmmap: https://pax.grsecurity.net/docs/randmmap.txt
+- pax/randexec:
+  - https://pax.grsecurity.net/docs/randexec.txt
+  - https://pax.grsecurity.net/docs/vmmirror.txt
+- pax/aslr:
+  - https://forums.grsecurity.net/viewtopic.php?f=7&t=3367
+  - https://pax.grsecurity.net/docs/aslr.txt
+- pax/usercopy: https://forums.grsecurity.net/viewtopic.php?f=7&t=2596
+- pax/emutramp: https://pax.grsecurity.net/docs/emutramp.txt
+- pax/emusigrt: https://pax.grsecurity.net/docs/emusigrt.txt
+- pax/size_overflow: https://forums.grsecurity.net/viewtopic.php?f=7&t=3043
+- pax/refcount: https://forums.grsecurity.net/viewtopic.php?f=7&t=4173
+- pax/rap: https://pax.grsecurity.net/docs/PaXTeam-H2HC15-RAP-RIP-ROP.pdf
+- grsec/harden_bpf: https://forums.grsecurity.net/viewtopic.php?f=7&t=4463
+- various: https://forums.grsecurity.net/viewtopic.php?f=7&t=2574

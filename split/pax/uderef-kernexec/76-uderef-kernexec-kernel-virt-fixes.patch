@@ -519,3 +519,59 @@ index e3353c9..2a8fbe5 100644
  
  	/*
  	 * The .rodata section needs to be read-only. Using the pfn
+diff --git a/arch/x86/events/intel/ds.c b/arch/x86/events/intel/ds.c
+index be20239..99d75dd 100644
+--- a/arch/x86/events/intel/ds.c
++++ b/arch/x86/events/intel/ds.c
+@@ -947,7 +947,7 @@ static int intel_pmu_pebs_fixup_ip(struct pt_regs *regs)
+ 	struct cpu_hw_events *cpuc = this_cpu_ptr(&cpu_hw_events);
+ 	unsigned long from = cpuc->lbr_entries[0].from;
+ 	unsigned long old_to, to = cpuc->lbr_entries[0].to;
+-	unsigned long ip = regs->ip;
++	unsigned long ip = ktva_ktla(regs->ip);
+ 	int is_64bit = 0;
+ 	void *kaddr;
+ 	int size;
+@@ -999,6 +999,7 @@ static int intel_pmu_pebs_fixup_ip(struct pt_regs *regs)
+ 	} else {
+ 		kaddr = (void *)to;
+ 	}
++	kaddr = (void *)ktva_ktla((unsigned long)kaddr);
+ 
+ 	do {
+ 		struct insn insn;
+diff --git a/arch/x86/events/intel/lbr.c b/arch/x86/events/intel/lbr.c
+index f924629..bb99e36 100644
+--- a/arch/x86/events/intel/lbr.c
++++ b/arch/x86/events/intel/lbr.c
+@@ -808,7 +808,7 @@ static int branch_type(unsigned long from, unsigned long to, int abort)
+ 		 * Ensure we don't blindy read any address by validating it is
+ 		 * a known text address.
+ 		 */
+-		if (kernel_text_address(from)) {
++		if (kernel_text_address(ktva_ktla(from))) {
+ 			addr = (void *)from;
+ 			/*
+ 			 * Assume we can get the maximum possible size
+@@ -830,7 +830,7 @@ static int branch_type(unsigned long from, unsigned long to, int abort)
+ #ifdef CONFIG_X86_64
+ 	is64 = kernel_ip((unsigned long)addr) || !test_thread_flag(TIF_IA32);
+ #endif
+-	insn_init(&insn, addr, bytes_read, is64);
++	insn_init(&insn, (void *)ktva_ktla((unsigned long)addr), bytes_read, is64);
+ 	insn_get_opcode(&insn);
+ 	if (!insn.opcode.got)
+ 		return X86_BR_ABORT;
+diff --git a/arch/x86/events/perf_event.h b/arch/x86/events/perf_event.h
+index bcbb1d2..d2511bf 100644
+--- a/arch/x86/events/perf_event.h
++++ b/arch/x86/events/perf_event.h
+@@ -804,7 +804,7 @@ static inline void set_linear_ip(struct pt_regs *regs, unsigned long ip)
+ 	regs->cs = kernel_ip(ip) ? __KERNEL_CS : __USER_CS;
+ 	if (regs->flags & X86_VM_MASK)
+ 		regs->flags ^= (PERF_EFLAGS_VM | X86_VM_MASK);
+-	regs->ip = ip;
++	regs->ip = kernel_ip(ip) ? ktva_ktla(ip) : ip;
+ }
+ 
+ ssize_t x86_event_sysfs_show(char *page, u64 config, u64 event);

@@ -93,3 +93,16 @@ index ef766a3..d3f0e59 100644
  	/* We entered an interrupt context - irqs are off: */
  	TRACE_IRQS_OFF
  
+diff --git a/arch/x86/ia32/ia32_signal.c b/arch/x86/ia32/ia32_signal.c
+index cb13c05..d63fa1e 100644
+--- a/arch/x86/ia32/ia32_signal.c
++++ b/arch/x86/ia32/ia32_signal.c
+@@ -343,7 +343,7 @@ int ia32_setup_rt_frame(int sig, struct ksignal *ksig,
+ 		0xb8,
+ 		__NR_ia32_rt_sigreturn,
+ 		0x80cd,
+-		0,
++		0
+ 	};
+ 
+ 	frame = get_sigframe(ksig, regs, sizeof(*frame), &fpstate);

@@ -155,3 +155,16 @@ index ff0a68c..b312aa0 100644
  	pdev = omap_device_build(dev_name, id, oh, &pdata,
  				 sizeof(struct omap_wd_timer_platform_data));
  	WARN(IS_ERR(pdev), "Can't build omap_device for %s:%s.\n",
+diff --git a/arch/x86/events/intel/cqm.c b/arch/x86/events/intel/cqm.c
+index 8f82b02..b10c4b0 100644
+--- a/arch/x86/events/intel/cqm.c
++++ b/arch/x86/events/intel/cqm.c
+@@ -1488,7 +1488,7 @@ static struct attribute *intel_cmt_mbm_events_attr[] = {
+ 	NULL,
+ };
+ 
+-static struct attribute_group intel_cqm_events_group = {
++static attribute_group_no_const intel_cqm_events_group __read_only = {
+ 	.name = "events",
+ 	.attrs = NULL,
+ };
