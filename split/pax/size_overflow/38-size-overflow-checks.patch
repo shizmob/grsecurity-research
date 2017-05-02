@@ -254,6 +254,21 @@ index a7ef702..8c25ce4 100644
  	return __copy_to_user(to, from, n);
  }
  
+diff --git a/arch/s390/include/asm/uaccess.h b/arch/s390/include/asm/uaccess.h
+index a7ef702..8c25ce4 100644
+--- a/arch/s390/include/asm/uaccess.h
++++ b/arch/s390/include/asm/uaccess.h
+@@ -363,6 +363,10 @@ copy_to_user(void __user *to, const void *from, unsigned long n)
+	unsigned int sz = __compiletime_object_size(to);
+ 
+ 	might_fault();
++
++	if ((long)n < 0)
++		return n;
++
+ 	if (unlikely(sz != -1 && sz < n)) {
+ 		if (!__builtin_constant_p(n))
+ 			copy_user_overflow(sz, n);
 diff --git a/arch/sparc/include/asm/uaccess_32.h b/arch/sparc/include/asm/uaccess_32.h
 index ea55f86..dbf15cf 100644
 --- a/arch/sparc/include/asm/uaccess_32.h

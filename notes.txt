@@ -5,6 +5,8 @@ pax/12-gcc-plugin-infra.patch:
 - misc/13-fix-hostcflags-aflags.patch
 pax/15-rap.patch:
 - misc/20-properly-gate-features.patch
+pax/uderef-kernexec:
+- pax/78-access-ok-without-pre-faulting.patch
 
 procedure:
 

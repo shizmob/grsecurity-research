@@ -1,0 +1,12 @@
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index bada636..1775eac 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -136,6 +135,7 @@ config X86
+ 	select HAVE_NMI
+ 	select HAVE_OPROFILE
+ 	select HAVE_OPTPROBES
++	select HAVE_PAX_INITIFY_INIT_EXIT if GCC_PLUGINS
+ 	select HAVE_PCSPKR_PLATFORM
+ 	select HAVE_PERF_EVENTS
+ 	select HAVE_PERF_EVENTS_NMI

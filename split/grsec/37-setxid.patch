@@ -299,3 +299,42 @@ index c4a1b5c..c5e0ef3 100644
  	ldx	[%sp + PTREGS_OFF + PT_V9_TNPC], %l1 ! pc = npc
  
  2:
+diff --git a/arch/x86/entry/common.c b/arch/x86/entry/common.c
+index bdd9cc5..486d4bf 100644
+--- a/arch/x86/entry/common.c
++++ b/arch/x86/entry/common.c
+@@ -56,6 +71,10 @@ static void do_audit_syscall_entry(struct pt_regs *regs, u32 arch)
+ 	}
+ }
+ 
++#ifdef CONFIG_GRKERNSEC_SETXID
++extern void gr_delayed_cred_worker(void);
++#endif
++
+ /*
+  * Returns the syscall nr to run (which should match regs->orig_ax) or -1
+  * to skip the syscall.
+@@ -74,6 +93,11 @@ static long syscall_trace_enter(struct pt_regs *regs)
+ 
+ 	work = ACCESS_ONCE(ti->flags) & _TIF_WORK_SYSCALL_ENTRY;
+ 
++#ifdef CONFIG_GRKERNSEC_SETXID
++	if (unlikely(test_and_clear_thread_flag(TIF_GRSEC_SETXID)))
++		gr_delayed_cred_worker();
++#endif
++
+ 	if (unlikely(work & _TIF_SYSCALL_EMU))
+ 		emulated = true;
+ 
+@@ -248,6 +277,11 @@ __visible inline void syscall_return_slowpath(struct pt_regs *regs)
+ 	    WARN(irqs_disabled(), "syscall %ld left IRQs disabled", regs->orig_ax))
+ 		local_irq_enable();
+ 
++#ifdef CONFIG_GRKERNSEC_SETXID
++	if (unlikely(test_and_clear_thread_flag(TIF_GRSEC_SETXID)))
++		gr_delayed_cred_worker();
++#endif
++
+ 	/*
+ 	 * First do one-time work.  If these work items are enabled, we
+ 	 * want to run them exactly once per syscall exit with IRQs on.

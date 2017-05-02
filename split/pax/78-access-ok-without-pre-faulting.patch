@@ -1,0 +1,222 @@
+diff --git a/arch/arm/include/asm/uaccess.h b/arch/arm/include/asm/uaccess.h
+index 1f59ea05..81245f0 100644
+--- a/arch/arm/include/asm/uaccess.h
++++ b/arch/arm/include/asm/uaccess.h
+@@ -268,6 +299,7 @@ static inline void set_fs(mm_segment_t fs)
+ 
+ #endif /* CONFIG_MMU */
+ 
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size)	(__range_ok(addr, size) == 0)
+ 
+ #define user_addr_max() \
+diff --git a/arch/arm64/include/asm/uaccess.h b/arch/arm64/include/asm/uaccess.h
+index 55d0adb..b986918 100644
+--- a/arch/arm64/include/asm/uaccess.h
++++ b/arch/arm64/include/asm/uaccess.h
+@@ -110,6 +110,7 @@ static inline void set_fs(mm_segment_t fs)
+  */
+ #define untagged_addr(addr)		sign_extend64(addr, 55)
+ 
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size)	__range_ok(addr, size)
+ #define user_addr_max			get_fs
+ 
+diff --git a/arch/ia64/include/asm/uaccess.h b/arch/ia64/include/asm/uaccess.h
+index bfe1319..da0014b 100644
+--- a/arch/ia64/include/asm/uaccess.h
++++ b/arch/ia64/include/asm/uaccess.h
+@@ -70,6 +70,7 @@
+ 	 && ((segment).seg == KERNEL_DS.seg						\
+ 	     || likely(REGION_OFFSET((unsigned long) (addr)) < RGN_MAP_LIMIT)));	\
+ })
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size)	__access_ok((addr), (size), get_fs())
+ 
+ /*
+diff --git a/arch/mips/include/asm/uaccess.h b/arch/mips/include/asm/uaccess.h
+index 89fa5c0b..9409cea 100644
+--- a/arch/mips/include/asm/uaccess.h
++++ b/arch/mips/include/asm/uaccess.h
+@@ -148,6 +148,7 @@ static inline bool eva_kernel_access(void)
+ 	__ok == 0;							\
+ })
+ 
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size)					\
+ 	likely(__access_ok((addr), (size), __access_mask))
+ 
+diff --git a/arch/powerpc/include/asm/uaccess.h b/arch/powerpc/include/asm/uaccess.h
+index c266227..f3dc6bb 100644
+--- a/arch/powerpc/include/asm/uaccess.h
++++ b/arch/powerpc/include/asm/uaccess.h
+@@ -58,6 +58,7 @@
+ 
+ #endif
+ 
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size)		\
+ 	(__chk_user_ptr(addr),			\
+ 	 __access_ok((__force unsigned long)(addr), (size), get_fs()))
+diff --git a/arch/s390/include/asm/uaccess.h b/arch/s390/include/asm/uaccess.h
+index a7ef702..8c25ce4 100644
+--- a/arch/s390/include/asm/uaccess.h
++++ b/arch/s390/include/asm/uaccess.h
+@@ -59,6 +59,7 @@ static inline int __range_ok(unsigned long addr, unsigned long size)
+ 	__range_ok((unsigned long)(addr), (size));	\
+ })
+ 
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size) __access_ok(addr, size)
+ 
+ /*
+diff --git a/arch/sparc/include/asm/uaccess_32.h b/arch/sparc/include/asm/uaccess_32.h
+index ea55f86..dbf15cf 100644
+--- a/arch/sparc/include/asm/uaccess_32.h
++++ b/arch/sparc/include/asm/uaccess_32.h
+@@ -47,6 +47,7 @@
+ #define __user_ok(addr, size) ({ (void)(size); (addr) < STACK_TOP; })
+ #define __kernel_ok (segment_eq(get_fs(), KERNEL_DS))
+ #define __access_ok(addr, size) (__user_ok((addr) & get_fs().seg, (size)))
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size) \
+ 	({ (void)(type); __access_ok((unsigned long)(addr), size); })
+ 
+diff --git a/arch/sparc/include/asm/uaccess_64.h b/arch/sparc/include/asm/uaccess_64.h
+index 5373136..c528f7e 100644
+--- a/arch/sparc/include/asm/uaccess_64.h
++++ b/arch/sparc/include/asm/uaccess_64.h
+@@ -77,6 +78,11 @@ static inline int __access_ok(const void __user * addr, unsigned long size)
+ 	return 1;
+ }
+ 
++static inline int access_ok_noprefault(int type, const void __user * addr, unsigned long size)
++{
++	return 1;
++}
++
+ static inline int access_ok(int type, const void __user * addr, unsigned long size)
+ {
+ 	return 1;
+diff --git a/arch/x86/include/asm/uaccess.h b/arch/x86/include/asm/uaccess.h
+index faf3687..7624c7a 100644
+--- a/arch/x86/include/asm/uaccess.h
++++ b/arch/x86/include/asm/uaccess.h
+@@ -88,8 +95,10 @@ static inline bool __chk_range_not_ok(unsigned long addr, unsigned long size, un
+  * checks that the pointer is in the user space range - after calling
+  * this function, memory access functions may still return -EFAULT.
+  */
++#define access_ok_noprefault(type, addr, size) \
++	likely(!__range_not_ok((addr), (size), user_addr_max()))
+ #define access_ok(type, addr, size) \
+-	likely(!__range_not_ok(addr, size, user_addr_max()))
++	__access_ok(type, (unsigned long)(addr), (size_t)(size))
+ 
+ /*
+  * These are the main single-value transfer routines.  They automatically
+diff --git a/arch/x86/mm/gup.c b/arch/x86/mm/gup.c
+index 1680768..7b7d958 100644
+--- a/arch/x86/mm/gup.c
++++ b/arch/x86/mm/gup.c
+@@ -317,7 +317,7 @@ int __get_user_pages_fast(unsigned long start, int nr_pages, int write,
+ 	addr = start;
+ 	len = (unsigned long) nr_pages << PAGE_SHIFT;
+ 	end = start + len;
+-	if (unlikely(!access_ok(write ? VERIFY_WRITE : VERIFY_READ,
++	if (unlikely(!access_ok_noprefault(write ? VERIFY_WRITE : VERIFY_READ,
+ 					(void __user *)start, len)))
+ 		return 0;
+ 
+@@ -393,6 +393,10 @@ int get_user_pages_fast(unsigned long start, int nr_pages, int write,
+ 		goto slow_irqon;
+ #endif
+ 
++	if (unlikely(!access_ok_noprefault(write ? VERIFY_WRITE : VERIFY_READ,
++					(void __user *)start, len)))
++		return 0;
++
+ 	/*
+ 	 * XXX: batch / limit 'nr', to avoid large irq off latency
+ 	 * needs some instrumenting to determine the common sizes used by
+diff --git a/drivers/infiniband/core/uverbs_cmd.c b/drivers/infiniband/core/uverbs_cmd.c
+index cb3f515a..cd08b78 100644
+--- a/drivers/infiniband/core/uverbs_cmd.c
++++ b/drivers/infiniband/core/uverbs_cmd.c
+@@ -974,6 +974,9 @@ ssize_t ib_uverbs_reg_mr(struct ib_uverbs_file *file,
+ 	if (copy_from_user(&cmd, buf, sizeof cmd))
+ 		return -EFAULT;
+ 
++	if (!access_ok_noprefault(VERIFY_READ, cmd.start, cmd.length))
++		return -EFAULT;
++
+ 	INIT_UDATA(&udata, buf + sizeof cmd,
+ 		   (unsigned long) cmd.response + sizeof resp,
+ 		   in_len - sizeof cmd, out_len - sizeof resp);
+diff --git a/include/linux/thread_info.h b/include/linux/thread_info.h
+index 2873baf..19e866c 100644
+--- a/include/linux/thread_info.h
++++ b/include/linux/thread_info.h
+@@ -134,6 +160,8 @@ static inline void check_object_size(const void *ptr, unsigned long n,
+ { }
+ #endif /* CONFIG_HARDENED_USERCOPY */
+ 
++bool __access_ok(int type, unsigned long addr, size_t size);
++
+ #endif	/* __KERNEL__ */
+ 
+ #endif /* _LINUX_THREAD_INFO_H */
+diff --git a/mm/memory.c b/mm/memory.c
+index cbb1e5e..e8b4bc4 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -4121,3 +4411,37 @@ void ptlock_free(struct page *page)
+ 	kmem_cache_free(page_ptl_cachep, page->ptl);
+ }
+ #endif
++
++bool __access_ok(int type, unsigned long addr, size_t size)
++{
++	unsigned long end;
++
++	if (!access_ok_noprefault(type, addr, size))
++		return false;
++
++	if (unlikely(size >= 256 * PAGE_SIZE))
++		return true;
++
++	end = addr + size - 1;
++	if (((end ^ addr) & PAGE_MASK) == 0)
++		return true;
++
++	for (; addr <= end; addr += PAGE_SIZE) {
++		char c;
++
++		if (size > PAGE_SIZE)
++			_cond_resched();
++
++		if (__get_user(c, (char __user *)addr))
++			return true;
++
++		if (type != VERIFY_WRITE)
++			continue;
++
++		if (__put_user(c, (char __user *)addr))
++			return true;
++	}
++
++	return true;
++}
++EXPORT_SYMBOL(__access_ok);
+diff --git a/virt/kvm/kvm_main.c b/virt/kvm/kvm_main.c
+index f4c6d4f..07aea88 100644
+--- a/virt/kvm/kvm_main.c
++++ b/virt/kvm/kvm_main.c
+@@ -914,7 +923,7 @@ int __kvm_set_memory_region(struct kvm *kvm,
+ 	/* We can read the guest memory with __xxx_user() later on. */
+ 	if ((id < KVM_USER_MEM_SLOTS) &&
+ 	    ((mem->userspace_addr & (PAGE_SIZE - 1)) ||
+-	     !access_ok(VERIFY_WRITE,
++	     !access_ok_noprefault(VERIFY_WRITE,
+ 			(void __user *)(unsigned long)mem->userspace_addr,
+ 			mem->memory_size)))
+ 		goto out;

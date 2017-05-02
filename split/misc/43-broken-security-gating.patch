@@ -23,3 +23,16 @@ index 5a4f2eb..93c4de6 100644
  	---help---
  	   Randomizes the physical and virtual address at which the
  	   kernel image is loaded, as a security feature that
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index bada636..1775eac 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -1934,7 +1940,7 @@ config RELOCATABLE
+ 
+ config RANDOMIZE_BASE
+ 	bool "Randomize the address of the kernel image (KASLR)"
+-	depends on RELOCATABLE
++	depends on RELOCATABLE && BROKEN_SECURITY
+ 	default n
+ 	---help---
+ 	  In support of Kernel Address Space Layout Randomization (KASLR),
