@@ -81,3 +81,15 @@ index 9976fce..4c336fd0 100644
  
  obj-$(CONFIG_IA32_EMULATION)	+= entry_64_compat.o syscall_32.o
 -
+diff --git a/arch/x86/entry/entry_64.S b/arch/x86/entry/entry_64.S
+index ef766a3..d3f0e59 100644
+--- a/arch/x86/entry/entry_64.S
++++ b/arch/x86/entry/entry_64.S
+@@ -503,6 +932,7 @@ END(irq_entries_start)
+ 	incl	PER_CPU_VAR(irq_count)
+ 	cmovzq	PER_CPU_VAR(irq_stack_ptr), %rsp
+ 	pushq	%rdi
++
+ 	/* We entered an interrupt context - irqs are off: */
+ 	TRACE_IRQS_OFF
+ 

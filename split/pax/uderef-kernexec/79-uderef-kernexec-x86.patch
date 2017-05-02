@@ -1,0 +1,105 @@
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index bada636..1775eac 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -94,7 +93,7 @@ config X86
+ 	select HAVE_ARCH_WITHIN_STACK_FRAMES
+ 	select HAVE_EBPF_JIT			if X86_64
+ 	select HAVE_ARCH_VMAP_STACK		if X86_64
+-	select HAVE_CC_STACKPROTECTOR
++	select HAVE_CC_STACKPROTECTOR		if X86_64 || !PAX_MEMORY_UDEREF
+ 	select HAVE_CMPXCHG_DOUBLE
+ 	select HAVE_CMPXCHG_LOCAL
+ 	select HAVE_CONTEXT_TRACKING		if X86_64
+@@ -296,7 +298,7 @@ config X86_64_SMP
+ 
+ config X86_32_LAZY_GS
+ 	def_bool y
+-	depends on X86_32 && !CC_STACKPROTECTOR
++	depends on X86_32 && !CC_STACKPROTECTOR && !PAX_MEMORY_UDEREF
+ 
+ config ARCH_SUPPORTS_UPROBES
+ 	def_bool y
+diff --git a/arch/x86/Kconfig.cpu b/arch/x86/Kconfig.cpu
+index 3ba5ff2..44bdacc 100644
+--- a/arch/x86/Kconfig.cpu
++++ b/arch/x86/Kconfig.cpu
+@@ -329,7 +329,7 @@ config X86_PPRO_FENCE
+ 
+ config X86_F00F_BUG
+ 	def_bool y
+-	depends on M586MMX || M586TSC || M586 || M486
++	depends on (M586MMX || M586TSC || M586 || M486) && !PAX_KERNEXEC
+ 
+ config X86_INVD_BUG
+ 	def_bool y
+diff --git a/arch/x86/boot/compressed/misc.c b/arch/x86/boot/compressed/misc.c
+index b3c5a5f0..596115e 100644
+--- a/arch/x86/boot/compressed/misc.c
++++ b/arch/x86/boot/compressed/misc.c
+@@ -176,7 +176,11 @@ static void handle_relocations(void *output, unsigned long output_len,
+ 	int *reloc;
+ 	unsigned long delta, map, ptr;
+ 	unsigned long min_addr = (unsigned long)output;
++#if defined(CONFIG_X86_32) && defined(CONFIG_PAX_KERNEXEC)
++	unsigned long max_addr = min_addr + (VO___bss_start - VO__text - __PAGE_OFFSET - ____LOAD_PHYSICAL_ADDR);
++#else
+ 	unsigned long max_addr = min_addr + (VO___bss_start - VO__text);
++#endif
+ 
+ 	/*
+ 	 * Calculate the delta between where vmlinux was linked to load
+@@ -337,7 +344,11 @@ asmlinkage __visible void *extract_kernel(void *rmode, memptr heap,
+ 				  unsigned char *output,
+ 				  unsigned long output_len)
+ {
++#if defined(CONFIG_X86_32) && defined(CONFIG_PAX_KERNEXEC)
++	const unsigned long kernel_total_size = VO__end - VO__text - __PAGE_OFFSET - ____LOAD_PHYSICAL_ADDR;
++#else
+ 	const unsigned long kernel_total_size = VO__end - VO__text;
++#endif
+ 	unsigned long virt_addr = (unsigned long)output;
+ 
+ 	/* Retain x86 boot parameters pointer passed from startup_32/64. */
+diff --git a/arch/x86/boot/compressed/pagetable.c b/arch/x86/boot/compressed/pagetable.c
+index 56589d0..f2085be 100644
+--- a/arch/x86/boot/compressed/pagetable.c
++++ b/arch/x86/boot/compressed/pagetable.c
+@@ -14,6 +14,7 @@
+  */
+ #define __pa(x)  ((unsigned long)(x))
+ #define __va(x)  ((void *)((unsigned long)(x)))
++#undef CONFIG_PAX_KERNEXEC
+ 
+ #include "misc.h"
+ 
+diff --git a/arch/x86/boot/header.S b/arch/x86/boot/header.S
+index 3dd5be3..16720a2 100644
+--- a/arch/x86/boot/header.S
++++ b/arch/x86/boot/header.S
+@@ -543,7 +543,12 @@ pref_address:		.quad LOAD_PHYSICAL_ADDR	# preferred load addr
+ 
+ #define ZO_INIT_SIZE	(ZO__end - ZO_startup_32 + ZO_z_min_extract_offset)
+ 
++#if defined(CONFIG_X86_32) && defined(CONFIG_PAX_KERNEXEC)
++#define VO_INIT_SIZE	(VO__end - VO__text - __PAGE_OFFSET - ____LOAD_PHYSICAL_ADDR)
++#else
+ #define VO_INIT_SIZE	(VO__end - VO__text)
++#endif
++
+ #if ZO_INIT_SIZE > VO_INIT_SIZE
+ # define INIT_SIZE ZO_INIT_SIZE
+ #else
+diff --git a/arch/x86/entry/common.c b/arch/x86/entry/common.c
+index bdd9cc5..486d4bf 100644
+--- a/arch/x86/entry/common.c
++++ b/arch/x86/entry/common.c
+@@ -42,3 +42,8 @@ __visible inline void enter_from_user_mode(void)
+ static inline void enter_from_user_mode(void) {}
+ #endif
++
++void pax_enter_kernel(void) __rap_hash;
++void pax_enter_kernel_user(void) __rap_hash;
++void pax_exit_kernel(void) __rap_hash;
++void pax_exit_kernel_user(void) __rap_hash;
+ 

@@ -3727,6 +3727,13 @@ index edba860..d684e0f 100644
  #endif
  
  ENTRY(spurious_interrupt_bug)
+@@ -763,5 +982,5 @@ ENTRY(spurious_interrupt_bug)
+ 	pushl	$0
+ 	pushl	$do_spurious_interrupt_bug
+ 	jmp	error_code
+-END(spurious_interrupt_bug)
++ENDPROC(spurious_interrupt_bug)
+ 
 @@ -788,9 +1032,9 @@ ENTRY(xen_hypervisor_callback)
  
  ENTRY(xen_do_upcall)
@@ -3837,3 +3844,282 @@ index edba860..d684e0f 100644
  #endif
  
  ENTRY(page_fault)
+@@ -1175,21 +1443,21 @@ ENTRY(int3)
+ 	TRACE_IRQS_OFF
+ 	xorl	%edx, %edx			# zero error code
+ 	movl	%esp, %eax			# pt_regs pointer
+-	call	do_int3
++	pax_direct_call do_int3
+ 	jmp	ret_from_exception
+-END(int3)
++ENDPROC(int3)
+ 
+ ENTRY(general_protection)
+ 	pushl	$do_general_protection
+ 	jmp	error_code
+-END(general_protection)
++ENDPROC(general_protection)
+ 
+ #ifdef CONFIG_KVM_GUEST
+ ENTRY(async_page_fault)
+ 	ASM_CLAC
+ 	pushl	$do_async_page_fault
+ 	jmp	error_code
+-END(async_page_fault)
++ENDPROC(async_page_fault)
+ #endif
+ 
+ ENTRY(rewind_stack_do_exit)
+@@ -1199,6 +1467,6 @@ ENTRY(rewind_stack_do_exit)
+ 	movl	PER_CPU_VAR(cpu_current_top_of_stack), %esi
+ 	leal	-TOP_OF_KERNEL_STACK_PADDING-PTREGS_SIZE(%esi), %esp
+ 
+-	call	do_exit
++	pax_direct_call do_group_exit
+ 1:	jmp 1b
+-END(rewind_stack_do_exit)
++ENDPROC(rewind_stack_do_exit)
+diff --git a/arch/x86/entry/entry_64.S b/arch/x86/entry/entry_64.S
+index ef766a3..d3f0e59 100644
+--- a/arch/x86/entry/entry_64.S
++++ b/arch/x86/entry/entry_64.S
+@@ -77,15 +466,15 @@ ENDPROC(native_usergs_sysret64)
+ #if defined(CONFIG_DYNAMIC_FTRACE) && defined(CONFIG_TRACE_IRQFLAGS)
+ 
+ .macro TRACE_IRQS_OFF_DEBUG
+-	call	debug_stack_set_zero
++	pax_direct_call debug_stack_set_zero
+ 	TRACE_IRQS_OFF
+-	call	debug_stack_reset
++	pax_direct_call debug_stack_reset
+ .endm
+ 
+ .macro TRACE_IRQS_ON_DEBUG
+-	call	debug_stack_set_zero
++	pax_direct_call debug_stack_set_zero
+ 	TRACE_IRQS_ON
+-	call	debug_stack_reset
++	pax_direct_call debug_stack_reset
+ .endm
+ 
+ .macro TRACE_IRQS_IRETQ_DEBUG
+@@ -206,7 +605,7 @@ entry_SYSCALL_64_fastpath:
+ 	 * It might end up jumping to the slow path.  If it jumps, RAX
+ 	 * and all argument registers are clobbered.
+ 	 */
+-	call	*sys_call_table(, %rax, 8)
++	pax_indirect_call "sys_call_table(, %rax, 8)", sys_ni_syscall
+ .Lentry_SYSCALL_64_after_fastpath_call:
+ 
+ 	movq	%rax, RAX(%rsp)
+@@ -241,13 +643,13 @@ entry_SYSCALL_64_fastpath:
+ 	ENABLE_INTERRUPTS(CLBR_NONE)
+ 	SAVE_EXTRA_REGS
+ 	movq	%rsp, %rdi
+-	call	syscall_return_slowpath	/* returns with IRQs disabled */
++	pax_direct_call syscall_return_slowpath	/* returns with IRQs disabled */
+ 	jmp	return_from_SYSCALL_64
+ 
+ entry_SYSCALL64_slow_path:
+ 	/* IRQs are off. */
+ 	SAVE_EXTRA_REGS
+ 	movq	%rsp, %rdi
+-	call	do_syscall_64		/* returns with IRQs disabled */
++	pax_direct_call do_syscall_64		/* returns with IRQs disabled */
+ 
+ return_from_SYSCALL_64:
+@@ -329,7 +733,7 @@ syscall_return_via_sysret:
+ opportunistic_sysret_failed:
+ 	SWAPGS
+ 	jmp	restore_c_regs_and_iret
+-END(entry_SYSCALL_64)
++ENDPROC(entry_SYSCALL_64)
+ 
+ ENTRY(stub_ptregs_64)
+ 	/*
+@@ -355,13 +759,17 @@ ENTRY(stub_ptregs_64)
+ 
+ 1:
+ 	jmp	*%rax				/* Called from C */
+-END(stub_ptregs_64)
++ENDPROC(stub_ptregs_64)
+ 
+ .macro ptregs_stub func
+-ENTRY(ptregs_\func)
++RAP_ENTRY(ptregs_\func)
++#ifdef CONFIG_PAX_RAP
++	leaq	rap_\func(%rip), %rax
++#else
+ 	leaq	\func(%rip), %rax
++#endif
+ 	jmp	stub_ptregs_64
+-END(ptregs_\func)
++ENDPROC(ptregs_\func)
+ .endm
+ 
+ /* Instantiate ptregs_stub for each ptregs-using syscall */
+@@ -403,7 +813,7 @@ ENTRY(__switch_to_asm)
+ 	popq	%rbp
+ 
+ 	jmp	__switch_to
+-END(__switch_to_asm)
++ENDPROC(__switch_to_asm)
+ 
+ /*
+  * A newly forked process directly context switches into this address.
+@@ -438,7 +859,7 @@ ENTRY(ret_from_fork)
+ 	 */
+ 	movq	$0, RAX(%rsp)
+ 	jmp	2b
+-END(ret_from_fork)
++ENDPROC(ret_from_fork)
+ 
+ /*
+  * Build the entry stubs with some assembler magic.
+@@ -453,7 +874,7 @@ ENTRY(irq_entries_start)
+ 	jmp	common_interrupt
+ 	.align	8
+     .endr
+-END(irq_entries_start)
++ENDPROC(irq_entries_start)
+ 
+ /*
+  * Interrupt entry/exit.
+@@ -506,7 +935,7 @@ END(irq_entries_start)
+ 	/* We entered an interrupt context - irqs are off: */
+ 	TRACE_IRQS_OFF
+ 
+-	call	\func	/* rdi points to pt_regs */
++	pax_direct_call \func	/* rdi points to pt_regs */
+ 	.endm
+ 
+ 	/*
+@@ -654,7 +1101,7 @@ native_irq_return_ldt:
+ 	 */
+ 	jmp	native_irq_return_iret
+ #endif
+-END(common_interrupt)
++ENDPROC(common_interrupt)
+ 
+ /*
+  * APIC interrupts.
+@@ -666,7 +1113,7 @@ ENTRY(\sym)
+ .Lcommon_\sym:
+ 	interrupt \do_sym
+ 	jmp	ret_from_intr
+-END(\sym)
++ENDPROC(\sym)
+ .endm
+ 
+ #ifdef CONFIG_TRACING
+@@ -765,9 +1216,9 @@ ENTRY(\sym)
+ 	testb	$3, CS(%rsp)			/* If coming from userspace, switch stacks */
+ 	jnz	1f
+ 	.endif
+-	call	paranoid_entry
++	pax_direct_call paranoid_entry
+ 	.else
+-	call	error_entry
++	pax_direct_call error_entry
+ 	.endif
+ 	/* returned flag: ebx=0: need swapgs on exit, ebx=1: don't need it */
+ 
+@@ -812,11 +1276,11 @@ ENTRY(\sym)
+ 	 * run in real process context if user_mode(regs).
+ 	 */
+ 1:
+-	call	error_entry
++	pax_direct_call error_entry
+ 
+ 
+ 	movq	%rsp, %rdi			/* pt_regs pointer */
+-	call	sync_regs
++	pax_direct_call sync_regs
+ 	movq	%rax, %rsp			/* switch stack */
+ 
+ 	movq	%rsp, %rdi			/* pt_regs pointer */
+@@ -874,8 +1350,8 @@ ENTRY(native_load_gs_index)
+ 2:	ALTERNATIVE "", "mfence", X86_BUG_SWAPGS_FENCE
+ 	SWAPGS
+ 	popfq
+-	ret
+-END(native_load_gs_index)
++	pax_ret native_load_gs_index
++ENDPROC(native_load_gs_index)
+ EXPORT_SYMBOL(native_load_gs_index)
+ 
+ 	_ASM_EXTABLE(.Lgs_change, bad_gs)
+@@ -901,14 +1377,14 @@ ENTRY(do_softirq_own_stack)
+ 	incl	PER_CPU_VAR(irq_count)
+ 	cmove	PER_CPU_VAR(irq_stack_ptr), %rsp
+ 	push	%rbp				/* frame pointer backlink */
+-	call	__do_softirq
++	pax_direct_call __do_softirq
+ 	leaveq
+ 	decl	PER_CPU_VAR(irq_count)
+-	ret
+-END(do_softirq_own_stack)
++	pax_ret do_softirq_own_stack
++ENDPROC(do_softirq_own_stack)
+ 
+ #ifdef CONFIG_XEN
+-idtentry xen_hypervisor_callback xen_do_hypervisor_callback has_error_code=0
++idtentry xen_hypervisor_callback xen_do_hypervisor_callback has_error_code=0 rap_hash=tailcall
+ 
+ /*
+  * A note on the "critical region" in our callback handler.
+@@ -929,19 +1405,18 @@ ENTRY(xen_do_hypervisor_callback)		/* do_hypervisor_callback(struct *pt_regs) */
+  * Since we don't modify %rdi, evtchn_do_upall(struct *pt_regs) will
+  * see the correct pointer to the pt_regs
+  */
+-	movq	%rdi, %rsp			/* we don't return, adjust the stack frame */
+ 11:	incl	PER_CPU_VAR(irq_count)
+ 	movq	%rsp, %rbp
+ 	cmovzq	PER_CPU_VAR(irq_stack_ptr), %rsp
+ 	pushq	%rbp				/* frame pointer backlink */
+-	call	xen_evtchn_do_upcall
++	pax_direct_call xen_evtchn_do_upcall
+ 	popq	%rsp
+ 	decl	PER_CPU_VAR(irq_count)
+ #ifndef CONFIG_PREEMPT
+-	call	xen_maybe_preempt_hcall
++	pax_direct_call xen_maybe_preempt_hcall
+ #endif
+ 	jmp	error_exit
+-END(xen_do_hypervisor_callback)
++ENDPROC(xen_do_hypervisor_callback)
+ 
+ /*
+  * Hypervisor uses this for application faults while it executes.
+@@ -986,7 +1461,7 @@ ENTRY(xen_failsafe_callback)
+ 	SAVE_C_REGS
+ 	SAVE_EXTRA_REGS
+ 	jmp	error_exit
+-END(xen_failsafe_callback)
++ENDPROC(xen_failsafe_callback)
+ 
+ apicinterrupt3 HYPERVISOR_CALLBACK_VECTOR \
+ 	xen_hvm_callback_vector xen_evtchn_do_upcall
+@@ -1016,7 +1491,7 @@ idtentry async_page_fault	do_async_page_fault	has_error_code=1
+ #endif
+ 
+ #ifdef CONFIG_X86_MCE
+-idtentry machine_check					has_error_code=0	paranoid=1 do_sym=*machine_check_vector(%rip)
++idtentry machine_check					has_error_code=0	paranoid=1 do_sym="machine_check_vector(%rip)" rap_hash=do_machine_check
+ #endif
+ 
+ /*
+@@ -1093,11 +1605,11 @@ ENTRY(error_entry)
+ 	 */
+ 	TRACE_IRQS_OFF
+ 	CALL_enter_from_user_mode
+-	ret
++	pax_ret error_entry
+ 
+ .Lerror_entry_done:
+ 	TRACE_IRQS_OFF
+-	ret
++	pax_ret error_entry
+ 
+ 	/*
+ 	 * There are two places in the kernel that can potentially fault with
