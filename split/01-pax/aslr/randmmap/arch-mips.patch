@@ -1,0 +1,46 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/mm/mmap.c linux-4.9.24-pax/arch/mips/mm/mmap.c
+--- linux-4.9.24/arch/mips/mm/mmap.c	2016-12-13 12:08:22.830349740 +0100
++++ linux-4.9.24-pax/arch/mips/mm/mmap.c	2017-01-01 22:57:10.569520647 +0100
+@@ -84,6 +84,11 @@ static unsigned long arch_get_unmapped_a
+ 		do_color_align = 1;
+ 
+ 	/* requesting a specific address */
++
++#ifdef CONFIG_PAX_RANDMMAP
++	if (!(current->mm->pax_flags & MF_PAX_RANDMMAP))
++#endif
++
+ 	if (addr) {
+ 		if (do_color_align)
+ 			addr = COLOUR_ALIGN(addr, pgoff);
+@@ -160,14 +164,30 @@ void arch_pick_mmap_layout(struct mm_str
+ {
+ 	unsigned long random_factor = 0UL;
+ 
++#ifdef CONFIG_PAX_RANDMMAP
++	if (!(mm->pax_flags & MF_PAX_RANDMMAP))
++#endif
++
+ 	if (current->flags & PF_RANDOMIZE)
+ 		random_factor = arch_mmap_rnd();
+ 
+ 	if (mmap_is_legacy()) {
+ 		mm->mmap_base = TASK_UNMAPPED_BASE + random_factor;
++
++#ifdef CONFIG_PAX_RANDMMAP
++		if (mm->pax_flags & MF_PAX_RANDMMAP)
++			mm->mmap_base += mm->delta_mmap;
++#endif
++
+ 		mm->get_unmapped_area = arch_get_unmapped_area;
+ 	} else {
+ 		mm->mmap_base = mmap_base(random_factor);
++
++#ifdef CONFIG_PAX_RANDMMAP
++		if (mm->pax_flags & MF_PAX_RANDMMAP)
++			mm->mmap_base -= mm->delta_mmap + mm->delta_stack;
++#endif
++
+ 		mm->get_unmapped_area = arch_get_unmapped_area_topdown;
+ 	}
+ }

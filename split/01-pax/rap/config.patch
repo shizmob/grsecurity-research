@@ -1,0 +1,11 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/Kconfig linux-4.9.24-pax/arch/Kconfig
+--- linux-4.9.24/arch/Kconfig	2016-12-13 12:08:13.078283493 +0100
++++ linux-4.9.24-pax/arch/Kconfig	2017-01-22 03:21:49.181199069 +0100
+@@ -164,6 +164,7 @@ config ARCH_USE_BUILTIN_BSWAP
+ config KRETPROBES
+ 	def_bool y
+ 	depends on KPROBES && HAVE_KRETPROBES
++	depends on !PAX_RAP
+ 
+ config USER_RETURN_NOTIFIER
+ 	bool

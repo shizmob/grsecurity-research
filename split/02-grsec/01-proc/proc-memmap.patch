@@ -1,0 +1,241 @@
+diff --git a/drivers/tty/vt/keyboard.c b/drivers/tty/vt/keyboard.c
+index ece10e6b731b..1621e805b9bd 100644
+--- a/drivers/tty/vt/keyboard.c
++++ b/drivers/tty/vt/keyboard.c
+@@ -630,6 +630,16 @@ static void k_spec(struct vc_data *vc, unsigned char value, char up_flag)
+ 	     kbd->kbdmode == VC_OFF) &&
+ 	     value != KVAL(K_SAK))
+ 		return;		/* SAK is allowed even in raw mode */
++
++#if defined(CONFIG_GRKERNSEC_PROC) || defined(CONFIG_GRKERNSEC_PROC_MEMMAP)
++	{
++		void *func = fn_handler[value];
++		if (func == fn_show_state || func == fn_show_ptregs ||
++		    func == fn_show_mem)
++			return;
++	}
++#endif
++
+ 	fn_handler[value](vc);
+ }
+ 
+diff --git a/fs/exec.c b/fs/exec.c
+index 12169f1226f8..4368e21d4d9d 100644
+--- a/fs/exec.c
++++ b/fs/exec.c
+@@ -240,6 +246,17 @@ static struct page *get_arg_page(struct linux_binprm *bprm, unsigned long pos,
+ 		if (size <= ARG_MAX)
+ 			return page;
+ 
++#ifdef CONFIG_GRKERNSEC_PROC_MEMMAP
++		// only allow 512KB for argv+env on suid/sgid binaries
++		// to prevent easy ASLR exhaustion
++		if (((!uid_eq(bprm->cred->euid, current_euid())) ||
++		     (!gid_eq(bprm->cred->egid, current_egid()))) &&
++		    (size > (512 * 1024))) {
++			put_page(page);
++			return NULL;
++		}
++#endif
++
+ 		/*
+ 		 * Limit to 1/4-th the stack size for the argv+env strings.
+ 		 * This ensures that:
+@@ -1713,6 +1741,31 @@ static int exec_binprm(struct linux_binprm *bprm)
+ 	return ret;
+ }
+ 
++#ifdef CONFIG_GRKERNSEC_PROC_MEMMAP
++static DEFINE_PER_CPU(u64, exec_counter);
++static int __init init_exec_counters(void)
++{
++	unsigned int cpu;
++
++	for_each_possible_cpu(cpu) {
++		per_cpu(exec_counter, cpu) = (u64)cpu;
++	}
++
++	return 0;
++}
++early_initcall(init_exec_counters);
++static inline void increment_exec_counter(void)
++{
++	BUILD_BUG_ON(NR_CPUS > (1 << 16));
++	current->exec_id = this_cpu_add_return(exec_counter, 1 << 16);
++}
++#else
++static inline void increment_exec_counter(void) {}
++#endif
++
++extern void gr_handle_exec_args(struct linux_binprm *bprm,
++				struct user_arg_ptr argv);
++
+ /*
+  * sys_execve() executes a new program.
+  */
+diff --git a/fs/proc/array.c b/fs/proc/array.c
+index 1dbfdcaa168c..aa676306b7f1 100644
+--- a/fs/proc/array.c
++++ b/fs/proc/array.c
+@@ -60,6 +60,7 @@
+ #include <linux/tty.h>
+ #include <linux/string.h>
+ #include <linux/mman.h>
++#include <linux/grsecurity.h>
+ #include <linux/proc_fs.h>
+ #include <linux/ioport.h>
+ #include <linux/uaccess.h>
+@@ -399,6 +400,12 @@ int proc_pid_status(struct seq_file *m, struct pid_namespace *ns,
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_GRKERNSEC_PROC_MEMMAP
++#define PAX_RAND_FLAGS(_mm) (_mm != NULL && _mm != current->mm && \
++			     (_mm->pax_flags & MF_PAX_RANDMMAP || \
++			      _mm->pax_flags & MF_PAX_SEGMEXEC))
++#endif
++
+ static int do_task_stat(struct seq_file *m, struct pid_namespace *ns,
+ 			struct pid *pid, struct task_struct *task, int whole)
+ {
+@@ -426,6 +437,13 @@ static int do_task_stat(struct seq_file *m, struct pid_namespace *ns,
+ 	char tcomm[sizeof(task->comm)];
+ 	unsigned long flags;
+ 
++#ifdef CONFIG_GRKERNSEC_PROC_MEMMAP
++	if (current->exec_id != m->exec_id) {
++		gr_log_badprocpid("stat");
++		return 0;
++	}
++#endif
++
+ 	state = *get_task_state(task);
+ 	vsize = eip = esp = 0;
+ 	permitted = ptrace_may_access(task, PTRACE_MODE_READ_FSCREDS | PTRACE_MODE_NOAUDIT);
+@@ -528,9 +559,15 @@ static int do_task_stat(struct seq_file *m, struct pid_namespace *ns,
+ 	seq_put_decimal_ull(m, " ", vsize);
+ 	seq_put_decimal_ull(m, " ", mm ? get_mm_rss(mm) : 0);
+ 	seq_put_decimal_ull(m, " ", rsslim);
++#ifdef CONFIG_GRKERNSEC_PROC_MEMMAP
++	seq_put_decimal_ull(m, " ", PAX_RAND_FLAGS(mm) ? 1 : (mm ? (permitted ? mm->start_code : 1) : 0));
++	seq_put_decimal_ull(m, " ", PAX_RAND_FLAGS(mm) ? 1 : (mm ? (permitted ? mm->end_code : 1) : 0));
++	seq_put_decimal_ull(m, " ", PAX_RAND_FLAGS(mm) ? 0 : ((permitted && mm) ? mm->start_stack : 0));
++#else
+ 	seq_put_decimal_ull(m, " ", mm ? (permitted ? mm->start_code : 1) : 0);
+ 	seq_put_decimal_ull(m, " ", mm ? (permitted ? mm->end_code : 1) : 0);
+ 	seq_put_decimal_ull(m, " ", (permitted && mm) ? mm->start_stack : 0);
++#endif
+ 	seq_put_decimal_ull(m, " ", esp);
+ 	seq_put_decimal_ull(m, " ", eip);
+ 	/* The signal information here is obsolete.
+@@ -564,7 +601,11 @@ static int do_task_stat(struct seq_file *m, struct pid_namespace *ns,
+ 	seq_put_decimal_ull(m, " ", cputime_to_clock_t(gtime));
+ 	seq_put_decimal_ll(m, " ", cputime_to_clock_t(cgtime));
+ 
+-	if (mm && permitted) {
++	if (mm && permitted
++#ifdef CONFIG_GRKERNSEC_PROC_MEMMAP
++		&& !PAX_RAND_FLAGS(mm)
++#endif
++	   ) {
+ 		seq_put_decimal_ull(m, " ", mm->start_data);
+ 		seq_put_decimal_ull(m, " ", mm->end_data);
+ 		seq_put_decimal_ull(m, " ", mm->start_brk);
+@@ -602,8 +643,15 @@ int proc_pid_statm(struct seq_file *m, struct pid_namespace *ns,
+ 			struct pid *pid, struct task_struct *task)
+ {
+ 	unsigned long size = 0, resident = 0, shared = 0, text = 0, data = 0;
+-	struct mm_struct *mm = get_task_mm(task);
++	struct mm_struct *mm;
+ 
++#ifdef CONFIG_GRKERNSEC_PROC_MEMMAP
++	if (current->exec_id != m->exec_id) {
++		gr_log_badprocpid("statm");
++		return 0;
++	}
++#endif
++	mm = get_task_mm(task);
+ 	if (mm) {
+ 		size = task_statm(mm, &shared, &text, &data, &resident);
+ 		mmput(mm);
+diff --git a/fs/proc/base.c b/fs/proc/base.c
+index 4fb5a1bc4831..a4332371b62e 100644
+--- a/fs/proc/base.c
++++ b/fs/proc/base.c
+@@ -400,7 +400,12 @@ static const struct file_operations proc_pid_cmdline_ops = {
+ 	.llseek	= generic_file_llseek,
+ };
+ 
+-#ifdef CONFIG_KALLSYMS
++#ifdef CONFIG_GRKERNSEC_PROC_MEMMAP
++#define PAX_RAND_FLAGS(_mm) (_mm != NULL && _mm != current->mm && \
++			     (_mm->pax_flags & MF_PAX_RANDMMAP || \
++			      _mm->pax_flags & MF_PAX_SEGMEXEC))
++#endif
++
+ /*
+  * Provides a wchan file via kallsyms in a proper one-value-per-file format.
+  * Returns the resolved symbol.  If that fails, simply return the address.
+@@ -635,7 +654,7 @@ static int proc_pid_limits(struct seq_file *m, struct pid_namespace *ns,
+ 	return 0;
+ }
+ 
+-#ifdef CONFIG_HAVE_ARCH_TRACEHOOK
++#if defined(CONFIG_HAVE_ARCH_TRACEHOOK) && !defined(CONFIG_GRKERNSEC_PROC_MEMMAP)
+ static int proc_pid_syscall(struct seq_file *m, struct pid_namespace *ns,
+ 			    struct pid *pid, struct task_struct *task)
+ {
+@@ -945,6 +1031,13 @@ static ssize_t environ_read(struct file *file, char __user *buf,
+ 	if (!mm || !mm->env_end)
+ 		return 0;
+ 
++#ifdef CONFIG_GRKERNSEC_PROC_MEMMAP
++	if (file->f_version != current->exec_id) {
++		gr_log_badprocpid("environ");
++		return 0;
++	}
++#endif
++
+ 	page = (char *)__get_free_page(GFP_TEMPORARY);
+ 	if (!page)
+ 		return -ENOMEM;
+@@ -1018,6 +1111,21 @@ static ssize_t auxv_read(struct file *file, char __user *buf,
+ 
+ 	if (!mm)
+ 		return 0;
++
++#ifdef CONFIG_GRKERNSEC_PROC_MEMMAP
++	if (PAX_RAND_FLAGS(mm)) {
++		struct task_struct *task = get_proc_task(file_inode(file));
++		bool is_by_ptracer = false;
++
++		if (task) {
++			is_by_ptracer = current_is_ptracer(task, NULL);
++			put_task_struct(task);
++		}
++		if (!is_by_ptracer)
++			return 0;
++	}
++#endif
++
+ 	do {
+ 		nwords += 2;
+ 	} while (mm->saved_auxv[nwords - 2] != 0); /* AT_NULL */
+@@ -2871,7 +3019,7 @@ static const struct pid_entry tgid_base_stuff[] = {
+ 	REG("autogroup",  S_IRUGO|S_IWUSR, proc_pid_sched_autogroup_operations),
+ #endif
+ 	REG("comm",      S_IRUGO|S_IWUSR, proc_pid_set_comm_operations),
+-#ifdef CONFIG_HAVE_ARCH_TRACEHOOK
++#if defined(CONFIG_HAVE_ARCH_TRACEHOOK) && !defined(CONFIG_GRKERNSEC_PROC_MEMMAP)
+ 	ONE("syscall",    S_IRUSR, proc_pid_syscall),
+ #endif
+ 	REG("cmdline",    S_IRUGO, proc_pid_cmdline_ops),
+@@ -3258,7 +3420,7 @@ static const struct pid_entry tid_base_stuff[] = {
+ 	NOD("comm",      S_IFREG|S_IRUGO|S_IWUSR,
+ 			 &proc_tid_comm_inode_operations,
+ 			 &proc_pid_set_comm_operations, {}),
+-#ifdef CONFIG_HAVE_ARCH_TRACEHOOK
++#if defined(CONFIG_HAVE_ARCH_TRACEHOOK) && !defined(CONFIG_GRKERNSEC_PROC_MEMMAP)
+ 	ONE("syscall",   S_IRUSR, proc_pid_syscall),
+ #endif
+ 	REG("cmdline",   S_IRUGO, proc_pid_cmdline_ops),

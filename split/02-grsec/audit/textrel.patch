@@ -1,0 +1,12 @@
+diff --git a/fs/binfmt_elf.c b/fs/binfmt_elf.c
+index d8bda950fd40..e3bff2f9fa62 100644
+--- a/fs/binfmt_elf.c
++++ b/fs/binfmt_elf.c
+@@ -2856,6 +2864,7 @@ static void elf_handle_mprotect(struct vm_area_struct *vma, unsigned long newfla
+ 				if (dyn.d_tag == DT_NULL)
+ 					break;
+ 				if (dyn.d_tag == DT_TEXTREL || (dyn.d_tag == DT_FLAGS && (dyn.d_un.d_val & DF_TEXTREL))) {
++					gr_log_textrel(vma, is_textrel_rw);
+ 					if (is_textrel_rw)
+ 						vma->vm_flags |= VM_MAYWRITE;
+ 					else

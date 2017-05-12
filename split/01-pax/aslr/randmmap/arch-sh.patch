@@ -1,0 +1,47 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sh/mm/mmap.c linux-4.9.24-pax/arch/sh/mm/mmap.c
+--- linux-4.9.24/arch/sh/mm/mmap.c	2015-03-18 15:21:50.212349252 +0100
++++ linux-4.9.24-pax/arch/sh/mm/mmap.c	2017-01-01 22:57:10.585520686 +0100
+@@ -55,6 +55,10 @@ unsigned long arch_get_unmapped_area(str
+ 	if (filp || (flags & MAP_SHARED))
+ 		do_colour_align = 1;
+ 
++#ifdef CONFIG_PAX_RANDMMAP
++	if (!(mm->pax_flags & MF_PAX_RANDMMAP))
++#endif
++
+ 	if (addr) {
+ 		if (do_colour_align)
+ 			addr = COLOUR_ALIGN(addr, pgoff);
+@@ -68,7 +68,7 @@ unsigned long arch_get_unmapped_area(str
+ 
+ 	info.flags = 0;
+ 	info.length = len;
+-	info.low_limit = TASK_UNMAPPED_BASE;
++	info.low_limit = mm->mmap_base;
+ 	info.high_limit = TASK_SIZE;
+ 	info.align_mask = do_colour_align ? (PAGE_MASK & shm_align_mask) : 0;
+ 	info.align_offset = pgoff << PAGE_SHIFT;
+@@ -109,6 +109,10 @@
+ 	if (filp || (flags & MAP_SHARED))
+ 		do_colour_align = 1;
+ 
++#ifdef CONFIG_PAX_RANDMMAP
++	if (!(mm->pax_flags & MF_PAX_RANDMMAP))
++#endif
++
+ 	/* requesting a specific address */
+ 	if (addr) {
+ 		if (do_colour_align)
+@@ -139,6 +143,12 @@
+ 		VM_BUG_ON(addr != -ENOMEM);
+ 		info.flags = 0;
+ 		info.low_limit = TASK_UNMAPPED_BASE;
++
++#ifdef CONFIG_PAX_RANDMMAP
++		if (mm->pax_flags & MF_PAX_RANDMMAP)
++			info.low_limit += mm->delta_mmap;
++#endif
++
+ 		info.high_limit = TASK_SIZE;
+ 		addr = vm_unmapped_area(&info);
+ 	}

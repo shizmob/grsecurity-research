@@ -1,0 +1,39 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-omap2/omap_device.c linux-4.9.24-pax/arch/arm/mach-omap2/omap_device.c
+--- linux-4.9.24/arch/arm/mach-omap2/omap_device.c	2016-10-03 11:27:17.373337327 +0200
++++ linux-4.9.24-pax/arch/arm/mach-omap2/omap_device.c	2017-01-01 22:57:10.541520578 +0100
+@@ -530,7 +530,7 @@ void omap_device_delete(struct omap_devi
+ struct platform_device __init *omap_device_build(const char *pdev_name,
+ 						 int pdev_id,
+ 						 struct omap_hwmod *oh,
+-						 void *pdata, int pdata_len)
++						 const void *pdata, int pdata_len)
+ {
+ 	struct omap_hwmod *ohs[] = { oh };
+ 
+@@ -558,7 +558,7 @@ struct platform_device __init *omap_devi
+ struct platform_device __init *omap_device_build_ss(const char *pdev_name,
+ 						    int pdev_id,
+ 						    struct omap_hwmod **ohs,
+-						    int oh_cnt, void *pdata,
++						    int oh_cnt, const void *pdata,
+ 						    int pdata_len)
+ {
+ 	int ret = -ENOMEM;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-omap2/omap_device.h linux-4.9.24-pax/arch/arm/mach-omap2/omap_device.h
+--- linux-4.9.24/arch/arm/mach-omap2/omap_device.h	2015-03-18 15:21:50.180349252 +0100
++++ linux-4.9.24-pax/arch/arm/mach-omap2/omap_device.h	2017-01-01 22:57:10.541520578 +0100
+@@ -72,12 +72,12 @@ int omap_device_idle(struct platform_dev
+ /* Core code interface */
+ 
+ struct platform_device *omap_device_build(const char *pdev_name, int pdev_id,
+-					  struct omap_hwmod *oh, void *pdata,
++					  struct omap_hwmod *oh, const void *pdata,
+ 					  int pdata_len);
+ 
+ struct platform_device *omap_device_build_ss(const char *pdev_name, int pdev_id,
+ 					 struct omap_hwmod **oh, int oh_cnt,
+-					 void *pdata, int pdata_len);
++					 const void *pdata, int pdata_len);
+ 
+ struct omap_device *omap_device_alloc(struct platform_device *pdev,
+ 				      struct omap_hwmod **ohs, int oh_cnt);

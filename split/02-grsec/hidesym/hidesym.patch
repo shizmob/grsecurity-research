@@ -1,0 +1,164 @@
+diff --git a/arch/x86/kernel/dumpstack.c b/arch/x86/kernel/dumpstack.c
+index 85f854b98a9d..78ddb7ecdaf5 100644
+--- a/arch/x86/kernel/dumpstack.c
++++ b/arch/x86/kernel/dumpstack.c
+@@ -2,6 +2,9 @@
+  *  Copyright (C) 1991, 1992  Linus Torvalds
+  *  Copyright (C) 2000, 2001, 2002 Andi Kleen, SuSE Labs
+  */
++#ifdef CONFIG_GRKERNSEC_HIDESYM
++#define __INCLUDED_BY_HIDESYM 1
++#endif
+ #include <linux/kallsyms.h>
+ #include <linux/kprobes.h>
+ #include <linux/uaccess.h>
+diff --git a/drivers/md/raid5.c b/drivers/md/raid5.c
+index 007e19ac4682..2c080d8b87c9 100644
+--- a/drivers/md/raid5.c
++++ b/drivers/md/raid5.c
+@@ -2040,6 +2040,10 @@ static int grow_one_stripe(struct r5conf *conf, gfp_t gfp)
+ 	return 1;
+ }
+ 
++#ifdef CONFIG_GRKERNSEC_HIDESYM
++static atomic_unchecked_t raid5_cache_id = ATOMIC_INIT(0);
++#endif
++
+ static int grow_stripes(struct r5conf *conf, int num)
+ {
+ 	struct kmem_cache *sc;
+@@ -2050,7 +2054,11 @@ static int grow_stripes(struct r5conf *conf, int num)
+ 			"raid%d-%s", conf->level, mdname(conf->mddev));
+ 	else
+ 		sprintf(conf->cache_name[0],
++#ifdef CONFIG_GRKERNSEC_HIDESYM
++			"raid%d-%08lx", conf->level, atomic_inc_return_unchecked(&raid5_cache_id));
++#else
+ 			"raid%d-%p", conf->level, conf->mddev);
++#endif
+ 	sprintf(conf->cache_name[1], "%s-alt", conf->cache_name[0]);
+ 
+ 	conf->active_name = 0;
+diff --git a/drivers/message/fusion/mptbase.c b/drivers/message/fusion/mptbase.c
+index 1cdab6d00b43..f2ca71f56d5d 100644
+--- a/drivers/message/fusion/mptbase.c
++++ b/drivers/message/fusion/mptbase.c
+@@ -6749,8 +6749,13 @@ static int mpt_iocinfo_proc_show(struct seq_file *m, void *v)
+ 	seq_printf(m, "  MaxChainDepth = 0x%02x frames\n", ioc->facts.MaxChainDepth);
+ 	seq_printf(m, "  MinBlockSize = 0x%02x bytes\n", 4*ioc->facts.BlockSize);
+ 
++#ifdef CONFIG_GRKERNSEC_HIDESYM
++	seq_printf(m, "  RequestFrames @ 0x%p (Dma @ 0x%p)\n", NULL, NULL);
++#else
+ 	seq_printf(m, "  RequestFrames @ 0x%p (Dma @ 0x%p)\n",
+ 					(void *)ioc->req_frames, (void *)(ulong)ioc->req_frames_dma);
++#endif
++
+ 	/*
+ 	 *  Rounding UP to nearest 4-kB boundary here...
+ 	 */
+@@ -6763,7 +6768,11 @@ static int mpt_iocinfo_proc_show(struct seq_file *m, void *v)
+ 					ioc->facts.GlobalCredits);
+ 
+ 	seq_printf(m, "  Frames   @ 0x%p (Dma @ 0x%p)\n",
++#ifdef CONFIG_GRKERNSEC_HIDESYM
++					NULL, NULL);
++#else
+ 					(void *)ioc->alloc, (void *)(ulong)ioc->alloc_dma);
++#endif
+ 	sz = (ioc->reply_sz * ioc->reply_depth) + 128;
+ 	seq_printf(m, "    {CurRepSz=%d} x {CurRepDepth=%d} = %d bytes ^= 0x%x\n",
+ 					ioc->reply_sz, ioc->reply_depth, ioc->reply_sz*ioc->reply_depth, sz);
+diff --git a/drivers/xen/xenfs/xenstored.c b/drivers/xen/xenfs/xenstored.c
+index fef20dbc6a5c..d28b1aba63bb 100644
+--- a/drivers/xen/xenfs/xenstored.c
++++ b/drivers/xen/xenfs/xenstored.c
+@@ -24,7 +24,12 @@ static int xsd_release(struct inode *inode, struct file *file)
+ static int xsd_kva_open(struct inode *inode, struct file *file)
+ {
+ 	file->private_data = (void *)kasprintf(GFP_KERNEL, "0x%p",
++#ifdef CONFIG_GRKERNSEC_HIDESYM
++					       NULL);
++#else
+ 					       xen_store_interface);
++#endif
++
+ 	if (!file->private_data)
+ 		return -ENOMEM;
+ 	return 0;
+diff --git a/fs/autofs4/waitq.c b/fs/autofs4/waitq.c
+index ed2872f2a620..6e7193a1506a 100644
+--- a/fs/autofs4/waitq.c
++++ b/fs/autofs4/waitq.c
+@@ -344,6 +344,10 @@ static int validate_request(struct autofs_wait_queue **wait,
+ 	return 1;
+ }
+ 
++#ifdef CONFIG_GRKERNSEC_HIDESYM
++static atomic_unchecked_t autofs_dummy_name_id = ATOMIC_INIT(0);
++#endif
++
+ int autofs4_wait(struct autofs_sb_info *sbi,
+ 		 struct dentry *dentry, enum autofs_notify notify)
+ {
+@@ -389,7 +393,12 @@ int autofs4_wait(struct autofs_sb_info *sbi,
+ 
+ 	/* If this is a direct mount request create a dummy name */
+ 	if (IS_ROOT(dentry) && autofs_type_trigger(sbi->type))
++#ifdef CONFIG_GRKERNSEC_HIDESYM
++		/* this name does get written to userland via autofs4_write() */
++		qstr.len = sprintf(name, "%08x", atomic_inc_return_unchecked(&autofs_dummy_name_id));
++#else
+ 		qstr.len = sprintf(name, "%p", dentry);
++#endif
+ 	else {
+ 		qstr.len = autofs4_getpath(sbi, dentry, &name);
+ 		if (!qstr.len) {
+diff --git a/fs/proc/base.c b/fs/proc/base.c
+index 4fb5a1bc4831..a4332371b62e 100644
+--- a/fs/proc/base.c
++++ b/fs/proc/base.c
+@@ -400,7 +413,8 @@ static const struct file_operations proc_pid_cmdline_ops = {
+ 			     (_mm->pax_flags & MF_PAX_RANDMMAP || \
+ 			      _mm->pax_flags & MF_PAX_SEGMEXEC))
+ #endif
+ 
++#if defined(CONFIG_KALLSYMS) && !defined(CONFIG_GRKERNSEC_HIDESYM)
+ /*
+  * Provides a wchan file via kallsyms in a proper one-value-per-file format.
+  * Returns the resolved symbol.  If that fails, simply return the address.
+@@ -440,7 +459,7 @@ static void unlock_trace(struct task_struct *task)
+ 	mutex_unlock(&task->signal->cred_guard_mutex);
+ }
+ 
+-#ifdef CONFIG_STACKTRACE
++#if defined(CONFIG_STACKTRACE) && !defined(CONFIG_GRKERNSEC_HIDESYM)
+ 
+ #define MAX_STACK_TRACE_DEPTH	64
+ 
+@@ -2896,10 +3044,10 @@ static const struct pid_entry tgid_base_stuff[] = {
+ #ifdef CONFIG_SECURITY
+ 	DIR("attr",       S_IRUGO|S_IXUGO, proc_attr_dir_inode_operations, proc_attr_dir_operations),
+ #endif
+-#ifdef CONFIG_KALLSYMS
++#if defined(CONFIG_KALLSYMS) && !defined(CONFIG_GRKERNSEC_HIDESYM)
+ 	ONE("wchan",      S_IRUGO, proc_pid_wchan),
+ #endif
+-#ifdef CONFIG_STACKTRACE
++#if defined(CONFIG_STACKTRACE) && !defined(CONFIG_GRKERNSEC_HIDESYM)
+ 	ONE("stack",      S_IRUSR, proc_pid_stack),
+ #endif
+ #ifdef CONFIG_SCHED_INFO
+@@ -3285,10 +3447,10 @@ static const struct pid_entry tid_base_stuff[] = {
+ #ifdef CONFIG_SECURITY
+ 	DIR("attr",      S_IRUGO|S_IXUGO, proc_attr_dir_inode_operations, proc_attr_dir_operations),
+ #endif
+-#ifdef CONFIG_KALLSYMS
++#if defined(CONFIG_KALLSYMS) && !defined(CONFIG_GRKERNSEC_HIDESYM)
+ 	ONE("wchan",     S_IRUGO, proc_pid_wchan),
+ #endif
+-#ifdef CONFIG_STACKTRACE
++#if defined(CONFIG_STACKTRACE) && !defined(CONFIG_GRKERNSEC_HIDESYM)
+ 	ONE("stack",      S_IRUSR, proc_pid_stack),
+ #endif
+ #ifdef CONFIG_SCHED_INFO

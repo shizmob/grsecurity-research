@@ -1,0 +1,104 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/pgtable.h linux-4.9.24-pax/arch/arm/include/asm/pgtable.h
+--- linux-4.9.24/arch/arm/include/asm/pgtable.h	2016-10-03 11:27:16.123078678 +0200
++++ linux-4.9.24-pax/arch/arm/include/asm/pgtable.h	2017-01-01 22:57:10.525520539 +0100
+@@ -33,6 +33,9 @@
+ #include <asm/pgtable-2level.h>
+ #endif
+ 
++#define ktla_ktva(addr)		(addr)
++#define ktva_ktla(addr)		(addr)
++
+ /*
+  * Just any arbitrary offset to the start of the vmalloc VM area: the
+  * current 8MB value just means that there will be a 8MB "hole" after the
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm64/include/asm/pgtable.h linux-4.9.24-pax/arch/arm64/include/asm/pgtable.h
+--- linux-4.9.24/arch/arm64/include/asm/pgtable.h	2016-12-13 12:08:20.374333040 +0100
++++ linux-4.9.24-pax/arch/arm64/include/asm/pgtable.h	2017-01-01 22:57:10.553520608 +0100
+@@ -728,6 +728,9 @@ static inline void update_mmu_cache(stru
+ #define kc_vaddr_to_offset(v)	((v) & ~VA_START)
+ #define kc_offset_to_vaddr(o)	((o) | VA_START)
+ 
++#define ktla_ktva(addr)		(addr)
++#define ktva_ktla(addr)		(addr)
++
+ #endif /* !__ASSEMBLY__ */
+ 
+ #endif /* __ASM_PGTABLE_H */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/include/asm/pgtable.h linux-4.9.24-pax/arch/mips/include/asm/pgtable.h
+--- linux-4.9.24/arch/mips/include/asm/pgtable.h	2016-12-13 12:08:22.322346284 +0100
++++ linux-4.9.24-pax/arch/mips/include/asm/pgtable.h	2017-01-01 22:57:10.561520627 +0100
+@@ -20,6 +20,9 @@
+ #include <asm/io.h>
+ #include <asm/pgtable-bits.h>
+ 
++#define ktla_ktva(addr)		(addr)
++#define ktva_ktla(addr)		(addr)
++
+ struct mm_struct;
+ struct vm_area_struct;
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/include/asm/page.h linux-4.9.24-pax/arch/powerpc/include/asm/page.h
+--- linux-4.9.24/arch/powerpc/include/asm/page.h	2016-10-03 11:27:24.422388394 +0200
++++ linux-4.9.24-pax/arch/powerpc/include/asm/page.h	2017-01-01 22:57:10.573520657 +0100
+@@ -259,6 +260,9 @@ extern long long virt_phys_offset;
+ #define is_kernel_addr(x)	((x) >= PAGE_OFFSET)
+ #endif
+ 
++#define ktla_ktva(addr)		(addr)
++#define ktva_ktla(addr)		(addr)
++
+ #ifndef CONFIG_PPC_BOOK3S_64
+ /*
+  * Use the top bit of the higher-level page table entries to indicate whether
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/include/asm/pgtable.h linux-4.9.24-pax/arch/sparc/include/asm/pgtable.h
+--- linux-4.9.24/arch/sparc/include/asm/pgtable.h	2015-03-18 15:21:50.216349253 +0100
++++ linux-4.9.24-pax/arch/sparc/include/asm/pgtable.h	2017-01-01 22:57:10.585520686 +0100
+@@ -5,4 +5,8 @@
+ #else
+ #include <asm/pgtable_32.h>
+ #endif
++
++#define ktla_ktva(addr)		(addr)
++#define ktva_ktla(addr)		(addr)
++
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/um/include/asm/page.h linux-4.9.24-pax/arch/um/include/asm/page.h
+--- linux-4.9.24/arch/um/include/asm/page.h	2016-03-14 11:51:46.738897058 +0100
++++ linux-4.9.24-pax/arch/um/include/asm/page.h	2017-01-01 22:57:10.593520706 +0100
+@@ -14,6 +14,9 @@
+ #define PAGE_SIZE	(_AC(1, UL) << PAGE_SHIFT)
+ #define PAGE_MASK	(~(PAGE_SIZE-1))
+ 
++#define ktla_ktva(addr)			(addr)
++#define ktva_ktla(addr)			(addr)
++
+ #ifndef __ASSEMBLY__
+ 
+ struct page;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/include/asm/pgtable_64_types.h linux-4.9.24-pax/arch/x86/include/asm/pgtable_64_types.h
+--- linux-4.9.24/arch/x86/include/asm/pgtable_64_types.h	2016-12-13 12:08:26.918377562 +0100
++++ linux-4.9.24-pax/arch/x86/include/asm/pgtable_64_types.h	2017-01-01 22:57:10.637520814 +0100
+@@ -74,6 +74,9 @@ typedef struct { pteval_t pte; } pte_t;
+ #define EFI_VA_START	 ( -4 * (_AC(1, UL) << 30))
+ #define EFI_VA_END	 (-68 * (_AC(1, UL) << 30))
+ 
++#define ktla_ktva(addr)		(addr)
++#define ktva_ktla(addr)		(addr)
++
+ #define EARLY_DYNAMIC_PAGE_TABLES	64
+ 
+ #endif /* _ASM_X86_PGTABLE_64_DEFS_H */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/lib/insn.c linux-4.9.24-pax/arch/x86/lib/insn.c
+--- linux-4.9.24/arch/x86/lib/insn.c	2016-10-03 11:27:31.717176462 +0200
++++ linux-4.9.24-pax/arch/x86/lib/insn.c	2017-01-01 22:57:10.681520922 +0100
+@@ -20,8 +20,10 @@
+ 
+ #ifdef __KERNEL__
+ #include <linux/string.h>
++#include <asm/pgtable_types.h>
+ #else
+ #include <string.h>
++#define ktla_ktva(addr) addr
+ #endif
+ #include <asm/inat.h>
+ #include <asm/insn.h>

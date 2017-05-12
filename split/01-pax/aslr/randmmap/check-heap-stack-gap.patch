@@ -1,0 +1,107 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mm/mmap.c linux-4.9.24-pax/arch/arm/mm/mmap.c
+--- linux-4.9.24/arch/arm/mm/mmap.c	2016-03-14 11:51:28.293223984 +0100
++++ linux-4.9.24-pax/arch/arm/mm/mmap.c	2017-01-01 22:57:10.549520598 +0100
+@@ -88,8 +92,7 @@ arch_get_unmapped_area(struct file *filp
+ 			addr = PAGE_ALIGN(addr);
+ 
+ 		vma = find_vma(mm, addr);
+-		if (TASK_SIZE - len >= addr &&
+-		    (!vma || addr + len <= vma->vm_start))
++		if (TASK_SIZE - len >= addr && check_heap_stack_gap(vma, addr, len))
+ 			return addr;
+ 	}
+ 
+@@ -139,8 +146,7 @@ arch_get_unmapped_area_topdown(struct fi
+ 		else
+ 			addr = PAGE_ALIGN(addr);
+ 		vma = find_vma(mm, addr);
+-		if (TASK_SIZE - len >= addr &&
+-				(!vma || addr + len <= vma->vm_start))
++		if (TASK_SIZE - len >= addr && check_heap_stack_gap(vma, addr, len))
+ 			return addr;
+ 	}
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/frv/mm/elf-fdpic.c linux-4.9.24-pax/arch/frv/mm/elf-fdpic.c
+--- linux-4.9.24/arch/frv/mm/elf-fdpic.c	2015-03-18 15:21:50.188349252 +0100
++++ linux-4.9.24-pax/arch/frv/mm/elf-fdpic.c	2017-01-01 22:57:10.553520608 +0100
+@@ -73,8 +73,7 @@ unsigned long arch_get_unmapped_area(str
+ 	if (addr) {
+ 		addr = PAGE_ALIGN(addr);
+ 		vma = find_vma(current->mm, addr);
+-		if (TASK_SIZE - len >= addr &&
+-		    (!vma || addr + len <= vma->vm_start))
++		if (TASK_SIZE - len >= addr && check_heap_stack_gap(vma, addr, len))
+ 			goto success;
+ 	}
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/mm/mmap.c linux-4.9.24-pax/arch/mips/mm/mmap.c
+--- linux-4.9.24/arch/mips/mm/mmap.c	2016-12-13 12:08:22.830349740 +0100
++++ linux-4.9.24-pax/arch/mips/mm/mmap.c	2017-01-01 22:57:10.569520647 +0100
+@@ -91,8 +96,7 @@ static unsigned long arch_get_unmapped_a
+ 			addr = PAGE_ALIGN(addr);
+ 
+ 		vma = find_vma(mm, addr);
+-		if (TASK_SIZE - len >= addr &&
+-		    (!vma || addr + len <= vma->vm_start))
++		if (TASK_SIZE - len >= addr && check_heap_stack_gap(vma, addr, len))
+ 			return addr;
+ 	}
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/mm/slice.c linux-4.9.24-pax/arch/powerpc/mm/slice.c
+--- linux-4.9.24/arch/powerpc/mm/slice.c	2016-07-25 02:13:17.854898669 +0200
++++ linux-4.9.24-pax/arch/powerpc/mm/slice.c	2017-01-01 22:57:10.581520676 +0100
+@@ -105,7 +105,7 @@ static int slice_area_is_free(struct mm_
+ 	if ((mm->task_size - len) < addr)
+ 		return 0;
+ 	vma = find_vma(mm, addr);
+-	return (!vma || (addr + len) <= vma->vm_start);
++	return check_heap_stack_gap(vma, addr, len);
+ }
+ 
+ static int slice_low_has_vma(struct mm_struct *mm, unsigned long slice)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sh/mm/mmap.c linux-4.9.24-pax/arch/sh/mm/mmap.c
+--- linux-4.9.24/arch/sh/mm/mmap.c	2015-03-18 15:21:50.212349252 +0100
++++ linux-4.9.24-pax/arch/sh/mm/mmap.c	2017-01-01 22:57:10.585520686 +0100
+@@ -66,8 +66,7 @@ unsigned long arch_get_unmapped_area(struct file *filp, unsigned long addr,
+ 			addr = PAGE_ALIGN(addr);
+ 
+ 		vma = find_vma(mm, addr);
+-		if (TASK_SIZE - len >= addr &&
+-		    (!vma || addr + len <= vma->vm_start))
++		if (TASK_SIZE - len >= addr && check_heap_stack_gap(vma, addr, len))
+ 			return addr;
+ 	}
+ 
+@@ -112,8 +119,7 @@ arch_get_unmapped_area_topdown(struct fi
+ 			addr = PAGE_ALIGN(addr);
+ 
+ 		vma = find_vma(mm, addr);
+-		if (TASK_SIZE - len >= addr &&
+-		    (!vma || addr + len <= vma->vm_start))
++		if (TASK_SIZE - len >= addr && check_heap_stack_gap(vma, addr, len))
+ 			return addr;
+ 	}
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/kernel/sys_sparc_64.c linux-4.9.24-pax/arch/sparc/kernel/sys_sparc_64.c
+--- linux-4.9.24/arch/sparc/kernel/sys_sparc_64.c	2016-05-22 01:55:28.987565226 +0200
++++ linux-4.9.24-pax/arch/sparc/kernel/sys_sparc_64.c	2017-01-01 22:57:10.589520696 +0100
+@@ -117,8 +117,7 @@ unsigned long arch_get_unmapped_area(str
+ 			addr = PAGE_ALIGN(addr);
+ 
+ 		vma = find_vma(mm, addr);
+-		if (task_size - len >= addr &&
+-		    (!vma || addr + len <= vma->vm_start))
++		if (task_size - len >= addr && check_heap_stack_gap(vma, addr, len))
+ 			return addr;
+ 	}
+ 
+@@ -180,8 +193,7 @@ arch_get_unmapped_area_topdown(struct fi
+ 			addr = PAGE_ALIGN(addr);
+ 
+ 		vma = find_vma(mm, addr);
+-		if (task_size - len >= addr &&
+-		    (!vma || addr + len <= vma->vm_start))
++		if (task_size - len >= addr && check_heap_stack_gap(vma, addr, len))
+ 			return addr;
+ 	}
+ 

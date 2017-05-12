@@ -1,0 +1,60 @@
+diff --git a/arch/x86/include/asm/processor.h b/arch/x86/include/asm/processor.h
+index 12544be44fc2..0ad5d22ee0d5 100644
+--- a/arch/x86/include/asm/processor.h
++++ b/arch/x86/include/asm/processor.h
+@@ -136,7 +136,7 @@ struct cpuinfo_x86 {
+ 	/* Index into per_cpu list: */
+ 	u16			cpu_index;
+ 	u32			microcode;
+-};
++} __randomize_layout;
+ 
+ #define X86_VENDOR_INTEL	0
+ #define X86_VENDOR_CYRIX	1
+diff --git a/fs/mount.h b/fs/mount.h
+index d8295f273a2f..3e269897b492 100644
+--- a/fs/mount.h
++++ b/fs/mount.h
+@@ -16,7 +16,7 @@ struct mnt_namespace {
+ 	u64 event;
+ 	unsigned int		mounts; /* # of mounts in the namespace */
+ 	unsigned int		pending_mounts;
+-};
++} __randomize_layout;
+ 
+ struct mnt_pcp {
+ 	int mnt_count;
+@@ -68,7 +68,7 @@ struct mount {
+ 	struct hlist_head mnt_pins;
+ 	struct fs_pin mnt_umount;
+ 	struct dentry *mnt_ex_mountpoint;
+-};
++} __randomize_layout;
+ 
+ #define MNT_NS_INTERNAL ERR_PTR(-EINVAL) /* distinct from any mnt_namespace */
+ 
+diff --git a/fs/proc/internal.h b/fs/proc/internal.h
+index 5378441ec1b7..666c3505cfd2 100644
+--- a/fs/proc/internal.h
++++ b/fs/proc/internal.h
+@@ -47,9 +47,10 @@ struct proc_dir_entry {
+ 	struct completion *pde_unload_completion;
+ 	struct list_head pde_openers;	/* who did ->open, but not ->release */
+ 	spinlock_t pde_unload_lock; /* proc_fops checks and pde_users bumps */
++	u8 restricted; /* a directory in /proc/net that should be restricted via GRKERNSEC_PROC */
+ 	u8 namelen;
+ 	char name[];
+-};
++} __randomize_layout;
+ 
+ union proc_op {
+ 	int (*proc_get_link)(struct dentry *, struct path *);
+@@ -67,7 +68,7 @@ struct proc_inode {
+ 	struct ctl_table *sysctl_entry;
+ 	const struct proc_ns_operations *ns_ops;
+ 	struct inode vfs_inode;
+-};
++} __randomize_layout;
+ 
+ /*
+  * General functions

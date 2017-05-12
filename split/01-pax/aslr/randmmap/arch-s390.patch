@@ -1,0 +1,36 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/s390/mm/mmap.c linux-4.9.24-pax/arch/s390/mm/mmap.c
+--- linux-4.9.24/arch/s390/mm/mmap.c	2016-07-25 02:13:18.463350041 +0200
++++ linux-4.9.24-pax/arch/s390/mm/mmap.c	2017-01-01 22:57:10.581520676 +0100
+@@ -230,6 +230,10 @@ void arch_pick_mmap_layout(struct mm_str
+ {
+ 	unsigned long random_factor = 0UL;
+ 
++#ifdef CONFIG_PAX_RANDMMAP
++	if (!(mm->pax_flags & MF_PAX_RANDMMAP))
++#endif
++
+ 	if (current->flags & PF_RANDOMIZE)
+ 		random_factor = arch_mmap_rnd();
+ 
+@@ -239,9 +243,21 @@ void arch_pick_mmap_layout(struct mm_str
+ 	 */
+ 	if (mmap_is_legacy()) {
+ 		mm->mmap_base = mmap_base_legacy(random_factor);
++
++#ifdef CONFIG_PAX_RANDMMAP
++		if (mm->pax_flags & MF_PAX_RANDMMAP)
++			mm->mmap_base += mm->delta_mmap;
++#endif
++
+ 		mm->get_unmapped_area = s390_get_unmapped_area;
+ 	} else {
+ 		mm->mmap_base = mmap_base(random_factor);
++
++#ifdef CONFIG_PAX_RANDMMAP
++		if (mm->pax_flags & MF_PAX_RANDMMAP)
++			mm->mmap_base -= mm->delta_mmap + mm->delta_stack;
++#endif
++
+ 		mm->get_unmapped_area = s390_get_unmapped_area_topdown;
+ 	}
+ }

@@ -1,0 +1,138 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/include/asm/exec.h linux-4.9.24-pax/arch/mips/include/asm/exec.h
+--- linux-4.9.24/arch/mips/include/asm/exec.h	2015-03-18 15:21:50.192349252 +0100
++++ linux-4.9.24-pax/arch/mips/include/asm/exec.h	2017-01-01 22:57:10.561520627 +0100
+@@ -12,6 +12,6 @@
+ #ifndef _ASM_EXEC_H
+ #define _ASM_EXEC_H
+ 
+-extern unsigned long arch_align_stack(unsigned long sp);
++#define arch_align_stack(x) ((x) & ~0xfUL)
+ 
+ #endif /* _ASM_EXEC_H */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/kernel/process.c linux-4.9.24-pax/arch/mips/kernel/process.c
+--- linux-4.9.24/arch/mips/kernel/process.c	2017-04-19 22:09:36.690318057 +0200
++++ linux-4.9.24-pax/arch/mips/kernel/process.c	2017-04-19 22:12:02.842426367 +0200
+@@ -603,18 +603,6 @@ out:
+ 	return pc;
+ }
+ 
+-/*
+- * Don't forget that the stack pointer must be aligned on a 8 bytes
+- * boundary for 32-bits ABI and 16 bytes for 64-bits ABI.
+- */
+-unsigned long arch_align_stack(unsigned long sp)
+-{
+-	if (!(current->personality & ADDR_NO_RANDOMIZE) && randomize_va_space)
+-		sp -= get_random_int() & ~PAGE_MASK;
+-
+-	return sp & ALMASK;
+-}
+-
+ static void arch_dump_stack(void *info)
+ {
+ 	struct pt_regs *regs;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/include/asm/exec.h linux-4.9.24-pax/arch/powerpc/include/asm/exec.h
+--- linux-4.9.24/arch/powerpc/include/asm/exec.h	2015-03-18 15:21:50.204349252 +0100
++++ linux-4.9.24-pax/arch/powerpc/include/asm/exec.h	2017-01-01 22:57:10.573520657 +0100
+@@ -4,6 +4,6 @@
+ #ifndef _ASM_POWERPC_EXEC_H
+ #define _ASM_POWERPC_EXEC_H
+ 
+-extern unsigned long arch_align_stack(unsigned long sp);
++#define arch_align_stack(x) ((x) & ~0xfUL)
+ 
+ #endif /* _ASM_POWERPC_EXEC_H */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/kernel/process.c linux-4.9.24-pax/arch/powerpc/kernel/process.c
+--- linux-4.9.24/arch/powerpc/kernel/process.c	2016-12-13 12:08:24.054358068 +0100
++++ linux-4.9.24-pax/arch/powerpc/kernel/process.c	2017-01-01 22:57:10.577520667 +0100
+@@ -1957,13 +1957,6 @@ void notrace __ppc64_runlatch_off(void)
+ }
+ #endif /* CONFIG_PPC64 */
+ 
+-unsigned long arch_align_stack(unsigned long sp)
+-{
+-	if (!(current->personality & ADDR_NO_RANDOMIZE) && randomize_va_space)
+-		sp -= get_random_int() & ~PAGE_MASK;
+-	return sp & ~0xf;
+-}
+-
+ static inline unsigned long brk_rnd(void)
+ {
+         unsigned long rnd = 0;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/s390/include/asm/exec.h linux-4.9.24-pax/arch/s390/include/asm/exec.h
+--- linux-4.9.24/arch/s390/include/asm/exec.h	2015-03-18 15:21:50.212349252 +0100
++++ linux-4.9.24-pax/arch/s390/include/asm/exec.h	2017-01-01 22:57:10.581520676 +0100
+@@ -7,6 +7,6 @@
+ #ifndef __ASM_EXEC_H
+ #define __ASM_EXEC_H
+ 
+-extern unsigned long arch_align_stack(unsigned long sp);
++#define arch_align_stack(x) ((x) & ~0xfUL)
+ 
+ #endif /* __ASM_EXEC_H */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/s390/kernel/process.c linux-4.9.24-pax/arch/s390/kernel/process.c
+--- linux-4.9.24/arch/s390/kernel/process.c	2016-07-25 02:13:18.379288371 +0200
++++ linux-4.9.24-pax/arch/s390/kernel/process.c	2017-01-01 22:57:10.581520676 +0100
+@@ -217,13 +217,6 @@ unsigned long get_wchan(struct task_stru
+ 	return 0;
+ }
+ 
+-unsigned long arch_align_stack(unsigned long sp)
+-{
+-	if (!(current->personality & ADDR_NO_RANDOMIZE) && randomize_va_space)
+-		sp -= get_random_int() & ~PAGE_MASK;
+-	return sp & ~0xf;
+-}
+-
+ static inline unsigned long brk_rnd(void)
+ {
+ 	return (get_random_int() & BRK_RND_MASK) << PAGE_SHIFT;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/score/include/asm/exec.h linux-4.9.24-pax/arch/score/include/asm/exec.h
+--- linux-4.9.24/arch/score/include/asm/exec.h	2015-03-18 15:21:50.212349252 +0100
++++ linux-4.9.24-pax/arch/score/include/asm/exec.h	2017-01-01 22:57:10.581520676 +0100
+@@ -1,6 +1,6 @@
+ #ifndef _ASM_SCORE_EXEC_H
+ #define _ASM_SCORE_EXEC_H
+ 
+-extern unsigned long arch_align_stack(unsigned long sp);
++#define arch_align_stack(x) (x)
+ 
+ #endif /* _ASM_SCORE_EXEC_H */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/score/kernel/process.c linux-4.9.24-pax/arch/score/kernel/process.c
+--- linux-4.9.24/arch/score/kernel/process.c	2016-07-25 02:13:18.519391155 +0200
++++ linux-4.9.24-pax/arch/score/kernel/process.c	2017-01-01 22:57:10.585520686 +0100
+@@ -114,8 +114,3 @@ unsigned long get_wchan(struct task_stru
+ 
+ 	return task_pt_regs(task)->cp0_epc;
+ }
+-
+-unsigned long arch_align_stack(unsigned long sp)
+-{
+-	return sp;
+-}
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/um/kernel/process.c linux-4.9.24-pax/arch/um/kernel/process.c
+--- linux-4.9.24/arch/um/kernel/process.c	2016-07-25 02:13:18.939699507 +0200
++++ linux-4.9.24-pax/arch/um/kernel/process.c	2017-01-01 22:57:10.593520706 +0100
+@@ -343,22 +343,6 @@ int singlestepping(void * t)
+ 	return 2;
+ }
+ 
+-/*
+- * Only x86 and x86_64 have an arch_align_stack().
+- * All other arches have "#define arch_align_stack(x) (x)"
+- * in their asm/exec.h
+- * As this is included in UML from asm-um/system-generic.h,
+- * we can use it to behave as the subarch does.
+- */
+-#ifndef arch_align_stack
+-unsigned long arch_align_stack(unsigned long sp)
+-{
+-	if (!(current->personality & ADDR_NO_RANDOMIZE) && randomize_va_space)
+-		sp -= get_random_int() % 8192;
+-	return sp & ~0xf;
+-}
+-#endif
+-
+ unsigned long get_wchan(struct task_struct *p)
+ {
+ 	unsigned long stack_page, sp, ip;

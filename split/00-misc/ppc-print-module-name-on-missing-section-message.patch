@@ -1,0 +1,12 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/kernel/module_32.c linux-4.9.24-pax/arch/powerpc/kernel/module_32.c
+--- linux-4.9.24/arch/powerpc/kernel/module_32.c	2016-05-22 01:55:28.651568812 +0200
++++ linux-4.9.24-pax/arch/powerpc/kernel/module_32.c	2017-01-01 22:57:10.577520667 +0100
+@@ -158,7 +158,7 @@ int module_frob_arch_sections(Elf32_Ehdr
+ 			me->arch.core_plt_section = i;
+ 	}
+ 	if (!me->arch.core_plt_section || !me->arch.init_plt_section) {
+-		pr_err("Module doesn't contain .plt or .init.plt sections.\n");
++		pr_err("Module $s doesn't contain .plt or .init.plt sections.\n", me->name);
+ 		return -ENOEXEC;
+ 	}
+ 

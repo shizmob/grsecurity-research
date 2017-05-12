@@ -1,0 +1,327 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/uaccess.h linux-4.9.24-pax/arch/arm/include/asm/uaccess.h
+--- linux-4.9.24/arch/arm/include/asm/uaccess.h	2016-12-13 12:08:18.014317002 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/uaccess.h	2017-01-01 22:57:10.529520549 +0100
+@@ -534,6 +566,10 @@ __clear_user(void __user *addr, unsigned
+ static inline unsigned long __must_check copy_from_user(void *to, const void __user *from, unsigned long n)
+ {
+ 	unsigned long res = n;
++
++	if ((long)n < 0)
++		return n;
++
+ 	if (likely(access_ok(VERIFY_READ, from, n)))
+ 		res = __copy_from_user(to, from, n);
+ 	if (unlikely(res))
+@@ -543,6 +579,9 @@ static inline unsigned long __must_check
+ 
+ static inline unsigned long __must_check copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	if (access_ok(VERIFY_WRITE, to, n))
+ 		n = __copy_to_user(to, from, n);
+ 	return n;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm64/include/asm/uaccess.h linux-4.9.24-pax/arch/arm64/include/asm/uaccess.h
+--- linux-4.9.24/arch/arm64/include/asm/uaccess.h	2016-12-13 12:08:20.434333448 +0100
++++ linux-4.9.24-pax/arch/arm64/include/asm/uaccess.h	2017-01-01 22:57:10.553520608 +0100
+@@ -279,6 +280,9 @@ static inline unsigned long __must_check
+ 
+ static inline unsigned long __must_check __copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	kasan_check_read(from, n);
+ 	check_object_size(from, n, true);
+ 	return __arch_copy_to_user(to, from, n);
+@@ -287,6 +291,10 @@ static inline unsigned long __must_check
+ static inline unsigned long __must_check copy_from_user(void *to, const void __user *from, unsigned long n)
+ {
+ 	unsigned long res = n;
++
++	if ((long)n < 0)
++		return n;
++
+ 	kasan_check_write(to, n);
+ 
+ 	if (access_ok(VERIFY_READ, from, n)) {
+@@ -300,6 +308,9 @@ static inline unsigned long __must_check
+ 
+ static inline unsigned long __must_check copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	kasan_check_read(from, n);
+ 
+ 	if (access_ok(VERIFY_WRITE, to, n)) {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/m32r/lib/usercopy.c linux-4.9.24-pax/arch/m32r/lib/usercopy.c
+--- linux-4.9.24/arch/m32r/lib/usercopy.c	2015-03-18 15:21:50.192349252 +0100
++++ linux-4.9.24-pax/arch/m32r/lib/usercopy.c	2017-01-01 22:57:10.561520627 +0100
+@@ -14,6 +14,9 @@
+ unsigned long
+ __generic_copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	prefetch(from);
+ 	if (access_ok(VERIFY_WRITE, to, n))
+ 		__copy_user(to,from,n);
+@@ -23,6 +26,9 @@ __generic_copy_to_user(void __user *to,
+ unsigned long
+ __generic_copy_from_user(void *to, const void __user *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	prefetchw(to);
+ 	if (access_ok(VERIFY_READ, from, n))
+ 		__copy_user_zeroing(to,from,n);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/parisc/include/asm/uaccess.h linux-4.9.24-pax/arch/parisc/include/asm/uaccess.h
+--- linux-4.9.24/arch/parisc/include/asm/uaccess.h	2017-04-25 17:08:12.913333732 +0200
++++ linux-4.9.24-pax/arch/parisc/include/asm/uaccess.h	2017-04-25 17:08:28.265042773 +0200
+@@ -267,7 +267,7 @@ copy_from_user(void *to, const void __us
+ 	else
+ 		__bad_copy_user();
+ 
+-	if (unlikely(ret))
++	if (unlikely(ret && (long)ret > 0))
+ 		memset(to + (n - ret), 0, ret);
+ 
+ 	return ret;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/include/asm/uaccess.h linux-4.9.24-pax/arch/powerpc/include/asm/uaccess.h
+--- linux-4.9.24/arch/powerpc/include/asm/uaccess.h	2016-10-03 11:27:24.642601243 +0200
++++ linux-4.9.24-pax/arch/powerpc/include/asm/uaccess.h	2017-01-01 22:57:10.577520667 +0100
+@@ -303,43 +304,6 @@ do {								\
+ extern unsigned long __copy_tofrom_user(void __user *to,
+ 		const void __user *from, unsigned long size);
+ 
+-#ifndef __powerpc64__
+-
+-static inline unsigned long copy_from_user(void *to,
+-		const void __user *from, unsigned long n)
+-{
+-	if (likely(access_ok(VERIFY_READ, from, n))) {
+-		check_object_size(to, n, false);
+-		return __copy_tofrom_user((__force void __user *)to, from, n);
+-	}
+-	memset(to, 0, n);
+-	return n;
+-}
+-
+-static inline unsigned long copy_to_user(void __user *to,
+-		const void *from, unsigned long n)
+-{
+-	if (access_ok(VERIFY_WRITE, to, n)) {
+-		check_object_size(from, n, true);
+-		return __copy_tofrom_user(to, (__force void __user *)from, n);
+-	}
+-	return n;
+-}
+-
+-#else /* __powerpc64__ */
+-
+-#define __copy_in_user(to, from, size) \
+-	__copy_tofrom_user((to), (from), (size))
+-
+-extern unsigned long copy_from_user(void *to, const void __user *from,
+-				    unsigned long n);
+-extern unsigned long copy_to_user(void __user *to, const void *from,
+-				  unsigned long n);
+-extern unsigned long copy_in_user(void __user *to, const void __user *from,
+-				  unsigned long n);
+-
+-#endif /* __powerpc64__ */
+-
+ static inline unsigned long __copy_from_user_inatomic(void *to,
+ 		const void __user *from, unsigned long n)
+ {
+@@ -412,6 +376,70 @@ static inline unsigned long __copy_to_us
+ 	return __copy_to_user_inatomic(to, from, size);
+ }
+ 
++#ifndef __powerpc64__
++
++static inline unsigned long __must_check copy_from_user(void *to,
++		const void __user *from, unsigned long n)
++{
++	if ((long)n < 0)
++		return n;
++
++	if (likely(access_ok(VERIFY_READ, from, n))) {
++		check_object_size(to, n, false);
++		return __copy_tofrom_user((void __force_user *)to, from, n);
++	}
++	memset(to, 0, n);
++	return n;
++}
++
++static inline unsigned long __must_check copy_to_user(void __user *to,
++		const void *from, unsigned long n)
++{
++	if ((long)n < 0)
++		return n;
++
++	if (likely(access_ok(VERIFY_WRITE, to, n))) {
++		check_object_size(from, n, true);
++		return __copy_tofrom_user(to, (void __force_user *)from, n);
++	}
++	return n;
++}
++
++#else /* __powerpc64__ */
++
++#define __copy_in_user(to, from, size) \
++	__copy_tofrom_user((to), (from), (size))
++
++static inline unsigned long __must_check copy_from_user(void *to, const void __user *from, unsigned long n)
++{
++	if ((long)n < 0 || n > INT_MAX)
++		return n;
++
++	if (likely(access_ok(VERIFY_READ, from, n))) {
++		check_object_size(to, n, false);
++		n = __copy_from_user(to, from, n);
++	} else
++		memset(to, 0, n);
++	return n;
++}
++
++static inline unsigned long __must_check copy_to_user(void __user *to, const void *from, unsigned long n)
++{
++	if ((long)n < 0 || n > INT_MAX)
++		return n;
++
++	if (likely(access_ok(VERIFY_WRITE, to, n))) {
++		check_object_size(from, n, true);
++		n = __copy_to_user(to, from, n);
++	}
++	return n;
++}
++
++extern unsigned long copy_in_user(void __user *to, const void __user *from,
++				  unsigned long n);
++
++#endif /* __powerpc64__ */
++
+ extern unsigned long __clear_user(void __user *addr, unsigned long size);
+ 
+ static inline unsigned long clear_user(void __user *addr, unsigned long size)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/s390/include/asm/uaccess.h linux-4.9.24-pax/arch/s390/include/asm/uaccess.h
+--- linux-4.9.24/arch/s390/include/asm/uaccess.h	2017-04-19 22:09:32.010314546 +0200
++++ linux-4.9.24-pax/arch/s390/include/asm/uaccess.h	2017-04-19 22:11:55.598421055 +0200
+@@ -337,6 +338,10 @@ static inline unsigned long __must_check
+ copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
+ 	might_fault();
++
++	if ((long)n < 0)
++		return n;
++
+ 	return __copy_to_user(to, from, n);
+ }
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/include/asm/uaccess_32.h linux-4.9.24-pax/arch/sparc/include/asm/uaccess_32.h
+--- linux-4.9.24/arch/sparc/include/asm/uaccess_32.h	2016-10-03 11:27:29.334546834 +0200
++++ linux-4.9.24-pax/arch/sparc/include/asm/uaccess_32.h	2017-01-01 22:57:10.589520696 +0100
+@@ -248,6 +249,9 @@ unsigned long __copy_user(void __user *t
+ 
+ static inline unsigned long copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	if (n && __access_ok((unsigned long) to, n)) {
+ 		check_object_size(from, n, true);
+ 		return __copy_user(to, (__force void __user *) from, n);
+@@ -257,12 +261,18 @@ static inline unsigned long copy_to_user
+ 
+ static inline unsigned long __copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	check_object_size(from, n, true);
+ 	return __copy_user(to, (__force void __user *) from, n);
+ }
+ 
+ static inline unsigned long copy_from_user(void *to, const void __user *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	if (n && __access_ok((unsigned long) from, n)) {
+ 		check_object_size(to, n, false);
+ 		return __copy_user((__force void __user *) to, from, n);
+@@ -274,6 +284,9 @@ static inline unsigned long copy_from_us
+ 
+ static inline unsigned long __copy_from_user(void *to, const void __user *from, unsigned long n)
+ {
++	if ((long)n < 0)
++		return n;
++
+ 	return __copy_user((__force void __user *) to, from, n);
+ }
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/include/asm/uaccess_64.h linux-4.9.24-pax/arch/sparc/include/asm/uaccess_64.h
+--- linux-4.9.24/arch/sparc/include/asm/uaccess_64.h	2016-12-13 12:08:25.798369937 +0100
++++ linux-4.9.24-pax/arch/sparc/include/asm/uaccess_64.h	2017-01-01 22:57:10.589520696 +0100
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/include/asm/uaccess_64.h linux-4.9.24-pax/arch/sparc/include/asm/uaccess_64.h
+--- linux-4.9.24/arch/sparc/include/asm/uaccess_64.h	2016-12-13 12:08:25.798369937 +0100
++++ linux-4.9.24-pax/arch/sparc/include/asm/uaccess_64.h	2017-01-01 22:57:10.589520696 +0100
+@@ -10,6 +10,7 @@
+ #include <linux/compiler.h>
+ #include <linux/string.h>
+ #include <linux/thread_info.h>
++#include <linux/kernel.h>
+ #include <asm/asi.h>
+ #include <asm/spitfire.h>
+ #include <asm-generic/uaccess-unaligned.h>
+@@ -77,6 +78,11 @@ static inline int __access_ok(const void
+ 	return 1;
+ }
+ 
++static inline int access_ok_noprefault(int type, const void __user * addr, unsigned long size)
++{
++	return 1;
++}
++
+ static inline int access_ok(int type, const void __user * addr, unsigned long size)
+ {
+ 	return 1;
+@@ -191,6 +197,9 @@ unsigned long __must_check ___copy_from_
+ static inline unsigned long __must_check
+ copy_from_user(void *to, const void __user *from, unsigned long size)
+ {
++	if ((long)size < 0 || size > INT_MAX)
++		return size;
++
+ 	check_object_size(to, size, false);
+ 
+ 	return ___copy_from_user(to, from, size);
+@@ -203,6 +212,9 @@ unsigned long __must_check ___copy_to_us
+ static inline unsigned long __must_check
+ copy_to_user(void __user *to, const void *from, unsigned long size)
+ {
++	if ((long)size < 0 || size > INT_MAX)
++		return size;
++
+ 	check_object_size(from, size, true);
+ 
+ 	return ___copy_to_user(to, from, size);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/s390/include/asm/uaccess.h linux-4.9.24-pax/arch/s390/include/asm/uaccess.h
+--- linux-4.9.24/arch/s390/include/asm/uaccess.h	2017-04-19 22:09:32.010314546 +0200
++++ linux-4.9.24-pax/arch/s390/include/asm/uaccess.h	2017-04-19 22:11:55.598421055 +0200
+@@ -363,6 +363,10 @@ copy_to_user(void __user *to, const void
+ 	unsigned int sz = __compiletime_object_size(to);
+ 
+ 	might_fault();
++
++	if ((long)n < 0)
++		return n;
++
+ 	if (unlikely(sz != -1 && sz < n)) {
+ 		if (!__builtin_constant_p(n))
+ 			copy_user_overflow(sz, n);

@@ -1,0 +1,61 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/uaccess.h linux-4.9.24-pax/arch/arm/include/asm/uaccess.h
+--- linux-4.9.24/arch/arm/include/asm/uaccess.h	2016-12-13 12:08:18.014317002 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/uaccess.h	2017-01-01 22:57:10.529520549 +0100
+@@ -474,10 +506,10 @@ do {									\
+ 
+ 
+ #ifdef CONFIG_MMU
+-extern unsigned long __must_check
++extern unsigned long __must_check __size_overflow(3)
+ arm_copy_from_user(void *to, const void __user *from, unsigned long n);
+ 
+-static inline unsigned long __must_check
++static inline unsigned long __must_check __size_overflow(3)
+ __copy_from_user(void *to, const void __user *from, unsigned long n)
+ {
+ 	unsigned int __ua_flags;
+@@ -489,9 +521,9 @@ __copy_from_user(void *to, const void __
+ 	return n;
+ }
+ 
+-extern unsigned long __must_check
++extern unsigned long __must_check __size_overflow(3)
+ arm_copy_to_user(void __user *to, const void *from, unsigned long n);
+-extern unsigned long __must_check
++extern unsigned long __must_check __size_overflow(3)
+ __copy_to_user_std(void __user *to, const void *from, unsigned long n);
+ 
+ static inline unsigned long __must_check
+@@ -511,9 +543,9 @@ __copy_to_user(void __user *to, const vo
+ #endif
+ }
+ 
+-extern unsigned long __must_check
++extern unsigned long __must_check __size_overflow(2)
+ arm_clear_user(void __user *addr, unsigned long n);
+-extern unsigned long __must_check
++extern unsigned long __must_check __size_overflow(2)
+ __clear_user_std(void __user *addr, unsigned long n);
+ 
+ static inline unsigned long __must_check
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/lib/uaccess_with_memcpy.c linux-4.9.24-pax/arch/arm/lib/uaccess_with_memcpy.c
+--- linux-4.9.24/arch/arm/lib/uaccess_with_memcpy.c	2016-03-14 11:51:25.603391362 +0100
++++ linux-4.9.24-pax/arch/arm/lib/uaccess_with_memcpy.c	2017-01-01 22:57:10.537520569 +0100
+@@ -84,7 +84,7 @@ pin_page_for_write(const void __user *_a
+ 	return 1;
+ }
+ 
+-static unsigned long noinline
++static unsigned long noinline __size_overflow(3)
+ __copy_to_user_memcpy(void __user *to, const void *from, unsigned long n)
+ {
+ 	unsigned long ua_flags;
+@@ -157,7 +157,7 @@ arm_copy_to_user(void __user *to, const
+ 	return n;
+ }
+ 	
+-static unsigned long noinline
++static unsigned long noinline __size_overflow(2)
+ __clear_user_memset(void __user *addr, unsigned long n)
+ {
+ 	unsigned long ua_flags;

@@ -1,0 +1,36 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm64/kernel/process.c linux-4.9.24-pax/arch/arm64/kernel/process.c
+--- linux-4.9.24/arch/arm64/kernel/process.c	2016-12-13 12:08:20.546334208 +0100
++++ linux-4.9.24-pax/arch/arm64/kernel/process.c	2017-01-01 22:57:10.553520608 +0100
+@@ -110,7 +110,7 @@ void machine_shutdown(void)
+  * activity (executing tasks, handling interrupts). smp_send_stop()
+  * achieves this.
+  */
+-void machine_halt(void)
++void __noreturn machine_halt(void)
+ {
+ 	local_irq_disable();
+ 	smp_send_stop();
+@@ -123,12 +123,13 @@ void machine_halt(void)
+  * achieves this. When the system power is turned off, it will take all CPUs
+  * with it.
+  */
+-void machine_power_off(void)
++void __noreturn machine_power_off(void)
+ {
+ 	local_irq_disable();
+ 	smp_send_stop();
+ 	if (pm_power_off)
+ 		pm_power_off();
++	while(1);
+ }
+ 
+ /*
+@@ -140,7 +141,7 @@ void machine_power_off(void)
+  * executing pre-reset code, and using RAM that the primary CPU's code wishes
+  * to use. Implementing such co-ordination would be essentially impossible.
+  */
+-void machine_restart(char *cmd)
++void __noreturn machine_restart(char *cmd)
+ {
+ 	/* Disable interrupts first */
+ 	local_irq_disable();

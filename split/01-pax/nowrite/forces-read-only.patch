@@ -1,0 +1,12 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-omap2/omap-mpuss-lowpower.c linux-4.9.24-pax/arch/arm/mach-omap2/omap-mpuss-lowpower.c
+--- linux-4.9.24/arch/arm/mach-omap2/omap-mpuss-lowpower.c	2017-01-28 00:00:41.678939185 +0100
++++ linux-4.9.24-pax/arch/arm/mach-omap2/omap-mpuss-lowpower.c	2017-01-28 00:00:55.042992971 +0100
+@@ -107,7 +107,7 @@ static void dummy_cpu_resume(void)
+ static void dummy_scu_prepare(unsigned int cpu_id, unsigned int cpu_state)
+ {}
+ 
+-static struct cpu_pm_ops omap_pm_ops = {
++static struct cpu_pm_ops omap_pm_ops __read_only = {
+ 	.finish_suspend		= default_finish_suspend,
+ 	.resume			= dummy_cpu_resume,
+ 	.scu_prepare		= dummy_scu_prepare,

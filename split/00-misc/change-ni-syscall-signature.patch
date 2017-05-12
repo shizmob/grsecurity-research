@@ -1,0 +1,12 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm64/kernel/traps.c linux-4.9.24-pax/arch/arm64/kernel/traps.c
+--- linux-4.9.24/arch/arm64/kernel/traps.c	2017-01-28 00:00:41.686939217 +0100
++++ linux-4.9.24-pax/arch/arm64/kernel/traps.c	2017-01-28 00:00:55.046992987 +0100
+@@ -547,7 +547,7 @@ asmlinkage long do_ni_syscall(struct pt_
+ 			__show_regs(regs);
+ 	}
+ 
+-	return sys_ni_syscall();
++	return -ENOSYS;
+ }
+ 
+ static const char *esr_class_str[] = {

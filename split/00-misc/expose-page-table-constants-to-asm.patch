@@ -1,0 +1,72 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/asm-generic/pgtable-nopmd.h linux-4.9.24-pax/include/asm-generic/pgtable-nopmd.h
+--- linux-4.9.24/include/asm-generic/pgtable-nopmd.h	2015-03-18 15:21:50.704349254 +0100
++++ linux-4.9.24-pax/include/asm-generic/pgtable-nopmd.h	2017-01-01 22:57:16.769535864 +0100
+@@ -1,14 +1,19 @@
+ #ifndef _PGTABLE_NOPMD_H
+ #define _PGTABLE_NOPMD_H
+ 
+-#ifndef __ASSEMBLY__
+-
+ #include <asm-generic/pgtable-nopud.h>
+ 
+-struct mm_struct;
+-
+ #define __PAGETABLE_PMD_FOLDED
+ 
++#define PMD_SHIFT	PUD_SHIFT
++#define PTRS_PER_PMD	1
++#define PMD_SIZE  	(_AC(1,UL) << PMD_SHIFT)
++#define PMD_MASK  	(~(PMD_SIZE-1))
++
++#ifndef __ASSEMBLY__
++
++struct mm_struct;
++
+ /*
+  * Having the pmd type consist of a pud gets the size right, and allows
+  * us to conceptually access the pud entry that this pmd is folded into
+@@ -16,11 +21,6 @@ struct mm_struct;
+  */
+ typedef struct { pud_t pud; } pmd_t;
+ 
+-#define PMD_SHIFT	PUD_SHIFT
+-#define PTRS_PER_PMD	1
+-#define PMD_SIZE  	(1UL << PMD_SHIFT)
+-#define PMD_MASK  	(~(PMD_SIZE-1))
+-
+ /*
+  * The "pud_xxx()" functions here are trivial for a folded two-level
+  * setup: the pmd is never bad, and a pmd always exists (as it's folded
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/asm-generic/pgtable-nopud.h linux-4.9.24-pax/include/asm-generic/pgtable-nopud.h
+--- linux-4.9.24/include/asm-generic/pgtable-nopud.h	2015-03-18 15:21:50.708349254 +0100
++++ linux-4.9.24-pax/include/asm-generic/pgtable-nopud.h	2017-01-01 22:57:16.769535864 +0100
+@@ -1,10 +1,15 @@
+ #ifndef _PGTABLE_NOPUD_H
+ #define _PGTABLE_NOPUD_H
+ 
+-#ifndef __ASSEMBLY__
+-
+ #define __PAGETABLE_PUD_FOLDED
+ 
++#define PUD_SHIFT	PGDIR_SHIFT
++#define PTRS_PER_PUD	1
++#define PUD_SIZE  	(_AC(1,UL) << PUD_SHIFT)
++#define PUD_MASK  	(~(PUD_SIZE-1))
++
++#ifndef __ASSEMBLY__
++
+ /*
+  * Having the pud type consist of a pgd gets the size right, and allows
+  * us to conceptually access the pgd entry that this pud is folded into
+@@ -12,11 +17,6 @@
+  */
+ typedef struct { pgd_t pgd; } pud_t;
+ 
+-#define PUD_SHIFT	PGDIR_SHIFT
+-#define PTRS_PER_PUD	1
+-#define PUD_SIZE  	(1UL << PUD_SHIFT)
+-#define PUD_MASK  	(~(PUD_SIZE-1))
+-
+ /*
+  * The "pgd_xxx()" functions here are trivial for a folded two-level
+  * setup: the pud is never bad, and a pud always exists (as it's folded

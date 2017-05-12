@@ -1,0 +1,60 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-tegra/cpuidle-tegra20.c linux-4.9.24-pax/arch/arm/mach-tegra/cpuidle-tegra20.c
+--- linux-4.9.24/arch/arm/mach-tegra/cpuidle-tegra20.c	2016-10-03 11:27:18.070502686 +0200
++++ linux-4.9.24-pax/arch/arm/mach-tegra/cpuidle-tegra20.c	2017-01-01 22:57:10.545520588 +0100
+@@ -178,7 +178,7 @@ static int tegra20_idle_lp2_coupled(stru
+ 	bool entered_lp2 = false;
+ 
+ 	if (tegra_pending_sgi())
+-		ACCESS_ONCE(abort_flag) = true;
++		ACCESS_ONCE_RW(abort_flag) = true;
+ 
+ 	cpuidle_coupled_parallel_barrier(dev, &abort_barrier);
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm64/include/asm/percpu.h linux-4.9.24-pax/arch/arm64/include/asm/percpu.h
+--- linux-4.9.24/arch/arm64/include/asm/percpu.h	2016-12-13 12:08:20.358332931 +0100
++++ linux-4.9.24-pax/arch/arm64/include/asm/percpu.h	2017-01-01 22:57:10.549520598 +0100
+@@ -123,16 +123,16 @@ static inline void __percpu_write(void *
+ {
+ 	switch (size) {
+ 	case 1:
+-		ACCESS_ONCE(*(u8 *)ptr) = (u8)val;
++		ACCESS_ONCE_RW(*(u8 *)ptr) = (u8)val;
+ 		break;
+ 	case 2:
+-		ACCESS_ONCE(*(u16 *)ptr) = (u16)val;
++		ACCESS_ONCE_RW(*(u16 *)ptr) = (u16)val;
+ 		break;
+ 	case 4:
+-		ACCESS_ONCE(*(u32 *)ptr) = (u32)val;
++		ACCESS_ONCE_RW(*(u32 *)ptr) = (u32)val;
+ 		break;
+ 	case 8:
+-		ACCESS_ONCE(*(u64 *)ptr) = (u64)val;
++		ACCESS_ONCE_RW(*(u64 *)ptr) = (u64)val;
+ 		break;
+ 	default:
+ 		BUILD_BUG();
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/ia64/include/asm/spinlock.h linux-4.9.24-pax/arch/ia64/include/asm/spinlock.h
+--- linux-4.9.24/arch/ia64/include/asm/spinlock.h	2016-10-03 11:27:19.716944430 +0200
++++ linux-4.9.24-pax/arch/ia64/include/asm/spinlock.h	2017-01-01 22:57:10.557520617 +0100
+@@ -73,7 +73,7 @@ static __always_inline void __ticket_spi
+ 	unsigned short	*p = (unsigned short *)&lock->lock + 1, tmp;
+ 
+ 	asm volatile ("ld2.bias %0=[%1]" : "=r"(tmp) : "r"(p));
+-	ACCESS_ONCE(*p) = (tmp + 2) & ~1;
++	ACCESS_ONCE_RW(*p) = (tmp + 2) & ~1;
+ }
+ 
+ static __always_inline void __ticket_spin_unlock_wait(arch_spinlock_t *lock)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/kernel/pm-cps.c linux-4.9.24-pax/arch/mips/kernel/pm-cps.c
+--- linux-4.9.24/arch/mips/kernel/pm-cps.c	2016-12-13 12:08:22.510347563 +0100
++++ linux-4.9.24-pax/arch/mips/kernel/pm-cps.c	2017-01-01 22:57:10.565520637 +0100
+@@ -168,7 +168,7 @@ int cps_pm_enter_state(enum cps_pm_state
+ 	nc_core_ready_count = nc_addr;
+ 
+ 	/* Ensure ready_count is zero-initialised before the assembly runs */
+-	ACCESS_ONCE(*nc_core_ready_count) = 0;
++	ACCESS_ONCE_RW(*nc_core_ready_count) = 0;
+ 	coupled_barrier(&per_cpu(pm_barrier, core), online);
+ 
+ 	/* Run the generated entry code */

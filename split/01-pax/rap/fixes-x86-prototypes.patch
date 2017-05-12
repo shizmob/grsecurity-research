@@ -1,0 +1,719 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/aesni-intel_glue.c linux-4.9.24-pax/arch/x86/crypto/aesni-intel_glue.c
+--- linux-4.9.24/arch/x86/crypto/aesni-intel_glue.c	2016-12-13 12:08:26.262373095 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/aesni-intel_glue.c	2017-01-31 04:27:32.831481805 +0100
+@@ -71,9 +71,9 @@ struct aesni_xts_ctx {
+ 
+ asmlinkage int aesni_set_key(struct crypto_aes_ctx *ctx, const u8 *in_key,
+ 			     unsigned int key_len);
+-asmlinkage void aesni_enc(struct crypto_aes_ctx *ctx, u8 *out,
++asmlinkage void aesni_enc(void *ctx, u8 *out,
+ 			  const u8 *in);
+-asmlinkage void aesni_dec(struct crypto_aes_ctx *ctx, u8 *out,
++asmlinkage void aesni_dec(void *ctx, u8 *out,
+ 			  const u8 *in);
+ asmlinkage void aesni_ecb_enc(struct crypto_aes_ctx *ctx, u8 *out,
+ 			      const u8 *in, unsigned int len);
+@@ -83,6 +83,15 @@ asmlinkage void aesni_cbc_enc(struct cry
+ 			      const u8 *in, unsigned int len, u8 *iv);
+ asmlinkage void aesni_cbc_dec(struct crypto_aes_ctx *ctx, u8 *out,
+ 			      const u8 *in, unsigned int len, u8 *iv);
++int _key_expansion_128(struct crypto_aes_ctx *ctx, const u8 *in_key, unsigned int key_len) __rap_hash;
++int _key_expansion_192a(struct crypto_aes_ctx *ctx, const u8 *in_key, unsigned int key_len) __rap_hash;
++int _key_expansion_192b(struct crypto_aes_ctx *ctx, const u8 *in_key, unsigned int key_len) __rap_hash;
++int _key_expansion_256a(struct crypto_aes_ctx *ctx, const u8 *in_key, unsigned int key_len) __rap_hash;
++int _key_expansion_256b(struct crypto_aes_ctx *ctx, const u8 *in_key, unsigned int key_len) __rap_hash;
++void _aesni_enc1(void *ctx, u8 *out, const u8 *in) __rap_hash;
++void _aesni_enc4(void *ctx, u8 *out, const u8 *in) __rap_hash;
++void _aesni_dec1(void *ctx, u8 *out, const u8 *in) __rap_hash;
++void _aesni_dec4(void *ctx, u8 *out, const u8 *in) __rap_hash;
+ 
+ int crypto_fpu_init(void);
+ void crypto_fpu_exit(void);
+@@ -96,6 +105,8 @@ static void (*aesni_ctr_enc_tfm)(struct
+ 			      const u8 *in, unsigned int len, u8 *iv);
+ asmlinkage void aesni_ctr_enc(struct crypto_aes_ctx *ctx, u8 *out,
+ 			      const u8 *in, unsigned int len, u8 *iv);
++void _aesni_inc(struct crypto_aes_ctx *ctx, u8 *out, const u8 *in, unsigned int len, u8 *iv) __rap_hash;
++void _aesni_inc_init(struct crypto_aes_ctx *ctx, u8 *out, const u8 *in, unsigned int len, u8 *iv) __rap_hash;
+ 
+ asmlinkage void aesni_xts_crypt8(struct crypto_aes_ctx *ctx, u8 *out,
+ 				 const u8 *in, bool enc, u8 *iv);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/camellia_aesni_avx2_glue.c linux-4.9.24-pax/arch/x86/crypto/camellia_aesni_avx2_glue.c
+--- linux-4.9.24/arch/x86/crypto/camellia_aesni_avx2_glue.c	2016-07-25 02:13:19.007749457 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/camellia_aesni_avx2_glue.c	2017-01-31 04:42:42.327730716 +0100
+@@ -27,20 +27,22 @@
+ #define CAMELLIA_AESNI_AVX2_PARALLEL_BLOCKS 32
+ 
+ /* 32-way AVX2/AES-NI parallel cipher functions */
+-asmlinkage void camellia_ecb_enc_32way(struct camellia_ctx *ctx, u8 *dst,
++asmlinkage void camellia_ecb_enc_32way(void *ctx, u8 *dst,
+ 				       const u8 *src);
+-asmlinkage void camellia_ecb_dec_32way(struct camellia_ctx *ctx, u8 *dst,
++asmlinkage void camellia_ecb_dec_32way(void *ctx, u8 *dst,
+ 				       const u8 *src);
++void __camellia_enc_blk32(void *ctx, u8 *dst, const u8 *src) __rap_hash;
++void __camellia_dec_blk32(void *ctx, u8 *dst, const u8 *src) __rap_hash;
+ 
+-asmlinkage void camellia_cbc_dec_32way(struct camellia_ctx *ctx, u8 *dst,
++asmlinkage void camellia_cbc_dec_32way(void *ctx, u8 *dst,
+ 				       const u8 *src);
+-asmlinkage void camellia_ctr_32way(struct camellia_ctx *ctx, u8 *dst,
+-				   const u8 *src, le128 *iv);
++asmlinkage void camellia_ctr_32way(void *ctx, u128 *dst,
++				   const u128 *src, le128 *iv);
+ 
+-asmlinkage void camellia_xts_enc_32way(struct camellia_ctx *ctx, u8 *dst,
+-				       const u8 *src, le128 *iv);
+-asmlinkage void camellia_xts_dec_32way(struct camellia_ctx *ctx, u8 *dst,
+-				       const u8 *src, le128 *iv);
++asmlinkage void camellia_xts_enc_32way(void *ctx, u128 *dst,
++				       const u128 *src, le128 *iv);
++asmlinkage void camellia_xts_dec_32way(void *ctx, u128 *dst,
++				       const u128 *src, le128 *iv);
+ 
+ static const struct common_glue_ctx camellia_enc = {
+ 	.num_funcs = 4,
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/camellia_aesni_avx_glue.c linux-4.9.24-pax/arch/x86/crypto/camellia_aesni_avx_glue.c
+--- linux-4.9.24/arch/x86/crypto/camellia_aesni_avx_glue.c	2016-07-25 02:13:19.007749457 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/camellia_aesni_avx_glue.c	2017-01-01 22:57:10.601520726 +0100
+@@ -26,28 +26,28 @@
+ #define CAMELLIA_AESNI_PARALLEL_BLOCKS 16
+ 
+ /* 16-way parallel cipher functions (avx/aes-ni) */
+-asmlinkage void camellia_ecb_enc_16way(struct camellia_ctx *ctx, u8 *dst,
++asmlinkage void camellia_ecb_enc_16way(void *ctx, u8 *dst,
+ 				       const u8 *src);
+ EXPORT_SYMBOL_GPL(camellia_ecb_enc_16way);
+ 
+-asmlinkage void camellia_ecb_dec_16way(struct camellia_ctx *ctx, u8 *dst,
++asmlinkage void camellia_ecb_dec_16way(void *ctx, u8 *dst,
+ 				       const u8 *src);
+ EXPORT_SYMBOL_GPL(camellia_ecb_dec_16way);
+ 
+-asmlinkage void camellia_cbc_dec_16way(struct camellia_ctx *ctx, u8 *dst,
++asmlinkage void camellia_cbc_dec_16way(void *ctx, u8 *dst,
+ 				       const u8 *src);
+ EXPORT_SYMBOL_GPL(camellia_cbc_dec_16way);
+ 
+-asmlinkage void camellia_ctr_16way(struct camellia_ctx *ctx, u8 *dst,
+-				   const u8 *src, le128 *iv);
++asmlinkage void camellia_ctr_16way(void *ctx, u128 *dst,
++				   const u128 *src, le128 *iv);
+ EXPORT_SYMBOL_GPL(camellia_ctr_16way);
+ 
+-asmlinkage void camellia_xts_enc_16way(struct camellia_ctx *ctx, u8 *dst,
+-				       const u8 *src, le128 *iv);
++asmlinkage void camellia_xts_enc_16way(void *ctx, u128 *dst,
++				       const u128 *src, le128 *iv);
+ EXPORT_SYMBOL_GPL(camellia_xts_enc_16way);
+ 
+-asmlinkage void camellia_xts_dec_16way(struct camellia_ctx *ctx, u8 *dst,
+-				       const u8 *src, le128 *iv);
++asmlinkage void camellia_xts_dec_16way(void *ctx, u128 *dst,
++				       const u128 *src, le128 *iv);
+ EXPORT_SYMBOL_GPL(camellia_xts_dec_16way);
+ 
+ void camellia_xts_enc(void *ctx, u128 *dst, const u128 *src, le128 *iv)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/camellia_glue.c linux-4.9.24-pax/arch/x86/crypto/camellia_glue.c
+--- linux-4.9.24/arch/x86/crypto/camellia_glue.c	2016-05-22 01:55:29.007565012 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/camellia_glue.c	2017-01-01 22:57:10.601520726 +0100
+@@ -39,7 +39,7 @@
+ asmlinkage void __camellia_enc_blk(struct camellia_ctx *ctx, u8 *dst,
+ 				   const u8 *src, bool xor);
+ EXPORT_SYMBOL_GPL(__camellia_enc_blk);
+-asmlinkage void camellia_dec_blk(struct camellia_ctx *ctx, u8 *dst,
++asmlinkage void camellia_dec_blk(void *ctx, u8 *dst,
+ 				 const u8 *src);
+ EXPORT_SYMBOL_GPL(camellia_dec_blk);
+ 
+@@ -47,7 +47,7 @@ EXPORT_SYMBOL_GPL(camellia_dec_blk);
+ asmlinkage void __camellia_enc_blk_2way(struct camellia_ctx *ctx, u8 *dst,
+ 					const u8 *src, bool xor);
+ EXPORT_SYMBOL_GPL(__camellia_enc_blk_2way);
+-asmlinkage void camellia_dec_blk_2way(struct camellia_ctx *ctx, u8 *dst,
++asmlinkage void camellia_dec_blk_2way(void *ctx, u8 *dst,
+ 				      const u8 *src);
+ EXPORT_SYMBOL_GPL(camellia_dec_blk_2way);
+ 
+@@ -1279,8 +1279,10 @@ static int camellia_setkey(struct crypto
+ 				 &tfm->crt_flags);
+ }
+ 
+-void camellia_decrypt_cbc_2way(void *ctx, u128 *dst, const u128 *src)
++void camellia_decrypt_cbc_2way(void *ctx, u8 *_dst, const u8 *_src)
+ {
++	u128 *dst = (u128 *)_dst;
++	u128 *src = (u128 *)_src;
+ 	u128 iv = *src;
+ 
+ 	camellia_dec_blk_2way(ctx, (u8 *)dst, (u8 *)src);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/cast5_avx_glue.c linux-4.9.24-pax/arch/x86/crypto/cast5_avx_glue.c
+--- linux-4.9.24/arch/x86/crypto/cast5_avx_glue.c	2016-01-11 01:27:31.418994601 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/cast5_avx_glue.c	2017-01-31 04:37:06.663189719 +0100
+@@ -44,6 +44,8 @@ asmlinkage void cast5_cbc_dec_16way(stru
+ 				    const u8 *src);
+ asmlinkage void cast5_ctr_16way(struct cast5_ctx *ctx, u8 *dst, const u8 *src,
+ 				__be64 *iv);
++void __cast5_enc_blk16(struct cast5_ctx *ctx, u8 *dst, const u8 *src) __rap_hash;
++void __cast5_dec_blk16(struct cast5_ctx *ctx, u8 *dst, const u8 *src) __rap_hash;
+ 
+ static inline bool cast5_fpu_begin(bool fpu_enabled, unsigned int nbytes)
+ {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/cast6_avx_glue.c linux-4.9.24-pax/arch/x86/crypto/cast6_avx_glue.c
+--- linux-4.9.24/arch/x86/crypto/cast6_avx_glue.c	2016-05-22 01:55:29.007565012 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/cast6_avx_glue.c	2017-01-31 04:39:52.513278203 +0100
+@@ -41,20 +41,23 @@
+ 
+ #define CAST6_PARALLEL_BLOCKS 8
+ 
+-asmlinkage void cast6_ecb_enc_8way(struct cast6_ctx *ctx, u8 *dst,
++asmlinkage void cast6_ecb_enc_8way(void *ctx, u8 *dst,
+ 				   const u8 *src);
+-asmlinkage void cast6_ecb_dec_8way(struct cast6_ctx *ctx, u8 *dst,
++asmlinkage void cast6_ecb_dec_8way(void *ctx, u8 *dst,
+ 				   const u8 *src);
+ 
+-asmlinkage void cast6_cbc_dec_8way(struct cast6_ctx *ctx, u8 *dst,
++asmlinkage void cast6_cbc_dec_8way(void *ctx, u8 *dst,
+ 				   const u8 *src);
+-asmlinkage void cast6_ctr_8way(struct cast6_ctx *ctx, u8 *dst, const u8 *src,
++asmlinkage void cast6_ctr_8way(void *ctx, u128 *dst, const u128 *src,
+ 			       le128 *iv);
+ 
+-asmlinkage void cast6_xts_enc_8way(struct cast6_ctx *ctx, u8 *dst,
+-				   const u8 *src, le128 *iv);
+-asmlinkage void cast6_xts_dec_8way(struct cast6_ctx *ctx, u8 *dst,
+-				   const u8 *src, le128 *iv);
++asmlinkage void cast6_xts_enc_8way(void *ctx, u128 *dst,
++				   const u128 *src, le128 *iv);
++asmlinkage void cast6_xts_dec_8way(void *ctx, u128 *dst,
++				   const u128 *src, le128 *iv);
++
++void __cast6_enc_blk8(void *ctx, u8 *dst, const u8 *src) __rap_hash;
++void __cast6_dec_blk8(void *ctx, u8 *dst, const u8 *src) __rap_hash;
+ 
+ static void cast6_xts_enc(void *ctx, u128 *dst, const u128 *src, le128 *iv)
+ {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/ghash-clmulni-intel_glue.c linux-4.9.24-pax/arch/x86/crypto/ghash-clmulni-intel_glue.c
+--- linux-4.9.24/arch/x86/crypto/ghash-clmulni-intel_glue.c	2016-10-03 11:27:30.075092506 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/ghash-clmulni-intel_glue.c	2017-01-31 04:28:15.865502973 +0100
+@@ -26,6 +26,7 @@
+ #define GHASH_DIGEST_SIZE	16
+ 
+ void clmul_ghash_mul(char *dst, const u128 *shash);
++void __clmul_gf128mul_ble(char *dst, const u128 *shash) __rap_hash;
+ 
+ void clmul_ghash_update(char *dst, const char *src, unsigned int srclen,
+ 			const u128 *shash);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/glue_helper.c linux-4.9.24-pax/arch/x86/crypto/glue_helper.c
+--- linux-4.9.24/arch/x86/crypto/glue_helper.c	2015-06-22 11:14:15.344675275 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/glue_helper.c	2017-01-01 22:57:10.605520736 +0100
+@@ -165,7 +165,7 @@ __glue_cbc_decrypt_128bit(const struct c
+ 				src -= num_blocks - 1;
+ 				dst -= num_blocks - 1;
+ 
+-				gctx->funcs[i].fn_u.cbc(ctx, dst, src);
++				gctx->funcs[i].fn_u.cbc(ctx, (u8 *)dst, (u8 *)src);
+ 
+ 				nbytes -= bsize;
+ 				if (nbytes < bsize)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/serpent_avx2_glue.c linux-4.9.24-pax/arch/x86/crypto/serpent_avx2_glue.c
+--- linux-4.9.24/arch/x86/crypto/serpent_avx2_glue.c	2016-07-25 02:13:19.007749457 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/serpent_avx2_glue.c	2017-01-31 04:43:19.587642981 +0100
+@@ -27,18 +27,20 @@
+ #define SERPENT_AVX2_PARALLEL_BLOCKS 16
+ 
+ /* 16-way AVX2 parallel cipher functions */
+-asmlinkage void serpent_ecb_enc_16way(struct serpent_ctx *ctx, u8 *dst,
++asmlinkage void serpent_ecb_enc_16way(void *ctx, u8 *dst,
+ 				      const u8 *src);
+-asmlinkage void serpent_ecb_dec_16way(struct serpent_ctx *ctx, u8 *dst,
++asmlinkage void serpent_ecb_dec_16way(void *ctx, u8 *dst,
+ 				      const u8 *src);
+-asmlinkage void serpent_cbc_dec_16way(void *ctx, u128 *dst, const u128 *src);
++asmlinkage void serpent_cbc_dec_16way(void *ctx, u8 *dst, const u8 *src);
++void __serpent_enc_blk16(void *ctx, u8 *dst, const u8 *src) __rap_hash;
++void __serpent_dec_blk16(void *ctx, u8 *dst, const u8 *src) __rap_hash;
+ 
+ asmlinkage void serpent_ctr_16way(void *ctx, u128 *dst, const u128 *src,
+ 				  le128 *iv);
+-asmlinkage void serpent_xts_enc_16way(struct serpent_ctx *ctx, u8 *dst,
+-				      const u8 *src, le128 *iv);
+-asmlinkage void serpent_xts_dec_16way(struct serpent_ctx *ctx, u8 *dst,
+-				      const u8 *src, le128 *iv);
++asmlinkage void serpent_xts_enc_16way(void *ctx, u128 *dst,
++				      const u128 *src, le128 *iv);
++asmlinkage void serpent_xts_dec_16way(void *ctx, u128 *dst,
++				      const u128 *src, le128 *iv);
+ 
+ static const struct common_glue_ctx serpent_enc = {
+ 	.num_funcs = 3,
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/serpent_avx_glue.c linux-4.9.24-pax/arch/x86/crypto/serpent_avx_glue.c
+--- linux-4.9.24/arch/x86/crypto/serpent_avx_glue.c	2016-05-22 01:55:29.011564970 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/serpent_avx_glue.c	2017-01-01 22:57:10.605520736 +0100
+@@ -41,28 +41,28 @@
+ #include <asm/crypto/glue_helper.h>
+ 
+ /* 8-way parallel cipher functions */
+-asmlinkage void serpent_ecb_enc_8way_avx(struct serpent_ctx *ctx, u8 *dst,
++asmlinkage void serpent_ecb_enc_8way_avx(void  *ctx, u8 *dst,
+ 					 const u8 *src);
+ EXPORT_SYMBOL_GPL(serpent_ecb_enc_8way_avx);
+ 
+-asmlinkage void serpent_ecb_dec_8way_avx(struct serpent_ctx *ctx, u8 *dst,
++asmlinkage void serpent_ecb_dec_8way_avx(void *ctx, u8 *dst,
+ 					 const u8 *src);
+ EXPORT_SYMBOL_GPL(serpent_ecb_dec_8way_avx);
+ 
+-asmlinkage void serpent_cbc_dec_8way_avx(struct serpent_ctx *ctx, u8 *dst,
++asmlinkage void serpent_cbc_dec_8way_avx(void *ctx, u8 *dst,
+ 					 const u8 *src);
+ EXPORT_SYMBOL_GPL(serpent_cbc_dec_8way_avx);
+ 
+-asmlinkage void serpent_ctr_8way_avx(struct serpent_ctx *ctx, u8 *dst,
+-				     const u8 *src, le128 *iv);
++asmlinkage void serpent_ctr_8way_avx(void *ctx, u128 *dst,
++				     const u128 *src, le128 *iv);
+ EXPORT_SYMBOL_GPL(serpent_ctr_8way_avx);
+ 
+-asmlinkage void serpent_xts_enc_8way_avx(struct serpent_ctx *ctx, u8 *dst,
+-					 const u8 *src, le128 *iv);
++asmlinkage void serpent_xts_enc_8way_avx(void *ctx, u128 *dst,
++					 const u128 *src, le128 *iv);
+ EXPORT_SYMBOL_GPL(serpent_xts_enc_8way_avx);
+ 
+-asmlinkage void serpent_xts_dec_8way_avx(struct serpent_ctx *ctx, u8 *dst,
+-					 const u8 *src, le128 *iv);
++asmlinkage void serpent_xts_dec_8way_avx(void *ctx, u128 *dst,
++					 const u128 *src, le128 *iv);
+ EXPORT_SYMBOL_GPL(serpent_xts_dec_8way_avx);
+ 
+ void __serpent_crypt_ctr(void *ctx, u128 *dst, const u128 *src, le128 *iv)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/serpent_sse2_glue.c linux-4.9.24-pax/arch/x86/crypto/serpent_sse2_glue.c
+--- linux-4.9.24/arch/x86/crypto/serpent_sse2_glue.c	2016-07-25 02:13:19.007749457 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/serpent_sse2_glue.c	2017-01-01 22:57:10.605520736 +0100
+@@ -45,8 +45,10 @@
+ #include <asm/crypto/serpent-sse2.h>
+ #include <asm/crypto/glue_helper.h>
+ 
+-static void serpent_decrypt_cbc_xway(void *ctx, u128 *dst, const u128 *src)
++static void serpent_decrypt_cbc_xway(void *ctx, u8 *_dst, const u8 *_src)
+ {
++	u128 *dst = (u128 *)_dst;
++	const u128 *src = (const u128 *)_src;
+ 	u128 ivs[SERPENT_PARALLEL_BLOCKS - 1];
+ 	unsigned int j;
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha1-mb/sha1_mb_mgr.h linux-4.9.24-pax/arch/x86/crypto/sha1-mb/sha1_mb_mgr.h
+--- linux-4.9.24/arch/x86/crypto/sha1-mb/sha1_mb_mgr.h	2016-10-03 11:27:30.095106704 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha1-mb/sha1_mb_mgr.h	2017-01-31 04:46:22.310094253 +0100
+@@ -106,5 +106,6 @@ struct job_sha1 *sha1_mb_mgr_submit_avx2
+ 					 struct job_sha1 *job);
+ struct job_sha1 *sha1_mb_mgr_flush_avx2(struct sha1_mb_mgr *state);
+ struct job_sha1 *sha1_mb_mgr_get_comp_job_avx2(struct sha1_mb_mgr *state);
++struct job_sha1 *sha1_x8_avx2(struct sha1_mb_mgr *state) __rap_hash;
+ 
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha1_ssse3_glue.c linux-4.9.24-pax/arch/x86/crypto/sha1_ssse3_glue.c
+--- linux-4.9.24/arch/x86/crypto/sha1_ssse3_glue.c	2016-10-03 11:27:30.119123743 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha1_ssse3_glue.c	2017-01-01 22:57:10.605520736 +0100
+@@ -31,8 +31,8 @@
+ #include <crypto/sha1_base.h>
+ #include <asm/fpu/api.h>
+ 
+-typedef void (sha1_transform_fn)(u32 *digest, const char *data,
+-				unsigned int rounds);
++typedef void (sha1_transform_fn)(struct sha1_state *digest, const u8 *data,
++				int rounds);
+ 
+ static int sha1_update(struct shash_desc *desc, const u8 *data,
+ 			     unsigned int len, sha1_transform_fn *sha1_xform)
+@@ -47,8 +47,7 @@ static int sha1_update(struct shash_desc
+ 	BUILD_BUG_ON(offsetof(struct sha1_state, state) != 0);
+ 
+ 	kernel_fpu_begin();
+-	sha1_base_do_update(desc, data, len,
+-			    (sha1_block_fn *)sha1_xform);
++	sha1_base_do_update(desc, data, len, sha1_xform);
+ 	kernel_fpu_end();
+ 
+ 	return 0;
+@@ -62,29 +61,26 @@ static int sha1_finup(struct shash_desc
+ 
+ 	kernel_fpu_begin();
+ 	if (len)
+-		sha1_base_do_update(desc, data, len,
+-				    (sha1_block_fn *)sha1_xform);
+-	sha1_base_do_finalize(desc, (sha1_block_fn *)sha1_xform);
++		sha1_base_do_update(desc, data, len, sha1_xform);
++	sha1_base_do_finalize(desc, sha1_xform);
+ 	kernel_fpu_end();
+ 
+ 	return sha1_base_finish(desc, out);
+ }
+ 
+-asmlinkage void sha1_transform_ssse3(u32 *digest, const char *data,
+-				     unsigned int rounds);
++asmlinkage void sha1_transform_ssse3(struct sha1_state *digest, const u8 *data,
++				     int rounds);
+ 
+ static int sha1_ssse3_update(struct shash_desc *desc, const u8 *data,
+ 			     unsigned int len)
+ {
+-	return sha1_update(desc, data, len,
+-			(sha1_transform_fn *) sha1_transform_ssse3);
++	return sha1_update(desc, data, len, sha1_transform_ssse3);
+ }
+ 
+ static int sha1_ssse3_finup(struct shash_desc *desc, const u8 *data,
+ 			      unsigned int len, u8 *out)
+ {
+-	return sha1_finup(desc, data, len, out,
+-			(sha1_transform_fn *) sha1_transform_ssse3);
++	return sha1_finup(desc, data, len, out, sha1_transform_ssse3);
+ }
+ 
+ /* Add padding and return the message digest. */
+@@ -124,21 +120,19 @@ static void unregister_sha1_ssse3(void)
+ }
+ 
+ #ifdef CONFIG_AS_AVX
+-asmlinkage void sha1_transform_avx(u32 *digest, const char *data,
+-				   unsigned int rounds);
++asmlinkage void sha1_transform_avx(struct sha1_state *digest, const u8 *data,
++				   int rounds);
+ 
+ static int sha1_avx_update(struct shash_desc *desc, const u8 *data,
+ 			     unsigned int len)
+ {
+-	return sha1_update(desc, data, len,
+-			(sha1_transform_fn *) sha1_transform_avx);
++	return sha1_update(desc, data, len, sha1_transform_avx);
+ }
+ 
+ static int sha1_avx_finup(struct shash_desc *desc, const u8 *data,
+ 			      unsigned int len, u8 *out)
+ {
+-	return sha1_finup(desc, data, len, out,
+-			(sha1_transform_fn *) sha1_transform_avx);
++	return sha1_finup(desc, data, len, out, sha1_transform_avx);
+ }
+ 
+ static int sha1_avx_final(struct shash_desc *desc, u8 *out)
+@@ -196,8 +190,8 @@ static inline void unregister_sha1_avx(v
+ #if defined(CONFIG_AS_AVX2) && (CONFIG_AS_AVX)
+ #define SHA1_AVX2_BLOCK_OPTSIZE	4	/* optimal 4*64 bytes of SHA1 blocks */
+ 
+-asmlinkage void sha1_transform_avx2(u32 *digest, const char *data,
+-				    unsigned int rounds);
++asmlinkage void sha1_transform_avx2(struct sha1_state *digest, const u8 *data,
++				    int rounds);
+ 
+ static bool avx2_usable(void)
+ {
+@@ -209,8 +203,8 @@ static bool avx2_usable(void)
+ 	return false;
+ }
+ 
+-static void sha1_apply_transform_avx2(u32 *digest, const char *data,
+-				unsigned int rounds)
++static void sha1_apply_transform_avx2(struct sha1_state *digest, const u8 *data,
++				int rounds)
+ {
+ 	/* Select the optimal transform based on data block size */
+ 	if (rounds >= SHA1_AVX2_BLOCK_OPTSIZE)
+@@ -222,15 +216,13 @@ static void sha1_apply_transform_avx2(u3
+ static int sha1_avx2_update(struct shash_desc *desc, const u8 *data,
+ 			     unsigned int len)
+ {
+-	return sha1_update(desc, data, len,
+-		(sha1_transform_fn *) sha1_apply_transform_avx2);
++	return sha1_update(desc, data, len, sha1_apply_transform_avx2);
+ }
+ 
+ static int sha1_avx2_finup(struct shash_desc *desc, const u8 *data,
+ 			      unsigned int len, u8 *out)
+ {
+-	return sha1_finup(desc, data, len, out,
+-		(sha1_transform_fn *) sha1_apply_transform_avx2);
++	return sha1_finup(desc, data, len, out, sha1_apply_transform_avx2);
+ }
+ 
+ static int sha1_avx2_final(struct shash_desc *desc, u8 *out)
+@@ -274,21 +266,19 @@ static inline void unregister_sha1_avx2(
+ #endif
+ 
+ #ifdef CONFIG_AS_SHA1_NI
+-asmlinkage void sha1_ni_transform(u32 *digest, const char *data,
+-				   unsigned int rounds);
++asmlinkage void sha1_ni_transform(struct sha1_state *digest, const u8 *data,
++				   int rounds);
+ 
+ static int sha1_ni_update(struct shash_desc *desc, const u8 *data,
+ 			     unsigned int len)
+ {
+-	return sha1_update(desc, data, len,
+-		(sha1_transform_fn *) sha1_ni_transform);
++	return sha1_update(desc, data, len, sha1_ni_transform);
+ }
+ 
+ static int sha1_ni_finup(struct shash_desc *desc, const u8 *data,
+ 			      unsigned int len, u8 *out)
+ {
+-	return sha1_finup(desc, data, len, out,
+-		(sha1_transform_fn *) sha1_ni_transform);
++	return sha1_finup(desc, data, len, out, sha1_ni_transform);
+ }
+ 
+ static int sha1_ni_final(struct shash_desc *desc, u8 *out)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha256-mb/sha256_mb_mgr.h linux-4.9.24-pax/arch/x86/crypto/sha256-mb/sha256_mb_mgr.h
+--- linux-4.9.24/arch/x86/crypto/sha256-mb/sha256_mb_mgr.h	2016-10-03 11:27:30.119123743 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha256-mb/sha256_mb_mgr.h	2017-01-31 04:47:21.419893801 +0100
+@@ -104,5 +104,6 @@ struct job_sha256 *sha256_mb_mgr_submit_
+ 					 struct job_sha256 *job);
+ struct job_sha256 *sha256_mb_mgr_flush_avx2(struct sha256_mb_mgr *state);
+ struct job_sha256 *sha256_mb_mgr_get_comp_job_avx2(struct sha256_mb_mgr *state);
++struct job_sha256 *sha256_x8_avx2(struct sha256_mb_mgr *state) __rap_hash;
+ 
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha256_ssse3_glue.c linux-4.9.24-pax/arch/x86/crypto/sha256_ssse3_glue.c
+--- linux-4.9.24/arch/x86/crypto/sha256_ssse3_glue.c	2016-10-03 11:27:30.123126582 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha256_ssse3_glue.c	2017-01-01 22:57:10.609520746 +0100
+@@ -40,9 +40,9 @@
+ #include <asm/fpu/api.h>
+ #include <linux/string.h>
+ 
+-asmlinkage void sha256_transform_ssse3(u32 *digest, const char *data,
+-				       u64 rounds);
+-typedef void (sha256_transform_fn)(u32 *digest, const char *data, u64 rounds);
++asmlinkage void sha256_transform_ssse3(struct sha256_state *digest, const u8 *data,
++				       int rounds);
++typedef void (sha256_transform_fn)(struct sha256_state *digest, const u8 *data, int rounds);
+ 
+ static int sha256_update(struct shash_desc *desc, const u8 *data,
+ 			 unsigned int len, sha256_transform_fn *sha256_xform)
+@@ -57,8 +57,7 @@ static int sha256_update(struct shash_de
+ 	BUILD_BUG_ON(offsetof(struct sha256_state, state) != 0);
+ 
+ 	kernel_fpu_begin();
+-	sha256_base_do_update(desc, data, len,
+-			      (sha256_block_fn *)sha256_xform);
++	sha256_base_do_update(desc, data, len, sha256_xform);
+ 	kernel_fpu_end();
+ 
+ 	return 0;
+@@ -72,9 +71,8 @@ static int sha256_finup(struct shash_des
+ 
+ 	kernel_fpu_begin();
+ 	if (len)
+-		sha256_base_do_update(desc, data, len,
+-				      (sha256_block_fn *)sha256_xform);
+-	sha256_base_do_finalize(desc, (sha256_block_fn *)sha256_xform);
++		sha256_base_do_update(desc, data, len, sha256_xform);
++	sha256_base_do_finalize(desc, sha256_xform);
+ 	kernel_fpu_end();
+ 
+ 	return sha256_base_finish(desc, out);
+@@ -146,8 +144,8 @@ static void unregister_sha256_ssse3(void
+ }
+ 
+ #ifdef CONFIG_AS_AVX
+-asmlinkage void sha256_transform_avx(u32 *digest, const char *data,
+-				     u64 rounds);
++asmlinkage void sha256_transform_avx(struct sha256_state *digest, const u8 *data,
++				     int rounds);
+ 
+ static int sha256_avx_update(struct shash_desc *desc, const u8 *data,
+ 			 unsigned int len)
+@@ -230,8 +228,8 @@ static inline void unregister_sha256_avx
+ #endif
+ 
+ #if defined(CONFIG_AS_AVX2) && defined(CONFIG_AS_AVX)
+-asmlinkage void sha256_transform_rorx(u32 *digest, const char *data,
+-				      u64 rounds);
++asmlinkage void sha256_transform_rorx(struct sha256_state *digest, const u8 *data,
++				      int rounds);
+ 
+ static int sha256_avx2_update(struct shash_desc *desc, const u8 *data,
+ 			 unsigned int len)
+@@ -312,8 +310,8 @@ static inline void unregister_sha256_avx
+ #endif
+ 
+ #ifdef CONFIG_AS_SHA256_NI
+-asmlinkage void sha256_ni_transform(u32 *digest, const char *data,
+-				   u64 rounds); /*unsigned int rounds);*/
++asmlinkage void sha256_ni_transform(struct sha256_state *digest, const u8 *data,
++				   int rounds); /*unsigned int rounds);*/
+ 
+ static int sha256_ni_update(struct shash_desc *desc, const u8 *data,
+ 			 unsigned int len)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha512-mb/sha512_mb_mgr.h linux-4.9.24-pax/arch/x86/crypto/sha512-mb/sha512_mb_mgr.h
+--- linux-4.9.24/arch/x86/crypto/sha512-mb/sha512_mb_mgr.h	2016-10-03 11:27:30.123126582 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha512-mb/sha512_mb_mgr.h	2017-01-31 04:48:00.551161005 +0100
+@@ -100,5 +100,6 @@ struct job_sha512 *sha512_mb_mgr_submit_
+ 						struct job_sha512 *job);
+ struct job_sha512 *sha512_mb_mgr_flush_avx2(struct sha512_mb_mgr *state);
+ struct job_sha512 *sha512_mb_mgr_get_comp_job_avx2(struct sha512_mb_mgr *state);
++struct job_sha512 *sha512_x4_avx2(struct sha512_mb_mgr *state) __rap_hash;
+ 
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha512_ssse3_glue.c linux-4.9.24-pax/arch/x86/crypto/sha512_ssse3_glue.c
+--- linux-4.9.24/arch/x86/crypto/sha512_ssse3_glue.c	2016-10-03 11:27:30.143140781 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha512_ssse3_glue.c	2017-01-01 22:57:10.609520746 +0100
+@@ -39,10 +39,10 @@
+ 
+ #include <linux/string.h>
+ 
+-asmlinkage void sha512_transform_ssse3(u64 *digest, const char *data,
+-				       u64 rounds);
++asmlinkage void sha512_transform_ssse3(struct sha512_state *digest, const u8 *data,
++				       int rounds);
+ 
+-typedef void (sha512_transform_fn)(u64 *digest, const char *data, u64 rounds);
++typedef void (sha512_transform_fn)(struct sha512_state *digest, const u8 *data, int rounds);
+ 
+ static int sha512_update(struct shash_desc *desc, const u8 *data,
+ 		       unsigned int len, sha512_transform_fn *sha512_xform)
+@@ -57,8 +57,7 @@ static int sha512_update(struct shash_de
+ 	BUILD_BUG_ON(offsetof(struct sha512_state, state) != 0);
+ 
+ 	kernel_fpu_begin();
+-	sha512_base_do_update(desc, data, len,
+-			      (sha512_block_fn *)sha512_xform);
++	sha512_base_do_update(desc, data, len, sha512_xform);
+ 	kernel_fpu_end();
+ 
+ 	return 0;
+@@ -72,9 +71,8 @@ static int sha512_finup(struct shash_des
+ 
+ 	kernel_fpu_begin();
+ 	if (len)
+-		sha512_base_do_update(desc, data, len,
+-				      (sha512_block_fn *)sha512_xform);
+-	sha512_base_do_finalize(desc, (sha512_block_fn *)sha512_xform);
++		sha512_base_do_update(desc, data, len, sha512_xform);
++	sha512_base_do_finalize(desc, sha512_xform);
+ 	kernel_fpu_end();
+ 
+ 	return sha512_base_finish(desc, out);
+@@ -146,8 +144,8 @@ static void unregister_sha512_ssse3(void
+ }
+ 
+ #ifdef CONFIG_AS_AVX
+-asmlinkage void sha512_transform_avx(u64 *digest, const char *data,
+-				     u64 rounds);
++asmlinkage void sha512_transform_avx(struct sha512_state *digest, const u8 *data,
++				     int rounds);
+ static bool avx_usable(void)
+ {
+ 	if (!cpu_has_xfeatures(XFEATURE_MASK_SSE | XFEATURE_MASK_YMM, NULL)) {
+@@ -229,8 +227,8 @@ static inline void unregister_sha512_avx
+ #endif
+ 
+ #if defined(CONFIG_AS_AVX2) && defined(CONFIG_AS_AVX)
+-asmlinkage void sha512_transform_rorx(u64 *digest, const char *data,
+-				      u64 rounds);
++asmlinkage void sha512_transform_rorx(struct sha512_state *digest, const u8 *data,
++				      int rounds);
+ 
+ static int sha512_avx2_update(struct shash_desc *desc, const u8 *data,
+ 		       unsigned int len)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/twofish_avx_glue.c linux-4.9.24-pax/arch/x86/crypto/twofish_avx_glue.c
+--- linux-4.9.24/arch/x86/crypto/twofish_avx_glue.c	2016-01-11 01:27:31.427016876 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/twofish_avx_glue.c	2017-01-31 04:40:36.754241512 +0100
+@@ -46,24 +46,27 @@
+ #define TWOFISH_PARALLEL_BLOCKS 8
+ 
+ /* 8-way parallel cipher functions */
+-asmlinkage void twofish_ecb_enc_8way(struct twofish_ctx *ctx, u8 *dst,
++asmlinkage void twofish_ecb_enc_8way(void *ctx, u8 *dst,
+ 				     const u8 *src);
+-asmlinkage void twofish_ecb_dec_8way(struct twofish_ctx *ctx, u8 *dst,
++asmlinkage void twofish_ecb_dec_8way(void *ctx, u8 *dst,
+ 				     const u8 *src);
++void __twofish_enc_blk8(void *ctx, u8 *dst, const u8 *src) __rap_hash;
++void __twofish_dec_blk8(void *ctx, u8 *dst, const u8 *src) __rap_hash;
+ 
+-asmlinkage void twofish_cbc_dec_8way(struct twofish_ctx *ctx, u8 *dst,
++asmlinkage void twofish_cbc_dec_8way(void *ctx, u8 *dst,
+ 				     const u8 *src);
+-asmlinkage void twofish_ctr_8way(struct twofish_ctx *ctx, u8 *dst,
+-				 const u8 *src, le128 *iv);
++asmlinkage void twofish_ctr_8way(void *ctx, u128 *dst,
++				 const u128 *src, le128 *iv);
+ 
+-asmlinkage void twofish_xts_enc_8way(struct twofish_ctx *ctx, u8 *dst,
+-				     const u8 *src, le128 *iv);
+-asmlinkage void twofish_xts_dec_8way(struct twofish_ctx *ctx, u8 *dst,
+-				     const u8 *src, le128 *iv);
++asmlinkage void twofish_xts_enc_8way(void *ctx, u128 *dst,
++				     const u128 *src, le128 *iv);
++asmlinkage void twofish_xts_dec_8way(void *ctx, u128 *dst,
++				     const u128 *src, le128 *iv);
+ 
+-static inline void twofish_enc_blk_3way(struct twofish_ctx *ctx, u8 *dst,
++static inline void twofish_enc_blk_3way(void *_ctx, u8 *dst,
+ 					const u8 *src)
+ {
++	struct twofish_ctx *ctx = _ctx;
+ 	__twofish_enc_blk_3way(ctx, dst, src, false);
+ }
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/twofish_glue_3way.c linux-4.9.24-pax/arch/x86/crypto/twofish_glue_3way.c
+--- linux-4.9.24/arch/x86/crypto/twofish_glue_3way.c	2016-05-22 01:55:29.011564970 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/twofish_glue_3way.c	2017-01-01 22:57:10.609520746 +0100
+@@ -36,21 +36,21 @@
+ EXPORT_SYMBOL_GPL(__twofish_enc_blk_3way);
+ EXPORT_SYMBOL_GPL(twofish_dec_blk_3way);
+ 
+-static inline void twofish_enc_blk_3way(struct twofish_ctx *ctx, u8 *dst,
++static inline void twofish_enc_blk_3way(void *ctx, u8 *dst,
+ 					const u8 *src)
+ {
+ 	__twofish_enc_blk_3way(ctx, dst, src, false);
+ }
+ 
+-static inline void twofish_enc_blk_xor_3way(struct twofish_ctx *ctx, u8 *dst,
++static inline void twofish_enc_blk_xor_3way(void *ctx, u8 *dst,
+ 					    const u8 *src)
+ {
+ 	__twofish_enc_blk_3way(ctx, dst, src, true);
+ }
+ 
+-void twofish_dec_blk_cbc_3way(void *ctx, u128 *dst, const u128 *src)
++void twofish_dec_blk_cbc_3way(void *ctx, u8 *_dst, const u8 *_src)
+ {
+-	u128 ivs[2];
++	u128 ivs[2], *dst = (u128 *)_dst, *src = (u128 *)_src;
+ 
+ 	ivs[0] = src[0];
+ 	ivs[1] = src[1];
+@@ -118,10 +118,10 @@ static const struct common_glue_ctx twof
+ 
+ 	.funcs = { {
+ 		.num_blocks = 3,
+-		.fn_u = { .ecb = GLUE_FUNC_CAST(twofish_enc_blk_ctr_3way) }
++		.fn_u = { .ctr = GLUE_CTR_FUNC_CAST(twofish_enc_blk_ctr_3way) }
+ 	}, {
+ 		.num_blocks = 1,
+-		.fn_u = { .ecb = GLUE_FUNC_CAST(twofish_enc_blk_ctr) }
++		.fn_u = { .ctr = GLUE_CTR_FUNC_CAST(twofish_enc_blk_ctr) }
+ 	} }
+ };
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/twofish_glue.c linux-4.9.24-pax/arch/x86/crypto/twofish_glue.c
+--- linux-4.9.24/arch/x86/crypto/twofish_glue.c	2015-02-09 21:11:56.189573929 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/twofish_glue.c	2017-01-01 22:57:10.609520746 +0100
+@@ -44,10 +44,10 @@
+ #include <linux/module.h>
+ #include <linux/types.h>
+ 
+-asmlinkage void twofish_enc_blk(struct twofish_ctx *ctx, u8 *dst,
++asmlinkage void twofish_enc_blk(void *ctx, u8 *dst,
+ 				const u8 *src);
+ EXPORT_SYMBOL_GPL(twofish_enc_blk);
+-asmlinkage void twofish_dec_blk(struct twofish_ctx *ctx, u8 *dst,
++asmlinkage void twofish_dec_blk(void *ctx, u8 *dst,
+ 				const u8 *src);
+ EXPORT_SYMBOL_GPL(twofish_dec_blk);
+ 

@@ -1,0 +1,36 @@
+The variant in asm-generic does the same, but better.
+
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/lib/usercopy_64.c linux-4.9.24-pax/arch/powerpc/lib/usercopy_64.c
+--- linux-4.9.24/arch/powerpc/lib/usercopy_64.c	2015-03-18 15:21:50.208349252 +0100
++++ linux-4.9.24-pax/arch/powerpc/lib/usercopy_64.c	2017-01-01 22:57:10.581520676 +0100
+@@ -9,22 +9,6 @@
+ #include <linux/module.h>
+ #include <asm/uaccess.h>
+ 
+-unsigned long copy_from_user(void *to, const void __user *from, unsigned long n)
+-{
+-	if (likely(access_ok(VERIFY_READ, from, n)))
+-		n = __copy_from_user(to, from, n);
+-	else
+-		memset(to, 0, n);
+-	return n;
+-}
+-
+-unsigned long copy_to_user(void __user *to, const void *from, unsigned long n)
+-{
+-	if (likely(access_ok(VERIFY_WRITE, to, n)))
+-		n = __copy_to_user(to, from, n);
+-	return n;
+-}
+-
+ unsigned long copy_in_user(void __user *to, const void __user *from,
+ 			   unsigned long n)
+ {
+@@ -35,7 +19,5 @@ unsigned long copy_in_user(void __user *
+ 	return n;
+ }
+ 
+-EXPORT_SYMBOL(copy_from_user);
+-EXPORT_SYMBOL(copy_to_user);
+ EXPORT_SYMBOL(copy_in_user);
+ 

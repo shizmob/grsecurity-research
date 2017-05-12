@@ -1,0 +1,13 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/kernel/vmlinux.lds.S linux-4.9.24-pax/arch/arm/kernel/vmlinux.lds.S
+--- linux-4.9.24/arch/arm/kernel/vmlinux.lds.S	2016-12-13 12:08:18.154317953 +0100
++++ linux-4.9.24-pax/arch/arm/kernel/vmlinux.lds.S	2017-01-01 22:57:10.533520559 +0100
+@@ -44,7 +44,8 @@
+ #endif
+ 
+ #if (defined(CONFIG_SMP_ON_UP) && !defined(CONFIG_DEBUG_SPINLOCK)) || \
+-	defined(CONFIG_GENERIC_BUG) || defined(CONFIG_JUMP_LABEL)
++	defined(CONFIG_GENERIC_BUG) || defined(CONFIG_JUMP_LABEL) || \
++	defined(CONFIG_PAX_REFCOUNT)
+ #define ARM_EXIT_KEEP(x)	x
+ #define ARM_EXIT_DISCARD(x)
+ #else

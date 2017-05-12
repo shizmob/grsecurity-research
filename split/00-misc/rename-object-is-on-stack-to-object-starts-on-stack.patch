@@ -1,0 +1,112 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/linux/sched.h linux-4.9.24-pax/include/linux/sched.h
+--- linux-4.9.24/include/linux/sched.h	2017-04-25 17:08:12.977416647 +0200
++++ linux-4.9.24-pax/include/linux/sched.h	2017-04-25 17:08:28.293242898 +0200
+@@ -3203,9 +3267,9 @@ static inline void put_task_stack(struct
+ #define task_stack_end_corrupted(task) \
+ 		(*(end_of_stack(task)) != STACK_END_MAGIC)
+ 
+-static inline int object_is_on_stack(void *obj)
++static inline int object_starts_on_stack(const void *obj)
+ {
+-	void *stack = task_stack_page(current);
++	const void *stack = task_stack_page(current);
+ 
+ 	return (obj >= stack) && (obj < (stack + THREAD_SIZE));
+ }
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm64/kernel/stacktrace.c linux-4.9.24-pax/arch/arm64/kernel/stacktrace.c
+--- linux-4.9.24/arch/arm64/kernel/stacktrace.c	2016-12-13 12:08:20.570334371 +0100
++++ linux-4.9.24-pax/arch/arm64/kernel/stacktrace.c	2017-01-01 22:57:10.553520608 +0100
+@@ -95,8 +95,8 @@ int notrace unwind_frame(struct task_str
+ 		struct pt_regs *irq_args;
+ 		unsigned long orig_sp = IRQ_STACK_TO_TASK_STACK(irq_stack_ptr);
+ 
+-		if (object_is_on_stack((void *)orig_sp) &&
+-		   object_is_on_stack((void *)frame->fp)) {
++		if (object_starts_on_stack((void *)orig_sp) &&
++		   object_starts_on_stack((void *)frame->fp)) {
+ 			frame->sp = orig_sp;
+ 
+ 			/* orig_sp is the saved pt_regs, find the elr */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/block/blk-map.c linux-4.9.24-pax/block/blk-map.c
+--- linux-4.9.24/block/blk-map.c	2016-12-13 12:08:28.090385545 +0100
++++ linux-4.9.24-pax/block/blk-map.c	2017-01-01 22:57:10.709520991 +0100
+@@ -223,7 +223,7 @@ int blk_rq_map_kern(struct request_queue
+ 	if (!len || !kbuf)
+ 		return -EINVAL;
+ 
+-	do_copy = !blk_rq_aligned(q, addr, len) || object_is_on_stack(kbuf);
++	do_copy = !blk_rq_aligned(q, addr, len) || object_starts_on_stack(kbuf);
+ 	if (do_copy)
+ 		bio = bio_copy_kern(q, kbuf, len, gfp_mask, reading);
+ 	else
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/drivers/ide/ide-cd.c linux-4.9.24-pax/drivers/ide/ide-cd.c
+--- linux-4.9.24/drivers/ide/ide-cd.c	2016-10-03 11:27:47.206924794 +0200
++++ linux-4.9.24-pax/drivers/ide/ide-cd.c	2017-01-01 22:57:10.837521305 +0100
+@@ -768,7 +768,7 @@ static void cdrom_do_block_pc(ide_drive_
+ 		alignment = queue_dma_alignment(q) | q->dma_pad_mask;
+ 		if ((unsigned long)buf & alignment
+ 		    || blk_rq_bytes(rq) & q->dma_pad_mask
+-		    || object_is_on_stack(buf))
++		    || object_starts_on_stack(buf))
+ 			drive->dma = 0;
+ 	}
+ }
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/drivers/md/bcache/closure.h linux-4.9.24-pax/drivers/md/bcache/closure.h
+--- linux-4.9.24/drivers/md/bcache/closure.h	2016-10-03 11:27:52.271318048 +0200
++++ linux-4.9.24-pax/drivers/md/bcache/closure.h	2017-01-01 22:57:10.885521423 +0100
+@@ -240,6 +240,6 @@ static inline void closure_set_stopped(s
+ 				  struct workqueue_struct *wq)
+ {
+-	BUG_ON(object_is_on_stack(cl));
++	BUG_ON(object_starts_on_stack(cl));
+ 	closure_set_ip(cl);
+ 	cl->fn = fn;
+ 	cl->wq = wq;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/drivers/mtd/nand/gpmi-nand/gpmi-nand.c linux-4.9.24-pax/drivers/mtd/nand/gpmi-nand/gpmi-nand.c
+--- linux-4.9.24/drivers/mtd/nand/gpmi-nand/gpmi-nand.c	2016-12-13 12:11:28.527641098 +0100
++++ linux-4.9.24-pax/drivers/mtd/nand/gpmi-nand/gpmi-nand.c	2017-01-01 22:57:10.933521541 +0100
+@@ -415,7 +415,7 @@ void prepare_data_dma(struct gpmi_nand_d
+ 
+ 	/* first try to map the upper buffer directly */
+ 	if (virt_addr_valid(this->upper_buf) &&
+-		!object_is_on_stack(this->upper_buf)) {
++		!object_starts_on_stack(this->upper_buf)) {
+ 		sg_init_one(sgl, this->upper_buf, this->upper_len);
+ 		ret = dma_map_sg(this->dev, sgl, 1, dr);
+ 		if (ret == 0)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/kernel/trace/trace_stack.c linux-4.9.24-pax/kernel/trace/trace_stack.c
+--- linux-4.9.24/kernel/trace/trace_stack.c	2016-03-14 11:52:48.500957066 +0100
++++ linux-4.9.24-pax/kernel/trace/trace_stack.c	2017-01-01 22:57:19.565542721 +0100
+@@ -88,7 +88,7 @@ check_stack(unsigned long ip, unsigned l
+ 		return;
+ 
+ 	/* we do not handle interrupt stacks yet */
+-	if (!object_is_on_stack(stack))
++	if (!object_starts_on_stack(stack))
+ 		return;
+ 
+ 	/* Can't do this from NMI context (can cause deadlocks) */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/lib/debugobjects.c linux-4.9.24-pax/lib/debugobjects.c
+--- linux-4.9.24/lib/debugobjects.c	2016-12-13 12:12:04.875899588 +0100
++++ linux-4.9.24-pax/lib/debugobjects.c	2017-01-01 22:57:19.637542898 +0100
+@@ -288,7 +288,7 @@ static void debug_object_is_on_stack(voi
+ 	if (limit > 4)
+ 		return;
+ 
+-	is_on_stack = object_is_on_stack(addr);
++	is_on_stack = object_starts_on_stack(addr);
+ 	if (is_on_stack == onstack)
+ 		return;
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/lib/dma-debug.c linux-4.9.24-pax/lib/dma-debug.c
+--- linux-4.9.24/lib/dma-debug.c	2016-12-13 12:12:04.875899588 +0100
++++ linux-4.9.24-pax/lib/dma-debug.c	2017-01-01 22:57:19.645542918 +0100
+@@ -1181,7 +1181,7 @@ static void check_for_stack(struct devic
+ 		if (PageHighMem(page))
+ 			return;
+ 		addr = page_address(page) + offset;
+-		if (object_is_on_stack(addr))
++		if (object_starts_on_stack(addr))
+ 			err_printk(dev, NULL, "DMA-API: device driver maps memory from stack [addr=%p]\n", addr);
+ 	} else {
+ 		/* Stack is vmalloced. */

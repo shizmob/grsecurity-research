@@ -1,0 +1,640 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/alpha/include/asm/pgalloc.h linux-4.9.24-pax/arch/alpha/include/asm/pgalloc.h
+--- linux-4.9.24/arch/alpha/include/asm/pgalloc.h	2016-07-25 02:12:29.784448264 +0200
++++ linux-4.9.24-pax/arch/alpha/include/asm/pgalloc.h	2017-01-01 22:57:10.517520519 +0100
+@@ -29,6 +29,12 @@ pgd_populate(struct mm_struct *mm, pgd_t
+ 	pgd_set(pgd, pmd);
+ }
+ 
++static inline void
++pgd_populate_kernel(struct mm_struct *mm, pgd_t *pgd, pmd_t *pmd)
++{
++	pgd_populate(mm, pgd, pmd);
++}
++
+ extern pgd_t *pgd_alloc(struct mm_struct *mm);
+ 
+ static inline void
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/pgalloc.h linux-4.9.24-pax/arch/arm/include/asm/pgalloc.h
+--- linux-4.9.24/arch/arm/include/asm/pgalloc.h	2016-10-03 11:27:16.107048913 +0200
++++ linux-4.9.24-pax/arch/arm/include/asm/pgalloc.h	2017-01-01 22:57:10.525520539 +0100
+@@ -17,6 +17,7 @@
+ #include <asm/processor.h>
+ #include <asm/cacheflush.h>
+ #include <asm/tlbflush.h>
++#include <asm/system_info.h>
+ 
+ #define check_pgt_cache()		do { } while (0)
+ 
+@@ -43,6 +44,11 @@ static inline void pud_populate(struct m
+ 	set_pud(pud, __pud(__pa(pmd) | PMD_TYPE_TABLE));
+ }
+ 
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
++{
++	pud_populate(mm, pud, pmd);
++}
++
+ #else	/* !CONFIG_ARM_LPAE */
+ 
+ /*
+@@ -51,6 +57,7 @@ static inline void pud_populate(struct m
+ #define pmd_alloc_one(mm,addr)		({ BUG(); ((pmd_t *)2); })
+ #define pmd_free(mm, pmd)		do { } while (0)
+ #define pud_populate(mm,pmd,pte)	BUG()
++#define pud_populate_kernel(mm,pmd,pte)	BUG()
+ 
+ #endif	/* CONFIG_ARM_LPAE */
+ 
+@@ -128,6 +135,19 @@ static inline void pte_free(struct mm_st
+ 	__free_page(pte);
+ }
+ 
++static inline void __section_update(pmd_t *pmdp, unsigned long addr, pmdval_t prot)
++{
++#ifdef CONFIG_ARM_LPAE
++	pmdp[0] = __pmd(pmd_val(pmdp[0]) | prot);
++#else
++	if (addr & SECTION_SIZE)
++		pmdp[1] = __pmd(pmd_val(pmdp[1]) | prot);
++	else
++		pmdp[0] = __pmd(pmd_val(pmdp[0]) | prot);
++#endif
++	flush_pmd_entry(pmdp);
++}
++
+ static inline void __pmd_populate(pmd_t *pmdp, phys_addr_t pte,
+ 				  pmdval_t prot)
+ {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm64/include/asm/pgalloc.h linux-4.9.24-pax/arch/arm64/include/asm/pgalloc.h
+--- linux-4.9.24/arch/arm64/include/asm/pgalloc.h	2016-07-25 02:13:13.531241646 +0200
++++ linux-4.9.24-pax/arch/arm64/include/asm/pgalloc.h	2017-01-01 22:57:10.549520598 +0100
+@@ -51,6 +51,11 @@ static inline void pud_populate(struct m
+ {
+ 	__pud_populate(pud, __pa(pmd), PMD_TYPE_TABLE);
+ }
++
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
++{
++	pud_populate(mm, pud, pmd);
++}
+ #else
+ static inline void __pud_populate(pud_t *pud, phys_addr_t pmd, pudval_t prot)
+ {
+@@ -80,6 +85,11 @@ static inline void pgd_populate(struct m
+ {
+ 	__pgd_populate(pgd, __pa(pud), PUD_TYPE_TABLE);
+ }
++
++static inline void pgd_populate_kernel(struct mm_struct *mm, pgd_t *pgd, pud_t *pud)
++{
++	pgd_populate(mm, pgd, pud);
++}
+ #else
+ static inline void __pgd_populate(pgd_t *pgdp, phys_addr_t pud, pgdval_t prot)
+ {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/ia64/include/asm/pgalloc.h linux-4.9.24-pax/arch/ia64/include/asm/pgalloc.h
+--- linux-4.9.24/arch/ia64/include/asm/pgalloc.h	2015-06-22 11:14:10.064675287 +0200
++++ linux-4.9.24-pax/arch/ia64/include/asm/pgalloc.h	2017-01-01 22:57:10.557520617 +0100
+@@ -39,6 +39,12 @@ pgd_populate(struct mm_struct *mm, pgd_t
+ 	pgd_val(*pgd_entry) = __pa(pud);
+ }
+ 
++static inline void
++pgd_populate_kernel(struct mm_struct *mm, pgd_t * pgd_entry, pud_t * pud)
++{
++	pgd_populate(mm, pgd_entry, pud);
++}
++
+ static inline pud_t *pud_alloc_one(struct mm_struct *mm, unsigned long addr)
+ {
+ 	return quicklist_alloc(0, GFP_KERNEL, NULL);
+@@ -57,6 +63,12 @@ pud_populate(struct mm_struct *mm, pud_t
+ 	pud_val(*pud_entry) = __pa(pmd);
+ }
+ 
++static inline void
++pud_populate_kernel(struct mm_struct *mm, pud_t * pud_entry, pmd_t * pmd)
++{
++	pud_populate(mm, pud_entry, pmd);
++}
++
+ static inline pmd_t *pmd_alloc_one(struct mm_struct *mm, unsigned long addr)
+ {
+ 	return quicklist_alloc(0, GFP_KERNEL, NULL);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/include/asm/pgalloc.h linux-4.9.24-pax/arch/mips/include/asm/pgalloc.h
+--- linux-4.9.24/arch/mips/include/asm/pgalloc.h	2016-12-13 12:08:22.322346284 +0100
++++ linux-4.9.24-pax/arch/mips/include/asm/pgalloc.h	2017-01-01 22:57:10.561520627 +0100
+@@ -37,6 +37,11 @@ static inline void pud_populate(struct m
+ {
+ 	set_pud(pud, __pud((unsigned long)pmd));
+ }
++
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
++{
++	pud_populate(mm, pud, pmd);
++}
+ #endif
+ 
+ /*
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/parisc/include/asm/pgalloc.h linux-4.9.24-pax/arch/parisc/include/asm/pgalloc.h
+--- linux-4.9.24/arch/parisc/include/asm/pgalloc.h	2016-07-25 02:13:17.262444229 +0200
++++ linux-4.9.24-pax/arch/parisc/include/asm/pgalloc.h	2017-01-01 22:57:10.569520647 +0100
+@@ -61,6 +61,11 @@ static inline void pgd_populate(struct m
+ 		        (__u32)(__pa((unsigned long)pmd) >> PxD_VALUE_SHIFT));
+ }
+ 
++static inline void pgd_populate_kernel(struct mm_struct *mm, pgd_t *pgd, pmd_t *pmd)
++{
++	pgd_populate(mm, pgd, pmd);
++}
++
+ static inline pmd_t *pmd_alloc_one(struct mm_struct *mm, unsigned long address)
+ {
+ 	pmd_t *pmd = (pmd_t *)__get_free_pages(GFP_KERNEL, PMD_ORDER);
+@@ -96,6 +101,7 @@ static inline void pmd_free(struct mm_st
+ #define pmd_alloc_one(mm, addr)		({ BUG(); ((pmd_t *)2); })
+ #define pmd_free(mm, x)			do { } while (0)
+ #define pgd_populate(mm, pmd, pte)	BUG()
++#define pgd_populate_kernel(mm, pmd, pte)	BUG()
+ 
+ #endif
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/include/asm/book3s/64/pgalloc.h linux-4.9.24-pax/arch/powerpc/include/asm/book3s/64/pgalloc.h
+--- linux-4.9.24/arch/powerpc/include/asm/book3s/64/pgalloc.h	2016-07-25 02:13:17.470603898 +0200
++++ linux-4.9.24-pax/arch/powerpc/include/asm/book3s/64/pgalloc.h	2017-01-01 22:57:10.573520657 +0100
+@@ -91,6 +91,11 @@ static inline void pgd_populate(struct m
+ 	pgd_set(pgd, __pgtable_ptr_val(pud) | PGD_VAL_BITS);
+ }
+ 
++static inline void pgd_populate_kernel(struct mm_struct *mm, pgd_t *pgd, pud_t *pud)
++{
++	pgd_populate(mm, pgd, pud);
++}
++
+ static inline pud_t *pud_alloc_one(struct mm_struct *mm, unsigned long addr)
+ {
+ 	return kmem_cache_alloc(PGT_CACHE(PUD_INDEX_SIZE), GFP_KERNEL);
+@@ -106,6 +111,11 @@ static inline void pud_populate(struct m
+ 	pud_set(pud, __pgtable_ptr_val(pmd) | PUD_VAL_BITS);
+ }
+ 
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
++{
++	pud_populate_kernel(mm, pud, pmd);
++}
++
+ static inline void __pud_free_tlb(struct mmu_gather *tlb, pud_t *pud,
+                                   unsigned long address)
+ {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/include/asm/nohash/64/pgalloc.h linux-4.9.24-pax/arch/powerpc/include/asm/nohash/64/pgalloc.h
+--- linux-4.9.24/arch/powerpc/include/asm/nohash/64/pgalloc.h	2016-07-25 02:13:17.482613109 +0200
++++ linux-4.9.24-pax/arch/powerpc/include/asm/nohash/64/pgalloc.h	2017-01-01 22:57:10.573520657 +0100
+@@ -54,6 +54,7 @@ static inline void pgd_free(struct mm_st
+ #ifndef CONFIG_PPC_64K_PAGES
+ 
+ #define pgd_populate(MM, PGD, PUD)	pgd_set(PGD, (unsigned long)PUD)
++#define pgd_populate_kernel(MM, PGD, PUD)	pgd_populate((MM), (PGD), (PUD))
+ 
+ static inline pud_t *pud_alloc_one(struct mm_struct *mm, unsigned long addr)
+ {
+@@ -70,6 +71,11 @@ static inline void pud_populate(struct m
+ 	pud_set(pud, (unsigned long)pmd);
+ }
+ 
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
++{
++	pud_populate(mm, pud, pmd);
++}
++
+ static inline void pmd_populate_kernel(struct mm_struct *mm, pmd_t *pmd,
+ 				       pte_t *pte)
+ {
+@@ -139,6 +145,7 @@ extern void __tlb_remove_table(void *_ta
+ #endif
+ 
+ #define pud_populate(mm, pud, pmd)	pud_set(pud, (unsigned long)pmd)
++#define pud_populate_kernel(mm, pud, pmd)	pud_populate((mm), (pud), (pmd))
+ 
+ static inline void pmd_populate_kernel(struct mm_struct *mm, pmd_t *pmd,
+ 				       pte_t *pte)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/include/asm/pgalloc_32.h linux-4.9.24-pax/arch/sparc/include/asm/pgalloc_32.h
+--- linux-4.9.24/arch/sparc/include/asm/pgalloc_32.h	2016-07-25 02:13:18.739552672 +0200
++++ linux-4.9.24-pax/arch/sparc/include/asm/pgalloc_32.h	2017-01-01 22:57:10.585520686 +0100
+@@ -35,6 +35,7 @@ static inline void pgd_set(pgd_t * pgdp,
+ }
+ 
+ #define pgd_populate(MM, PGD, PMD)      pgd_set(PGD, PMD)
++#define pgd_populate_kernel(MM, PGD, PMD)      pgd_populate((MM), (PGD), (PMD))
+ 
+ static inline pmd_t *pmd_alloc_one(struct mm_struct *mm,
+ 				   unsigned long address)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/include/asm/pgalloc_64.h linux-4.9.24-pax/arch/sparc/include/asm/pgalloc_64.h
+--- linux-4.9.24/arch/sparc/include/asm/pgalloc_64.h	2016-07-25 02:13:18.739552672 +0200
++++ linux-4.9.24-pax/arch/sparc/include/asm/pgalloc_64.h	2017-01-01 22:57:10.585520686 +0100
+@@ -21,6 +21,7 @@ static inline void __pgd_populate(pgd_t
+ }
+ 
+ #define pgd_populate(MM, PGD, PUD)	__pgd_populate(PGD, PUD)
++#define pgd_populate_kernel(MM, PGD, PMD)	pgd_populate((MM), (PGD), (PMD))
+ 
+ static inline pgd_t *pgd_alloc(struct mm_struct *mm)
+ {
+@@ -38,6 +39,7 @@ static inline void __pud_populate(pud_t
+ }
+ 
+ #define pud_populate(MM, PUD, PMD)	__pud_populate(PUD, PMD)
++#define pud_populate_kernel(MM, PUD, PMD)	pud_populate((MM), (PUD), (PMD))
+ 
+ static inline pud_t *pud_alloc_one(struct mm_struct *mm, unsigned long addr)
+ {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/um/include/asm/pgtable-3level.h linux-4.9.24-pax/arch/um/include/asm/pgtable-3level.h
+--- linux-4.9.24/arch/um/include/asm/pgtable-3level.h	2016-03-14 11:51:46.751022950 +0100
++++ linux-4.9.24-pax/arch/um/include/asm/pgtable-3level.h	2017-01-01 22:57:10.593520706 +0100
+@@ -58,6 +58,7 @@
+ #define pud_present(x)	(pud_val(x) & _PAGE_PRESENT)
+ #define pud_populate(mm, pud, pmd) \
+ 	set_pud(pud, __pud(_PAGE_TABLE + __pa(pmd)))
++#define pud_populate_kernel(mm, pud, pmd) pud_populate((mm), (pud), (pmd))
+ 
+ #ifdef CONFIG_64BIT
+ #define set_pud(pudptr, pudval) set_64bit((u64 *) (pudptr), pud_val(pudval))
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/include/asm/pgalloc.h linux-4.9.24-pax/arch/x86/include/asm/pgalloc.h
+--- linux-4.9.24/arch/x86/include/asm/pgalloc.h	2016-10-03 11:27:30.679521303 +0200
++++ linux-4.9.24-pax/arch/x86/include/asm/pgalloc.h	2017-01-01 22:57:10.633520804 +0100
+@@ -63,6 +63,13 @@ static inline void pmd_populate_kernel(s
+ 				       pmd_t *pmd, pte_t *pte)
+ {
+ 	paravirt_alloc_pte(mm, __pa(pte) >> PAGE_SHIFT);
++	set_pmd(pmd, __pmd(__pa(pte) | _KERNPG_TABLE));
++}
++
++static inline void pmd_populate_user(struct mm_struct *mm,
++				       pmd_t *pmd, pte_t *pte)
++{
++	paravirt_alloc_pte(mm, __pa(pte) >> PAGE_SHIFT);
+ 	set_pmd(pmd, __pmd(__pa(pte) | _PAGE_TABLE));
+ }
+ 
+@@ -112,12 +119,22 @@ static inline void __pmd_free_tlb(struct
+ 
+ #ifdef CONFIG_X86_PAE
+ extern void pud_populate(struct mm_struct *mm, pud_t *pudp, pmd_t *pmd);
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pudp, pmd_t *pmd)
++{
++	pud_populate(mm, pudp, pmd);
++}
+ #else	/* !CONFIG_X86_PAE */
+ static inline void pud_populate(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
+ {
+ 	paravirt_alloc_pmd(mm, __pa(pmd) >> PAGE_SHIFT);
+ 	set_pud(pud, __pud(_PAGE_TABLE | __pa(pmd)));
+ }
++
++static inline void pud_populate_kernel(struct mm_struct *mm, pud_t *pud, pmd_t *pmd)
++{
++	paravirt_alloc_pmd(mm, __pa(pmd) >> PAGE_SHIFT);
++	set_pud(pud, __pud(_KERNPG_TABLE | __pa(pmd)));
++}
+ #endif	/* CONFIG_X86_PAE */
+ 
+ #if CONFIG_PGTABLE_LEVELS > 3
+@@ -127,6 +144,12 @@ static inline void pgd_populate(struct m
+ 	set_pgd(pgd, __pgd(_PAGE_TABLE | __pa(pud)));
+ }
+ 
++static inline void pgd_populate_kernel(struct mm_struct *mm, pgd_t *pgd, pud_t *pud)
++{
++	paravirt_alloc_pud(mm, __pa(pud) >> PAGE_SHIFT);
++	set_pgd(pgd, __pgd(_KERNPG_TABLE | __pa(pud)));
++}
++
+ static inline pud_t *pud_alloc_one(struct mm_struct *mm, unsigned long addr)
+ {
+ 	gfp_t gfp = GFP_KERNEL_ACCOUNT;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/asm-generic/pgtable-nopud.h linux-4.9.24-pax/include/asm-generic/pgtable-nopud.h
+--- linux-4.9.24/include/asm-generic/pgtable-nopud.h	2015-03-18 15:21:50.708349254 +0100
++++ linux-4.9.24-pax/include/asm-generic/pgtable-nopud.h	2017-01-01 22:57:16.769535864 +0100
+@@ -29,6 +29,7 @@ static inline void pgd_clear(pgd_t *pgd)
+ #define pud_ERROR(pud)				(pgd_ERROR((pud).pgd))
+ 
+ #define pgd_populate(mm, pgd, pud)		do { } while (0)
++#define pgd_populate_kernel(mm, pgd, pud)	do { } while (0)
+ /*
+  * (puds are folded into pgds so this doesn't get actually called,
+  * but the define is needed for a generic inline function.)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/asm-generic/pgtable-nopmd.h linux-4.9.24-pax/include/asm-generic/pgtable-nopmd.h
+--- linux-4.9.24/include/asm-generic/pgtable-nopmd.h	2015-03-18 15:21:50.704349254 +0100
++++ linux-4.9.24-pax/include/asm-generic/pgtable-nopmd.h	2017-01-01 22:57:16.769535864 +0100
+@@ -33,6 +33,7 @@ static inline void pud_clear(pud_t *pud)
+ #define pmd_ERROR(pmd)				(pud_ERROR((pmd).pud))
+ 
+ #define pud_populate(mm, pmd, pte)		do { } while (0)
++#define pud_populate_kernel(mm, pmd, pte)	do { } while (0)
+ 
+ /*
+  * (pmds are folded into puds so this doesn't get actually called,
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/asm-generic/4level-fixup.h linux-4.9.24-pax/include/asm-generic/4level-fixup.h
+--- linux-4.9.24/include/asm-generic/4level-fixup.h	2015-04-13 11:21:40.438615401 +0200
++++ linux-4.9.24-pax/include/asm-generic/4level-fixup.h	2017-01-01 22:57:16.761535844 +0100
+@@ -14,8 +14,10 @@
+ #define pmd_alloc(mm, pud, address) \
+ 	((unlikely(pgd_none(*(pud))) && __pmd_alloc(mm, pud, address))? \
+  		NULL: pmd_offset(pud, address))
++#define pmd_alloc_kernel(mm, pud, address) pmd_alloc((mm), (pud), (address))
+ 
+ #define pud_alloc(mm, pgd, address)	(pgd)
++#define pud_alloc_kernel(mm, pgd, address)	pud_alloc((mm), (pgd), (address))
+ #define pud_offset(pgd, start)		(pgd)
+ #define pud_none(pud)			0
+ #define pud_bad(pud)			0
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/linux/mm.h linux-4.9.24-pax/include/linux/mm.h
+--- linux-4.9.24/include/linux/mm.h	2017-01-28 00:00:41.910940119 +0100
++++ linux-4.9.24-pax/include/linux/mm.h	2017-01-28 00:11:51.915593458 +0100
+@@ -1533,8 +1512,15 @@ static inline int __pud_alloc(struct mm_
+ {
+ 	return 0;
+ }
++
++static inline int __pud_alloc_kernel(struct mm_struct *mm, pgd_t *pgd,
++						unsigned long address)
++{
++	return 0;
++}
+ #else
+ int __pud_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long address);
++int __pud_alloc_kernel(struct mm_struct *mm, pgd_t *pgd, unsigned long address);
+ #endif
+ 
+ #if defined(__PAGETABLE_PMD_FOLDED) || !defined(CONFIG_MMU)
+@@ -1544,6 +1530,12 @@ static inline int __pmd_alloc(struct mm_
+ 	return 0;
+ }
+ 
++static inline int __pmd_alloc_kernel(struct mm_struct *mm, pud_t *pud,
++						unsigned long address)
++{
++	return 0;
++}
++
+ static inline void mm_nr_pmds_init(struct mm_struct *mm) {}
+ 
+ static inline unsigned long mm_nr_pmds(struct mm_struct *mm)
+@@ -1556,6 +1548,7 @@ static inline void mm_dec_nr_pmds(struct
+ 
+ #else
+ int __pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address);
++int __pmd_alloc_kernel(struct mm_struct *mm, pud_t *pud, unsigned long address);
+ 
+ static inline void mm_nr_pmds_init(struct mm_struct *mm)
+ {
+@@ -1592,11 +1585,23 @@ static inline pud_t *pud_alloc(struct mm
+ 		NULL: pud_offset(pgd, address);
+ }
+ 
++static inline pud_t *pud_alloc_kernel(struct mm_struct *mm, pgd_t *pgd, unsigned long address)
++{
++	return (unlikely(pgd_none(*pgd)) && __pud_alloc_kernel(mm, pgd, address))?
++		NULL: pud_offset(pgd, address);
++}
++
+ static inline pmd_t *pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address)
+ {
+ 	return (unlikely(pud_none(*pud)) && __pmd_alloc(mm, pud, address))?
+ 		NULL: pmd_offset(pud, address);
+ }
++
++static inline pmd_t *pmd_alloc_kernel(struct mm_struct *mm, pud_t *pud, unsigned long address)
++{
++	return (unlikely(pud_none(*pud)) && __pmd_alloc_kernel(mm, pud, address))?
++		NULL: pmd_offset(pud, address);
++}
+ #endif /* CONFIG_MMU && !__ARCH_HAS_4LEVEL_HACK */
+ 
+ #if USE_SPLIT_PTE_PTLOCKS
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/lib/ioremap.c linux-4.9.24-pax/lib/ioremap.c
+--- linux-4.9.24/lib/ioremap.c	2015-06-22 11:14:46.060675207 +0200
++++ linux-4.9.24-pax/lib/ioremap.c	2017-01-01 22:57:19.645542918 +0100
+@@ -75,7 +75,7 @@ static inline int ioremap_pmd_range(pud_
+ 	unsigned long next;
+ 
+ 	phys_addr -= addr;
+-	pmd = pmd_alloc(&init_mm, pud, addr);
++	pmd = pmd_alloc_kernel(&init_mm, pud, addr);
+ 	if (!pmd)
+ 		return -ENOMEM;
+ 	do {
+@@ -101,7 +101,7 @@ static inline int ioremap_pud_range(pgd_
+ 	unsigned long next;
+ 
+ 	phys_addr -= addr;
+-	pud = pud_alloc(&init_mm, pgd, addr);
++	pud = pud_alloc_kernel(&init_mm, pgd, addr);
+ 	if (!pud)
+ 		return -ENOMEM;
+ 	do {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/mm/init_64.c linux-4.9.24-pax/arch/x86/mm/init_64.c
+--- linux-4.9.24/arch/x86/mm/init_64.c	2016-10-03 11:27:31.875280509 +0200
++++ linux-4.9.24-pax/arch/x86/mm/init_64.c	2017-01-01 22:57:10.693520952 +0100
+@@ -163,7 +191,7 @@ static pud_t *fill_pud(pgd_t *pgd, unsig
+ {
+ 	if (pgd_none(*pgd)) {
+ 		pud_t *pud = (pud_t *)spp_getpage();
+-		pgd_populate(&init_mm, pgd, pud);
++		pgd_populate_kernel(&init_mm, pgd, pud);
+ 		if (pud != pud_offset(pgd, 0))
+ 			printk(KERN_ERR "PAGETABLE BUG #00! %p <-> %p\n",
+ 			       pud, pud_offset(pgd, 0));
+@@ -175,7 +203,7 @@ static pmd_t *fill_pmd(pud_t *pud, unsig
+ {
+ 	if (pud_none(*pud)) {
+ 		pmd_t *pmd = (pmd_t *) spp_getpage();
+-		pud_populate(&init_mm, pud, pmd);
++		pud_populate_kernel(&init_mm, pud, pmd);
+ 		if (pmd != pmd_offset(pud, 0))
+ 			printk(KERN_ERR "PAGETABLE BUG #01! %p <-> %p\n",
+ 			       pmd, pmd_offset(pud, 0));
+@@ -543,7 +571,7 @@ phys_pud_init(pud_t *pud_page, unsigned
+ 					   page_size_mask, prot);
+ 
+ 		spin_lock(&init_mm.page_table_lock);
+-		pud_populate(&init_mm, pud, pmd);
++		pud_populate_kernel(&init_mm, pud, pmd);
+ 		spin_unlock(&init_mm.page_table_lock);
+ 	}
+ 	__flush_tlb_all();
+@@ -590,7 +618,7 @@ kernel_physical_mapping_init(unsigned lo
+ 					   page_size_mask);
+ 
+ 		spin_lock(&init_mm.page_table_lock);
+-		pgd_populate(&init_mm, pgd, pud);
++		pgd_populate_kernel(&init_mm, pgd, pud);
+ 		spin_unlock(&init_mm.page_table_lock);
+ 		pgd_changed = true;
+ 	}
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/mm/ioremap.c linux-4.9.24-pax/arch/x86/mm/ioremap.c
+--- linux-4.9.24/arch/x86/mm/ioremap.c	2016-10-03 11:27:31.883388408 +0200
++++ linux-4.9.24-pax/arch/x86/mm/ioremap.c	2017-02-12 05:41:52.059821625 +0100
+@@ -454,8 +460,14 @@ void __init early_ioremap_init(void)
+ 	early_ioremap_setup();
+ 
+ 	pmd = early_ioremap_pmd(fix_to_virt(FIX_BTMAP_BEGIN));
+-	memset(bm_pte, 0, sizeof(bm_pte));
+-	pmd_populate_kernel(&init_mm, pmd, bm_pte);
++	if (pmd_none(*pmd))
++#ifdef CONFIG_COMPAT_VDSO
++		pmd_populate_user(&init_mm, pmd, __bm_pte);
++#else
++		pmd_populate_kernel(&init_mm, pmd, __bm_pte);
++#endif
++	else
++		bm_pte = (pte_t *)pmd_page_vaddr(*pmd);
+ 
+ 	/*
+ 	 * The boot-ioremap range spans multiple pmds, for which
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/memory.c linux-4.9.24-pax/mm/memory.c
+--- linux-4.9.24/mm/memory.c	2017-01-28 00:00:41.942940247 +0100
++++ linux-4.9.24-pax/mm/memory.c	2017-02-16 18:23:07.034542098 +0100
+@@ -1907,7 +1933,9 @@ static int apply_to_pmd_range(struct mm_
+ 
+ 	BUG_ON(pud_huge(*pud));
+ 
+-	pmd = pmd_alloc(mm, pud, addr);
++	pmd = (mm == &init_mm) ?
++		pmd_alloc_kernel(mm, pud, addr) :
++		pmd_alloc(mm, pud, addr);
+ 	if (!pmd)
+ 		return -ENOMEM;
+ 	do {
+@@ -1927,7 +1955,9 @@ static int apply_to_pud_range(struct mm_
+ 	unsigned long next;
+ 	int err;
+ 
+-	pud = pud_alloc(mm, pgd, addr);
++	pud = (mm == &init_mm) ?
++		pud_alloc_kernel(mm, pgd, addr) :
++		pud_alloc(mm, pgd, addr);
+ 	if (!pud)
+ 		return -ENOMEM;
+ 	do {
+@@ -3684,7 +3946,7 @@ EXPORT_SYMBOL_GPL(handle_mm_fault);
+  * Allocate page upper directory.
+  * We've already handled the fast-path in-line.
+  */
+-int __pud_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long address)
++static int ____pud_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long address, bool kernel)
+ {
+ 	pud_t *new = pud_alloc_one(mm, address);
+ 	if (!new)
+@@ -3695,11 +3957,23 @@ int __pud_alloc(struct mm_struct *mm, pg
+ 	spin_lock(&mm->page_table_lock);
+ 	if (pgd_present(*pgd))		/* Another has populated it */
+ 		pud_free(mm, new);
++	else if (kernel)
++		pgd_populate_kernel(mm, pgd, new);
+ 	else
+ 		pgd_populate(mm, pgd, new);
+ 	spin_unlock(&mm->page_table_lock);
+ 	return 0;
+ }
++
++int __pud_alloc(struct mm_struct *mm, pgd_t *pgd, unsigned long address)
++{
++	return ____pud_alloc(mm, pgd, address, false);
++}
++
++int __pud_alloc_kernel(struct mm_struct *mm, pgd_t *pgd, unsigned long address)
++{
++	return ____pud_alloc(mm, pgd, address, true);
++}
+ #endif /* __PAGETABLE_PUD_FOLDED */
+ 
+ #ifndef __PAGETABLE_PMD_FOLDED
+@@ -3707,7 +3981,7 @@ int __pud_alloc(struct mm_struct *mm, pg
+  * Allocate page middle directory.
+  * We've already handled the fast-path in-line.
+  */
+-int __pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address)
++static int ____pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address, bool kernel)
+ {
+ 	pmd_t *new = pmd_alloc_one(mm, address);
+ 	if (!new)
+@@ -3719,19 +3993,35 @@ int __pmd_alloc(struct mm_struct *mm, pu
+ #ifndef __ARCH_HAS_4LEVEL_HACK
+ 	if (!pud_present(*pud)) {
+ 		mm_inc_nr_pmds(mm);
+-		pud_populate(mm, pud, new);
++		if (kernel)
++			pud_populate_kernel(mm, pud, new);
++		else
++			pud_populate(mm, pud, new);
+ 	} else	/* Another has populated it */
+ 		pmd_free(mm, new);
+ #else
+ 	if (!pgd_present(*pud)) {
+ 		mm_inc_nr_pmds(mm);
+-		pgd_populate(mm, pud, new);
++		if (kernel)
++			pgd_populate_kernel(mm, pud, new);
++		else
++			pgd_populate(mm, pud, new);
+ 	} else /* Another has populated it */
+ 		pmd_free(mm, new);
+ #endif /* __ARCH_HAS_4LEVEL_HACK */
+ 	spin_unlock(&mm->page_table_lock);
+ 	return 0;
+ }
++
++int __pmd_alloc(struct mm_struct *mm, pud_t *pud, unsigned long address)
++{
++	return ____pmd_alloc(mm, pud, address, false);
++}
++
++int __pmd_alloc_kernel(struct mm_struct *mm, pud_t *pud, unsigned long address)
++{
++	return ____pmd_alloc(mm, pud, address, true);
++}
+ #endif /* __PAGETABLE_PMD_FOLDED */
+ 
+ static int __follow_pte(struct mm_struct *mm, unsigned long address,
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/sparse-vmemmap.c linux-4.9.24-pax/mm/sparse-vmemmap.c
+--- linux-4.9.24/mm/sparse-vmemmap.c	2016-10-03 11:28:36.689551397 +0200
++++ linux-4.9.24-pax/mm/sparse-vmemmap.c	2017-01-01 22:57:20.265544438 +0100
+@@ -203,7 +203,7 @@ pud_t * __meminit vmemmap_pud_populate(p
+ 		void *p = vmemmap_alloc_block(PAGE_SIZE, node);
+ 		if (!p)
+ 			return NULL;
+-		pud_populate(&init_mm, pud, p);
++		pud_populate_kernel(&init_mm, pud, p);
+ 	}
+ 	return pud;
+ }
+@@ -215,7 +215,7 @@ pgd_t * __meminit vmemmap_pgd_populate(u
+ 		void *p = vmemmap_alloc_block(PAGE_SIZE, node);
+ 		if (!p)
+ 			return NULL;
+-		pgd_populate(&init_mm, pgd, p);
++		pgd_populate_kernel(&init_mm, pgd, p);
+ 	}
+ 	return pgd;
+ }
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/vmalloc.c linux-4.9.24-pax/mm/vmalloc.c
+--- linux-4.9.24/mm/vmalloc.c	2016-12-13 12:12:05.051900844 +0100
++++ linux-4.9.24-pax/mm/vmalloc.c	2017-01-01 22:57:20.317544566 +0100
+@@ -149,7 +187,7 @@ static int vmap_pmd_range(pud_t *pud, un
+ 	pmd_t *pmd;
+ 	unsigned long next;
+ 
+-	pmd = pmd_alloc(&init_mm, pud, addr);
++	pmd = pmd_alloc_kernel(&init_mm, pud, addr);
+ 	if (!pmd)
+ 		return -ENOMEM;
+ 	do {
+@@ -166,7 +204,7 @@ static int vmap_pud_range(pgd_t *pgd, un
+ 	pud_t *pud;
+ 	unsigned long next;
+ 
+-	pud = pud_alloc(&init_mm, pgd, addr);
++	pud = pud_alloc_kernel(&init_mm, pgd, addr);
+ 	if (!pud)
+ 		return -ENOMEM;
+ 	do {

@@ -1,0 +1,12 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mm/Kconfig linux-4.9.24-pax/arch/arm/mm/Kconfig
+--- linux-4.9.24/arch/arm/mm/Kconfig	2016-12-13 12:08:19.670328253 +0100
++++ linux-4.9.24-pax/arch/arm/mm/Kconfig	2017-01-01 22:57:10.549520598 +0100
+@@ -813,7 +815,7 @@ config NEED_KUSER_HELPERS
+ 
+ config KUSER_HELPERS
+ 	bool "Enable kuser helpers in vector page" if !NEED_KUSER_HELPERS
+-	depends on MMU
++	depends on MMU && !(CPU_V6 || CPU_V6K || CPU_V7)
+ 	default y
+ 	help
+ 	  Warning: disabling this option may break user programs.

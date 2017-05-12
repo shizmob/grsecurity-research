@@ -1,0 +1,81 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/parisc/include/asm/uaccess.h linux-4.9.24-pax/arch/parisc/include/asm/uaccess.h
+--- linux-4.9.24/arch/parisc/include/asm/uaccess.h	2017-04-25 17:08:12.913333732 +0200
++++ linux-4.9.24-pax/arch/parisc/include/asm/uaccess.h	2017-04-25 17:08:28.265042773 +0200
+@@ -256,10 +256,10 @@ static inline void copy_user_overflow(in
+ static __always_inline unsigned long __must_check
+ copy_from_user(void *to, const void __user *from, unsigned long n)
+ {
+-	int sz = __compiletime_object_size(to);
++	size_t sz = __compiletime_object_size(to);
+ 	unsigned long ret = n;
+ 
+-	if (likely(sz < 0 || sz >= n)) {
++	if (likely(sz == (size_t)-1 || sz >= n)) {
+ 		check_object_size(to, n, false);
+ 		ret = __copy_from_user(to, from, n);
+ 	} else if (!__builtin_constant_p(n))
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/parisc/include/asm/uaccess.h linux-4.9.24-pax/arch/parisc/include/asm/uaccess.h
+--- linux-4.9.24/arch/parisc/include/asm/uaccess.h	2017-04-25 17:08:12.913333732 +0200
++++ linux-4.9.24-pax/arch/parisc/include/asm/uaccess.h	2017-04-25 17:08:28.265042773 +0200
+@@ -276,9 +276,9 @@ copy_from_user(void *to, const void __us
+ static __always_inline unsigned long __must_check
+ copy_to_user(void __user *to, const void *from, unsigned long n)
+ {
+-	int sz = __compiletime_object_size(from);
++	size_t sz = __compiletime_object_size(to);
+ 
+-	if (likely(sz < 0 || sz >= n)) {
++	if (likely(sz == (size_t)-1 || sz >= n)) {
+ 		check_object_size(from, n, true);
+ 		n = __copy_to_user(to, from, n);
+ 	} else if (!__builtin_constant_p(n))
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/platforms/cell/spufs/file.c linux-4.9.24-pax/arch/powerpc/platforms/cell/spufs/file.c
+--- linux-4.9.24/arch/powerpc/platforms/cell/spufs/file.c	2016-10-03 11:27:27.348996903 +0200
++++ linux-4.9.24-pax/arch/powerpc/platforms/cell/spufs/file.c	2017-01-01 22:57:10.581520676 +0100
+@@ -263,9 +263,9 @@ spufs_mem_mmap_fault(struct vm_area_stru
+ 	return VM_FAULT_NOPAGE;
+ }
+ 
+-static int spufs_mem_mmap_access(struct vm_area_struct *vma,
++static ssize_t spufs_mem_mmap_access(struct vm_area_struct *vma,
+ 				unsigned long address,
+-				void *buf, int len, int write)
++				void *buf, size_t len, int write)
+ {
+ 	struct spu_context *ctx = vma->vm_file->private_data;
+ 	unsigned long offset = address - vma->vm_start;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/s390/include/asm/uaccess.h linux-4.9.24-pax/arch/s390/include/asm/uaccess.h
+--- linux-4.9.24/arch/s390/include/asm/uaccess.h	2017-04-19 22:09:32.010314546 +0200
++++ linux-4.9.24-pax/arch/s390/include/asm/uaccess.h	2017-04-19 22:11:55.598421055 +0200
+@@ -360,12 +360,12 @@ copy_to_user(void __user *to, const void
+ static inline unsigned long __must_check
+ copy_from_user(void *to, const void __user *from, unsigned long n)
+ {
+-	unsigned int sz = __compiletime_object_size(to);
++	size_t sz = __compiletime_object_size(to);
+ 
+ 	might_fault();
+ 
+ 	if ((long)n < 0)
+ 		return n;
+ 
+-	if (unlikely(sz != -1 && sz < n)) {
++	if (unlikely(sz != (size_t)-1 && sz < n)) {
+ 		if (!__builtin_constant_p(n))
+ 			copy_user_overflow(sz, n);
+ 		else
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/tile/include/asm/uaccess.h linux-4.9.24-pax/arch/tile/include/asm/uaccess.h
+--- linux-4.9.24/arch/tile/include/asm/uaccess.h	2016-10-03 11:27:29.582730312 +0200
++++ linux-4.9.24-pax/arch/tile/include/asm/uaccess.h	2017-01-01 22:57:10.593520706 +0100
+@@ -428,9 +428,9 @@ static inline unsigned long __must_check
+ 					  const void __user *from,
+ 					  unsigned long n)
+ {
+-	int sz = __compiletime_object_size(to);
++	size_t sz = __compiletime_object_size(to);
+ 
+-	if (likely(sz == -1 || sz >= n))
++	if (likely(sz == (size_t)-1 || sz >= n))
+ 		n = _copy_from_user(to, from, n);
+ 	else if (!__builtin_constant_p(n))
+ 		copy_user_overflow(sz, n);

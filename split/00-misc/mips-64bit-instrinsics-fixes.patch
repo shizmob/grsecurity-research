@@ -1,0 +1,125 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/lib/ashldi3.c linux-4.9.24-pax/arch/mips/lib/ashldi3.c
+--- linux-4.9.24/arch/mips/lib/ashldi3.c	2016-12-13 12:08:22.634348406 +0100
++++ linux-4.9.24-pax/arch/mips/lib/ashldi3.c	2017-01-01 22:57:10.565520637 +0100
+@@ -2,7 +2,11 @@
+ 
+ #include "libgcc.h"
+ 
+-long long notrace __ashldi3(long long u, word_type b)
++#ifdef CONFIG_64BIT
++DWtype notrace __ashlti3(DWtype u, word_type b)
++#else
++DWtype notrace __ashldi3(DWtype u, word_type b)
++#endif
+ {
+ 	DWunion uu, w;
+ 	word_type bm;
+@@ -11,19 +15,22 @@ long long notrace __ashldi3(long long u,
+ 		return u;
+ 
+ 	uu.ll = u;
+-	bm = 32 - b;
++	bm = BITS_PER_LONG - b;
+ 
+ 	if (bm <= 0) {
+ 		w.s.low = 0;
+-		w.s.high = (unsigned int) uu.s.low << -bm;
++		w.s.high = (unsigned long) uu.s.low << -bm;
+ 	} else {
+-		const unsigned int carries = (unsigned int) uu.s.low >> bm;
++		const unsigned long carries = (unsigned long) uu.s.low >> bm;
+ 
+-		w.s.low = (unsigned int) uu.s.low << b;
+-		w.s.high = ((unsigned int) uu.s.high << b) | carries;
++		w.s.low = (unsigned long) uu.s.low << b;
++		w.s.high = ((unsigned long) uu.s.high << b) | carries;
+ 	}
+ 
+ 	return w.ll;
+ }
+-
++#ifdef CONFIG_64BIT
++EXPORT_SYMBOL(__ashlti3);
++#else
+ EXPORT_SYMBOL(__ashldi3);
++#endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/lib/ashrdi3.c linux-4.9.24-pax/arch/mips/lib/ashrdi3.c
+--- linux-4.9.24/arch/mips/lib/ashrdi3.c	2016-12-13 12:08:22.634348406 +0100
++++ linux-4.9.24-pax/arch/mips/lib/ashrdi3.c	2017-01-01 22:57:10.565520637 +0100
+@@ -2,7 +2,11 @@
+ 
+ #include "libgcc.h"
+ 
+-long long notrace __ashrdi3(long long u, word_type b)
++#ifdef CONFIG_64BIT
++DWtype notrace __ashrti3(DWtype u, word_type b)
++#else
++DWtype notrace __ashrdi3(DWtype u, word_type b)
++#endif
+ {
+ 	DWunion uu, w;
+ 	word_type bm;
+@@ -11,21 +15,24 @@ long long notrace __ashrdi3(long long u,
+ 		return u;
+ 
+ 	uu.ll = u;
+-	bm = 32 - b;
++	bm = BITS_PER_LONG - b;
+ 
+ 	if (bm <= 0) {
+ 		/* w.s.high = 1..1 or 0..0 */
+ 		w.s.high =
+-		    uu.s.high >> 31;
++		    uu.s.high >> (BITS_PER_LONG - 1);
+ 		w.s.low = uu.s.high >> -bm;
+ 	} else {
+-		const unsigned int carries = (unsigned int) uu.s.high << bm;
++		const unsigned long carries = (unsigned long) uu.s.high << bm;
+ 
+ 		w.s.high = uu.s.high >> b;
+-		w.s.low = ((unsigned int) uu.s.low >> b) | carries;
++		w.s.low = ((unsigned long) uu.s.low >> b) | carries;
+ 	}
+ 
+ 	return w.ll;
+ }
+-
++#ifdef CONFIG_64BIT
++EXPORT_SYMBOL(__ashrti3);
++#else
+ EXPORT_SYMBOL(__ashrdi3);
++#endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/lib/libgcc.h linux-4.9.24-pax/arch/mips/lib/libgcc.h
+--- linux-4.9.24/arch/mips/lib/libgcc.h	2012-12-11 04:30:57.000000000 +0100
++++ linux-4.9.24-pax/arch/mips/lib/libgcc.h	2017-01-01 22:57:10.565520637 +0100
+@@ -5,13 +5,19 @@
+ 
+ typedef int word_type __attribute__ ((mode (__word__)));
+ 
++#ifdef CONFIG_64BIT
++typedef int DWtype __attribute__((mode(TI)));
++#else
++typedef long long DWtype;
++#endif
++
+ #ifdef __BIG_ENDIAN
+ struct DWstruct {
+-	int high, low;
++	long high, low;
+ };
+ #elif defined(__LITTLE_ENDIAN)
+ struct DWstruct {
+-	int low, high;
++	long low, high;
+ };
+ #else
+ #error I feel sick.
+@@ -19,7 +25,7 @@ struct DWstruct {
+ 
+ typedef union {
+ 	struct DWstruct s;
+-	long long ll;
++	DWtype ll;
+ } DWunion;
+ 
+ #endif /* __ASM_LIBGCC_H */

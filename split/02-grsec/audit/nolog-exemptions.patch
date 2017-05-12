@@ -1,0 +1,170 @@
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index 4c40c0786e16..734564074bb7 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -1184,10 +1184,10 @@ static int ext2_has_free_blocks(struct ext2_sb_info *sbi)
+ 
+ 	free_blocks = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
+ 	root_blocks = le32_to_cpu(sbi->s_es->s_r_blocks_count);
+-	if (free_blocks < root_blocks + 1 && !capable(CAP_SYS_RESOURCE) &&
++	if (free_blocks < root_blocks + 1 &&
+ 		!uid_eq(sbi->s_resuid, current_fsuid()) &&
+ 		(gid_eq(sbi->s_resgid, GLOBAL_ROOT_GID) ||
+-		 !in_group_p (sbi->s_resgid))) {
++		 !in_group_p (sbi->s_resgid)) && !capable_nolog(CAP_SYS_RESOURCE)) {
+ 		return 0;
+ 	}
+ 	return 1;
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index e04ec868e37e..953c3e6fbc47 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -566,8 +566,8 @@ static int ext4_has_free_clusters(struct ext4_sb_info *sbi,
+ 	/* Hm, nope.  Are (enough) root reserved clusters available? */
+ 	if (uid_eq(sbi->s_resuid, current_fsuid()) ||
+ 	    (!gid_eq(sbi->s_resgid, GLOBAL_ROOT_GID) && in_group_p(sbi->s_resgid)) ||
+-	    capable(CAP_SYS_RESOURCE) ||
+-	    (flags & EXT4_MB_USE_ROOT_BLOCKS)) {
++	    (flags & EXT4_MB_USE_ROOT_BLOCKS) ||
++	    capable_nolog(CAP_SYS_RESOURCE)) {
+ 
+ 		if (free_clusters >= (nclusters + dirty_clusters +
+ 				      resv_clusters))
+diff --git a/fs/namei.c b/fs/namei.c
+index cb3b5370ece0..32d72d14c9ad 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -330,6 +330,8 @@ static int acl_permission_check(struct inode *inode, int mask)
+ int generic_permission(struct inode *inode, int mask)
+ {
+ 	int ret;
++	bool has_cap_dac_override = false;
++	bool has_cap_dac_read_search = false;
+ 
+ 	/*
+ 	 * Do the basic permission checks.
+@@ -338,17 +340,50 @@ int generic_permission(struct inode *inode, int mask)
+ 	if (ret != -EACCES)
+ 		return ret;
+ 
++#ifdef CONFIG_GRKERNSEC
++	/* we'll block if we have to log due to a denied capability use */
++	if (mask & MAY_NOT_BLOCK)
++		return -ECHILD;
++#endif
++
++	has_cap_dac_override = capable_wrt_inode_uidgid_nolog(inode, CAP_DAC_OVERRIDE);
++	has_cap_dac_read_search = capable_wrt_inode_uidgid_nolog(inode, CAP_DAC_READ_SEARCH);
++
+ 	if (S_ISDIR(inode->i_mode)) {
+ 		/* DACs are overridable for directories */
++		if (!(mask & MAY_WRITE)) {
++			if (!has_cap_dac_override || (has_cap_dac_override && has_cap_dac_read_search)) {
++				if (capable_wrt_inode_uidgid(inode, CAP_DAC_READ_SEARCH))
++					return 0;
++				return -EACCES;
++			}
++		}
+ 		if (capable_wrt_inode_uidgid(inode, CAP_DAC_OVERRIDE))
+ 			return 0;
+-		if (!(mask & MAY_WRITE))
+-			if (capable_wrt_inode_uidgid(inode,
+-						     CAP_DAC_READ_SEARCH))
+-				return 0;
+ 		return -EACCES;
+ 	}
+ 	/*
++	 * Searching includes executable on directories, else just read.
++	 */
++	mask &= MAY_READ | MAY_WRITE | MAY_EXEC;
++	if (mask == MAY_READ) {
++		/* this part is a little different, as when we don't override here and return,
++		   we do want to have both caps logged/learned
++		 */
++		if (!has_cap_dac_override || (has_cap_dac_override && has_cap_dac_read_search)) {
++			if (capable_wrt_inode_uidgid(inode, CAP_DAC_READ_SEARCH))
++				return 0;
++		} else if (!has_cap_dac_read_search) {
++			/* for this case though, if they don't have CAP_DAC_OVERRIDE, there's no point
++			   in checking and logging it again
++			*/
++			if (capable_wrt_inode_uidgid(inode, CAP_DAC_OVERRIDE))
++				return 0;
++			return -EACCES;
++		}
++	}
++
++	/*
+ 	 * Read/write DACs are always overridable.
+ 	 * Executable DACs are overridable when there is
+ 	 * at least one exec bit set.
+@@ -357,14 +392,6 @@ int generic_permission(struct inode *inode, int mask)
+ 		if (capable_wrt_inode_uidgid(inode, CAP_DAC_OVERRIDE))
+ 			return 0;
+ 
+-	/*
+-	 * Searching includes executable on directories, else just read.
+-	 */
+-	mask &= MAY_READ | MAY_WRITE | MAY_EXEC;
+-	if (mask == MAY_READ)
+-		if (capable_wrt_inode_uidgid(inode, CAP_DAC_READ_SEARCH))
+-			return 0;
+-
+ 	return -EACCES;
+ }
+ EXPORT_SYMBOL(generic_permission);
+diff --git a/fs/proc/base.c b/fs/proc/base.c
+index 4fb5a1bc4831..a4332371b62e 100644
+--- a/fs/proc/base.c
++++ b/fs/proc/base.c
+@@ -668,7 +687,7 @@ static int proc_pid_syscall(struct seq_file *m, struct pid_namespace *ns,
+ /************************************************************************/
+ 
+ /* permission checks */
+-static int proc_fd_access_allowed(struct inode *inode)
++static int proc_fd_access_allowed(struct inode *inode, unsigned int log)
+ {
+ 	struct task_struct *task;
+ 	int allowed = 0;
+@@ -678,7 +697,10 @@ static int proc_fd_access_allowed(struct inode *inode)
+ 	 */
+ 	task = get_proc_task(inode);
+ 	if (task) {
+-		allowed = ptrace_may_access(task, PTRACE_MODE_READ_FSCREDS);
++		if (log)
++			allowed = ptrace_may_access(task, PTRACE_MODE_READ_FSCREDS);
++		else
++			allowed = ptrace_may_access(task, PTRACE_MODE_READ_FSCREDS | PTRACE_MODE_NOAUDIT);
+ 		put_task_struct(task);
+ 	}
+ 	return allowed;
+@@ -1601,7 +1709,7 @@ static const char *proc_pid_get_link(struct dentry *dentry,
+ 		return ERR_PTR(-ECHILD);
+ 
+ 	/* Are we allowed to snoop on the tasks file descriptors? */
+-	if (!proc_fd_access_allowed(inode))
++	if (!proc_fd_access_allowed(inode, 0))
+ 		goto out;
+ 
+ 	error = PROC_I(inode)->op.proc_get_link(dentry, &path);
+@@ -1645,8 +1753,18 @@ static int proc_pid_readlink(struct dentry * dentry, char __user * buffer, int b
+ 	struct path path;
+ 
+ 	/* Are we allowed to snoop on the tasks file descriptors? */
+-	if (!proc_fd_access_allowed(inode))
+-		goto out;
++	/* logging this is needed for learning on chromium to work properly,
++	   but we don't want to flood the logs from 'ps' which does a readlink
++	   on /proc/fd/2 of tasks in the listing, nor do we want 'ps' to learn
++	   CAP_SYS_PTRACE as it's not necessary for its basic functionality
++	 */
++	if (dentry->d_name.name[0] == '2' && dentry->d_name.name[1] == '\0') {
++		if (!proc_fd_access_allowed(inode,0))
++			goto out;
++	} else {
++		if (!proc_fd_access_allowed(inode,1))
++			goto out;
++	}
+ 
+ 	error = PROC_I(inode)->op.proc_get_link(dentry, &path);
+ 	if (error)

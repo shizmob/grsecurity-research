@@ -30,6 +30,7 @@ reference docs:
 
 - pax:
   - https://pax.grsecurity.net/docs/pax.txt
+  - https://grsecurity.net/PaX-presentation.ppt
   - https://pax.grsecurity.net/docs/PaXTeam-SSTIC12-keynote-20-years-of-PaX.pdf
   - https://pax.grsecurity.net/docs/PaXTeam-LATINOWARE12-PaX-linux-security.pdf
   - https://pax.grsecurity.net/docs/PaXTeam-H2HC12-PaX-kernel-self-protection.pdf
@@ -44,6 +45,7 @@ reference docs:
   - https://forums.grsecurity.net/viewtopic.php?f=7&t=3292
   - https://grsecurity.net/~spender/uderef.txt
   - https://forums.grsecurity.net/viewtopic.php?f=7&t=3046
+  - https://old.lwn.net/Articles/712161/
 - pax/randustack: https://pax.grsecurity.net/docs/randustack.txt
 - pax/randkstack: https://pax.grsecurity.net/docs/randkstack.txt
 - pax/randmmap: https://pax.grsecurity.net/docs/randmmap.txt

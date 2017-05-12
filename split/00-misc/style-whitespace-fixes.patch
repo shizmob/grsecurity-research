@@ -1,0 +1,68 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/futex.h linux-4.9.24-pax/arch/arm/include/asm/futex.h
+--- linux-4.9.24/arch/arm/include/asm/futex.h	2015-11-03 01:48:46.355326087 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/futex.h	2017-01-01 22:57:10.525520539 +0100
+@@ -107,6 +107,7 @@ futex_atomic_cmpxchg_inatomic(u32 *uval,
+ 		return -EFAULT;
+ 
+ 	preempt_disable();
++
+ 	__ua_flags = uaccess_save_and_enable();
+ 	__asm__ __volatile__("@futex_atomic_cmpxchg_inatomic\n"
+ 	"1:	" TUSER(ldr) "	%1, [%4]\n"
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm64/kernel/process.c linux-4.9.24-pax/arch/arm64/kernel/process.c
+--- linux-4.9.24/arch/arm64/kernel/process.c	2016-12-13 12:08:20.546334208 +0100
++++ linux-4.9.24-pax/arch/arm64/kernel/process.c	2017-01-01 22:57:10.553520608 +0100
+@@ -64,7 +64,7 @@ EXPORT_SYMBOL(__stack_chk_guard);
+ /*
+  * Function pointers to optional machine specific functions
+  */
+-void (*pm_power_off)(void);
++void (* pm_power_off)(void);
+ EXPORT_SYMBOL_GPL(pm_power_off);
+ 
+ void (*arm_pm_restart)(enum reboot_mode reboot_mode, const char *cmd);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/include/asm/uaccess.h linux-4.9.24-pax/arch/sparc/include/asm/uaccess.h
+--- linux-4.9.24/arch/sparc/include/asm/uaccess.h	2015-03-18 15:21:50.216349253 +0100
++++ linux-4.9.24-pax/arch/sparc/include/asm/uaccess.h	2017-01-01 22:57:10.589520696 +0100
+@@ -1,5 +1,6 @@
+ #ifndef ___ASM_SPARC_UACCESS_H
+ #define ___ASM_SPARC_UACCESS_H
++
+ #if defined(__sparc__) && defined(__arch64__)
+ #include <asm/uaccess_64.h>
+ #else
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/kernel/traps_64.c linux-4.9.24-pax/arch/sparc/kernel/traps_64.c
+--- linux-4.9.24/arch/sparc/kernel/traps_64.c	2016-12-13 12:08:25.994371270 +0100
++++ linux-4.9.24-pax/arch/sparc/kernel/traps_64.c	2017-01-01 22:57:10.589520696 +0100
+@@ -117,7 +117,7 @@ void bad_trap(struct pt_regs *regs, long
+ void bad_trap_tl1(struct pt_regs *regs, long lvl)
+ {
+ 	char buffer[32];
+-	
++
+ 	if (notify_die(DIE_TRAP_TL1, "bad trap tl1", regs,
+ 		       0, lvl, SIGTRAP) == NOTIFY_STOP)
+ 		return;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/page_alloc.c linux-4.9.24-pax/mm/page_alloc.c
+--- linux-4.9.24/mm/page_alloc.c	2017-04-19 22:09:32.650315027 +0200
++++ linux-4.9.24-pax/mm/page_alloc.c	2017-04-19 22:11:55.634421081 +0200
+@@ -1321,7 +1356,6 @@ static inline bool __meminit meminit_pfn
+ }
+ #endif
+ 
+-
+ void __init __free_pages_bootmem(struct page *page, unsigned long pfn,
+ 							unsigned int order)
+ {
+diff --git a/arch/powerpc/kernel/ptrace.c b/arch/powerpc/kernel/ptrace.c
+index de7043fc523d..98047fb5c178 100644
+--- a/arch/powerpc/kernel/ptrace.c
++++ b/arch/powerpc/kernel/ptrace.c
+@@ -3210,6 +3219,7 @@ long do_syscall_trace_enter(struct pt_regs *regs)
+ 	if (regs->gpr[0] >= NR_syscalls)
+ 		goto skip;
+ 
++
+ 	if (unlikely(test_thread_flag(TIF_SYSCALL_TRACEPOINT)))
+ 		trace_sys_enter(regs, regs->gpr[0]);
+ 

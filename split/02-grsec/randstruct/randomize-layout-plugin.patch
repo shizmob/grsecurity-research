@@ -1,0 +1,27 @@
+diff --git a/Documentation/dontdiff b/Documentation/dontdiff
+index faaa4ffac1d8..607c6a0f3454 100644
+--- a/Documentation/dontdiff
++++ b/Documentation/dontdiff
+@@ -229,6 +229,8 @@ r200_reg_safe.h
+ r300_reg_safe.h
+ r420_reg_safe.h
+ r600_reg_safe.h
++randomize_layout_hash.h
++randomize_layout_seed.h
+ realmode.lds
+ realmode.relocs
+ recordmcount
+diff --git a/Makefile b/Makefile
+index 7f59c8d364eb..435d3558eacb 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1278,7 +1278,8 @@ MRPROPER_FILES += .config .config.old .version .old_version \
+ 		  x509.genkey extra_certificates signing_key.x509.keyid	\
+ 		  signing_key.x509.signer vmlinux-gdb.py \
+ 		  scripts/gcc-plugins/size_overflow_plugin/e_*.h \
+-		  scripts/gcc-plugins/size_overflow_plugin/disable.h
++		  scripts/gcc-plugins/size_overflow_plugin/disable.h \
++		  scripts/gcc-plugins/randomize_layout_seed.h
+ 
+ # clean - Delete most, but leave enough to build external modules
+ #

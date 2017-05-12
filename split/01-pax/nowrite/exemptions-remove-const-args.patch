@@ -1,0 +1,84 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/mm/slice.c linux-4.9.24-pax/arch/powerpc/mm/slice.c
+--- linux-4.9.24/arch/powerpc/mm/slice.c	2016-07-25 02:13:17.854898669 +0200
++++ linux-4.9.24-pax/arch/powerpc/mm/slice.c	2017-01-01 22:57:10.581520676 +0100
+@@ -555,10 +566,10 @@ unsigned long arch_get_unmapped_area(str
+ }
+ 
+ unsigned long arch_get_unmapped_area_topdown(struct file *filp,
+-					     const unsigned long addr0,
+-					     const unsigned long len,
+-					     const unsigned long pgoff,
+-					     const unsigned long flags)
++					     unsigned long addr0,
++					     unsigned long len,
++					     unsigned long pgoff,
++					     unsigned long flags)
+ {
+ 	return slice_get_unmapped_area(addr0, len, flags,
+ 				       current->mm->context.user_psize, 1);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/s390/mm/mmap.c linux-4.9.24-pax/arch/s390/mm/mmap.c
+--- linux-4.9.24/arch/s390/mm/mmap.c	2016-07-25 02:13:18.463350041 +0200
++++ linux-4.9.24-pax/arch/s390/mm/mmap.c	2017-01-01 22:57:10.581520676 +0100
+@@ -201,9 +201,9 @@ s390_get_unmapped_area(struct file *filp
+ }
+ 
+ static unsigned long
+-s390_get_unmapped_area_topdown(struct file *filp, const unsigned long addr,
+-			  const unsigned long len, const unsigned long pgoff,
+-			  const unsigned long flags)
++s390_get_unmapped_area_topdown(struct file *filp, unsigned long addr,
++			  unsigned long len, unsigned long pgoff,
++			  unsigned long flags)
+ {
+ 	struct mm_struct *mm = current->mm;
+ 	unsigned long area;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sh/mm/mmap.c linux-4.9.24-pax/arch/sh/mm/mmap.c
+--- linux-4.9.24/arch/sh/mm/mmap.c	2015-03-18 15:21:50.212349252 +0100
++++ linux-4.9.24-pax/arch/sh/mm/mmap.c	2017-01-01 22:57:10.585520686 +0100
+@@ -77,9 +80,9 @@ unsigned long arch_get_unmapped_area(str
+ }
+ 
+ unsigned long
+-arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
+-			  const unsigned long len, const unsigned long pgoff,
+-			  const unsigned long flags)
++arch_get_unmapped_area_topdown(struct file *filp, unsigned long addr0,
++			  unsigned long len, unsigned long pgoff,
++			  unsigned long flags)
+ {
+ 	struct vm_area_struct *vma;
+ 	struct mm_struct *mm = current->mm;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/kernel/sys_sparc_64.c linux-4.9.24-pax/arch/sparc/kernel/sys_sparc_64.c
+--- linux-4.9.24/arch/sparc/kernel/sys_sparc_64.c	2016-05-22 01:55:28.987565226 +0200
++++ linux-4.9.24-pax/arch/sparc/kernel/sys_sparc_64.c	2017-01-01 22:57:10.589520696 +0100
+@@ -141,9 +150,9 @@ unsigned long arch_get_unmapped_area(str
+ }
+ 
+ unsigned long
+-arch_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
+-			  const unsigned long len, const unsigned long pgoff,
+-			  const unsigned long flags)
++arch_get_unmapped_area_topdown(struct file *filp, unsigned long addr0,
++			  unsigned long len, unsigned long pgoff,
++			  unsigned long flags)
+ {
+ 	struct vm_area_struct *vma;
+ 	struct mm_struct *mm = current->mm;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/mm/hugetlbpage.c linux-4.9.24-pax/arch/sparc/mm/hugetlbpage.c
+--- linux-4.9.24/arch/sparc/mm/hugetlbpage.c	2016-10-03 11:27:29.474650410 +0200
++++ linux-4.9.24-pax/arch/sparc/mm/hugetlbpage.c	2017-01-01 22:57:10.593520706 +0100
+@@ -53,10 +60,10 @@ static unsigned long hugetlb_get_unmappe
+ }
+ 
+ static unsigned long
+-hugetlb_get_unmapped_area_topdown(struct file *filp, const unsigned long addr0,
+-				  const unsigned long len,
+-				  const unsigned long pgoff,
+-				  const unsigned long flags)
++hugetlb_get_unmapped_area_topdown(struct file *filp, unsigned long addr0,
++				  unsigned long len,
++				  unsigned long pgoff,
++				  unsigned long flags)
+ {
+ 	struct mm_struct *mm = current->mm;
+ 	unsigned long addr = addr0;

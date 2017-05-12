@@ -1,0 +1,28 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/kernel/traps_64.c linux-4.9.24-pax/arch/sparc/kernel/traps_64.c
+--- linux-4.9.24/arch/sparc/kernel/traps_64.c	2016-12-13 12:08:25.994371270 +0100
++++ linux-4.9.24-pax/arch/sparc/kernel/traps_64.c	2017-01-01 22:57:10.589520696 +0100
+@@ -99,6 +99,12 @@ void bad_trap(struct pt_regs *regs, long
+ 
+ 	lvl -= 0x100;
+ 	if (regs->tstate & TSTATE_PRIV) {
++
++#ifdef CONFIG_PAX_REFCOUNT
++		if (lvl == 6)
++			pax_report_refcount_error(regs, NULL);
++#endif
++
+ 		sprintf(buffer, "Kernel bad sw trap %lx", lvl);
+ 		die_if_kernel(buffer, regs);
+ 	}
+@@ -122,6 +128,11 @@ void bad_trap(struct pt_regs *regs, long
+ 		       0, lvl, SIGTRAP) == NOTIFY_STOP)
+ 		return;
+ 
++#ifdef CONFIG_PAX_REFCOUNT
++	if (lvl == 6)
++		pax_report_refcount_error(regs, NULL);
++#endif
++
+ 	dump_tl1_traplog((struct tl1_traplog *)(regs + 1));
+ 
+ 	sprintf (buffer, "Bad trap %lx at tl>0", lvl);

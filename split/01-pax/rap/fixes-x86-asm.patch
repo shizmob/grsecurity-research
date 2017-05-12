@@ -1,0 +1,2649 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/aes_ctrby8_avx-x86_64.S linux-4.9.24-pax/arch/x86/crypto/aes_ctrby8_avx-x86_64.S
+--- linux-4.9.24/arch/x86/crypto/aes_ctrby8_avx-x86_64.S	2015-02-09 21:11:56.165573925 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/aes_ctrby8_avx-x86_64.S	2017-01-31 00:03:45.093759812 +0100
+@@ -64,6 +64,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/inst.h>
++#include <asm/alternative-asm.h>
+ 
+ #define CONCAT(a,b)	a##b
+ #define VMOVDQ		vmovdqu
+@@ -436,7 +437,7 @@ ddq_add_8:
+ 
+ /* main body of aes ctr load */
+ 
+-.macro do_aes_ctrmain key_len
++.macro do_aes_ctrmain func key_len
+ 	cmp	$16, num_bytes
+ 	jb	.Ldo_return2\key_len
+ 
+@@ -537,7 +538,7 @@ ddq_add_8:
+ 	/* return updated IV */
+ 	vpshufb	xbyteswap, xcounter, xcounter
+ 	vmovdqu	xcounter, (p_iv)
+-	ret
++	pax_ret \func
+ .endm
+ 
+ /*
+@@ -549,7 +550,7 @@ ddq_add_8:
+  */
+ ENTRY(aes_ctr_enc_128_avx_by8)
+ 	/* call the aes main loop */
+-	do_aes_ctrmain KEY_128
++	do_aes_ctrmain aes_ctr_enc_128_avx_by8 KEY_128
+ 
+ ENDPROC(aes_ctr_enc_128_avx_by8)
+ 
+@@ -562,7 +563,7 @@ ENDPROC(aes_ctr_enc_128_avx_by8)
+  */
+ ENTRY(aes_ctr_enc_192_avx_by8)
+ 	/* call the aes main loop */
+-	do_aes_ctrmain KEY_192
++	do_aes_ctrmain aes_ctr_enc_192_avx_by8 KEY_192
+ 
+ ENDPROC(aes_ctr_enc_192_avx_by8)
+ 
+@@ -575,6 +576,6 @@ ENDPROC(aes_ctr_enc_192_avx_by8)
+  */
+ ENTRY(aes_ctr_enc_256_avx_by8)
+ 	/* call the aes main loop */
+-	do_aes_ctrmain KEY_256
++	do_aes_ctrmain aes_ctr_enc_256_avx_by8 KEY_256
+ 
+ ENDPROC(aes_ctr_enc_256_avx_by8)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/aes-i586-asm_32.S linux-4.9.24-pax/arch/x86/crypto/aes-i586-asm_32.S
+--- linux-4.9.24/arch/x86/crypto/aes-i586-asm_32.S	2013-04-30 01:25:06.227586518 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/aes-i586-asm_32.S	2017-01-31 00:54:50.052500784 +0100
+@@ -38,6 +38,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/asm-offsets.h>
++#include <asm/alternative-asm.h>
+ 
+ #define tlen 1024   // length of each of 4 'xor' arrays (256 32-bit words)
+ 
+@@ -286,7 +287,7 @@ ENTRY(aes_enc_blk)
+ 	pop     %ebx
+ 	mov     %r0,(%ebp)
+ 	pop     %ebp
+-	ret
++	pax_ret aes_enc_blk
+ ENDPROC(aes_enc_blk)
+ 
+ // AES (Rijndael) Decryption Subroutine
+@@ -358,5 +359,5 @@ ENTRY(aes_dec_blk)
+ 	pop     %ebx
+ 	mov     %r0,(%ebp)
+ 	pop     %ebp
+-	ret
++	pax_ret aes_dec_blk
+ ENDPROC(aes_dec_blk)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/aesni-intel_asm.S linux-4.9.24-pax/arch/x86/crypto/aesni-intel_asm.S
+--- linux-4.9.24/arch/x86/crypto/aesni-intel_asm.S	2016-05-22 01:55:29.007565012 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/aesni-intel_asm.S	2017-02-10 05:39:09.849683656 +0100
+@@ -32,6 +32,7 @@
+ #include <linux/linkage.h>
+ #include <asm/inst.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ 
+ /*
+  * The following macros are used to move an (un)aligned 16 byte value to/from
+@@ -1280,8 +1281,8 @@ _esb_loop_\@:
+ * poly = x^128 + x^127 + x^126 + x^121 + 1
+ *
+ *****************************************************************************/
+-ENTRY(aesni_gcm_dec)
+-	push	%r12
++RAP_ENTRY(aesni_gcm_dec)
++	push	%r15
+ 	push	%r13
+ 	push	%r14
+ 	mov	%rsp, %r14
+@@ -1452,8 +1453,8 @@ _return_T_done_decrypt:
+ 	mov	%r14, %rsp
+ 	pop	%r14
+ 	pop	%r13
+-	pop	%r12
+-	ret
++	pop	%r15
++	pax_ret aesni_gcm_dec
+ ENDPROC(aesni_gcm_dec)
+ 
+ 
+@@ -1540,8 +1541,8 @@ ENDPROC(aesni_gcm_dec)
+ *
+ * poly = x^128 + x^127 + x^126 + x^121 + 1
+ ***************************************************************************/
+-ENTRY(aesni_gcm_enc)
+-	push	%r12
++RAP_ENTRY(aesni_gcm_enc)
++	push	%r15
+ 	push	%r13
+ 	push	%r14
+ 	mov	%rsp, %r14
+@@ -1716,8 +1717,8 @@ _return_T_done_encrypt:
+ 	mov	%r14, %rsp
+ 	pop	%r14
+ 	pop	%r13
+-	pop	%r12
+-	ret
++	pop	%r15
++	pax_ret aesni_gcm_enc
+ ENDPROC(aesni_gcm_enc)
+ 
+ #endif
+@@ -1734,7 +1735,7 @@ _key_expansion_256a:
+ 	pxor %xmm1, %xmm0
+ 	movaps %xmm0, (TKEYP)
+ 	add $0x10, TKEYP
+-	ret
++	pax_ret _key_expansion_128
+ ENDPROC(_key_expansion_128)
+ ENDPROC(_key_expansion_256a)
+ 
+@@ -1760,7 +1761,7 @@ _key_expansion_192a:
+ 	shufps $0b01001110, %xmm2, %xmm1
+ 	movaps %xmm1, 0x10(TKEYP)
+ 	add $0x20, TKEYP
+-	ret
++	pax_ret _key_expansion_192a
+ ENDPROC(_key_expansion_192a)
+ 
+ .align 4
+@@ -1780,7 +1781,7 @@ _key_expansion_192b:
+ 
+ 	movaps %xmm0, (TKEYP)
+ 	add $0x10, TKEYP
+-	ret
++	pax_ret _key_expansion_192b
+ ENDPROC(_key_expansion_192b)
+ 
+ .align 4
+@@ -1793,7 +1794,7 @@ _key_expansion_256b:
+ 	pxor %xmm1, %xmm2
+ 	movaps %xmm2, (TKEYP)
+ 	add $0x10, TKEYP
+-	ret
++	pax_ret _key_expansion_256b
+ ENDPROC(_key_expansion_256b)
+ 
+ /*
+@@ -1820,72 +1821,72 @@ ENTRY(aesni_set_key)
+ 	movaps %xmm2, (TKEYP)
+ 	add $0x10, TKEYP
+ 	AESKEYGENASSIST 0x1 %xmm2 %xmm1		# round 1
+-	call _key_expansion_256a
++	pax_direct_call _key_expansion_256a
+ 	AESKEYGENASSIST 0x1 %xmm0 %xmm1
+-	call _key_expansion_256b
++	pax_direct_call _key_expansion_256b
+ 	AESKEYGENASSIST 0x2 %xmm2 %xmm1		# round 2
+-	call _key_expansion_256a
++	pax_direct_call _key_expansion_256a
+ 	AESKEYGENASSIST 0x2 %xmm0 %xmm1
+-	call _key_expansion_256b
++	pax_direct_call _key_expansion_256b
+ 	AESKEYGENASSIST 0x4 %xmm2 %xmm1		# round 3
+-	call _key_expansion_256a
++	pax_direct_call _key_expansion_256a
+ 	AESKEYGENASSIST 0x4 %xmm0 %xmm1
+-	call _key_expansion_256b
++	pax_direct_call _key_expansion_256b
+ 	AESKEYGENASSIST 0x8 %xmm2 %xmm1		# round 4
+-	call _key_expansion_256a
++	pax_direct_call _key_expansion_256a
+ 	AESKEYGENASSIST 0x8 %xmm0 %xmm1
+-	call _key_expansion_256b
++	pax_direct_call _key_expansion_256b
+ 	AESKEYGENASSIST 0x10 %xmm2 %xmm1	# round 5
+-	call _key_expansion_256a
++	pax_direct_call _key_expansion_256a
+ 	AESKEYGENASSIST 0x10 %xmm0 %xmm1
+-	call _key_expansion_256b
++	pax_direct_call _key_expansion_256b
+ 	AESKEYGENASSIST 0x20 %xmm2 %xmm1	# round 6
+-	call _key_expansion_256a
++	pax_direct_call _key_expansion_256a
+ 	AESKEYGENASSIST 0x20 %xmm0 %xmm1
+-	call _key_expansion_256b
++	pax_direct_call _key_expansion_256b
+ 	AESKEYGENASSIST 0x40 %xmm2 %xmm1	# round 7
+-	call _key_expansion_256a
++	pax_direct_call _key_expansion_256a
+ 	jmp .Ldec_key
+ .Lenc_key192:
+ 	movq 0x10(UKEYP), %xmm2		# other user key
+ 	AESKEYGENASSIST 0x1 %xmm2 %xmm1		# round 1
+-	call _key_expansion_192a
++	pax_direct_call _key_expansion_192a
+ 	AESKEYGENASSIST 0x2 %xmm2 %xmm1		# round 2
+-	call _key_expansion_192b
++	pax_direct_call _key_expansion_192b
+ 	AESKEYGENASSIST 0x4 %xmm2 %xmm1		# round 3
+-	call _key_expansion_192a
++	pax_direct_call _key_expansion_192a
+ 	AESKEYGENASSIST 0x8 %xmm2 %xmm1		# round 4
+-	call _key_expansion_192b
++	pax_direct_call _key_expansion_192b
+ 	AESKEYGENASSIST 0x10 %xmm2 %xmm1	# round 5
+-	call _key_expansion_192a
++	pax_direct_call _key_expansion_192a
+ 	AESKEYGENASSIST 0x20 %xmm2 %xmm1	# round 6
+-	call _key_expansion_192b
++	pax_direct_call _key_expansion_192b
+ 	AESKEYGENASSIST 0x40 %xmm2 %xmm1	# round 7
+-	call _key_expansion_192a
++	pax_direct_call _key_expansion_192a
+ 	AESKEYGENASSIST 0x80 %xmm2 %xmm1	# round 8
+-	call _key_expansion_192b
++	pax_direct_call _key_expansion_192b
+ 	jmp .Ldec_key
+ .Lenc_key128:
+ 	AESKEYGENASSIST 0x1 %xmm0 %xmm1		# round 1
+-	call _key_expansion_128
++	pax_direct_call _key_expansion_128
+ 	AESKEYGENASSIST 0x2 %xmm0 %xmm1		# round 2
+-	call _key_expansion_128
++	pax_direct_call _key_expansion_128
+ 	AESKEYGENASSIST 0x4 %xmm0 %xmm1		# round 3
+-	call _key_expansion_128
++	pax_direct_call _key_expansion_128
+ 	AESKEYGENASSIST 0x8 %xmm0 %xmm1		# round 4
+-	call _key_expansion_128
++	pax_direct_call _key_expansion_128
+ 	AESKEYGENASSIST 0x10 %xmm0 %xmm1	# round 5
+-	call _key_expansion_128
++	pax_direct_call _key_expansion_128
+ 	AESKEYGENASSIST 0x20 %xmm0 %xmm1	# round 6
+-	call _key_expansion_128
++	pax_direct_call _key_expansion_128
+ 	AESKEYGENASSIST 0x40 %xmm0 %xmm1	# round 7
+-	call _key_expansion_128
++	pax_direct_call _key_expansion_128
+ 	AESKEYGENASSIST 0x80 %xmm0 %xmm1	# round 8
+-	call _key_expansion_128
++	pax_direct_call _key_expansion_128
+ 	AESKEYGENASSIST 0x1b %xmm0 %xmm1	# round 9
+-	call _key_expansion_128
++	pax_direct_call _key_expansion_128
+ 	AESKEYGENASSIST 0x36 %xmm0 %xmm1	# round 10
+-	call _key_expansion_128
++	pax_direct_call _key_expansion_128
+ .Ldec_key:
+ 	sub $0x10, TKEYP
+ 	movaps (KEYP), %xmm0
+@@ -1908,13 +1909,13 @@ ENTRY(aesni_set_key)
+ 	popl KEYP
+ #endif
+ 	FRAME_END
+-	ret
++	pax_ret aesni_set_key
+ ENDPROC(aesni_set_key)
+ 
+ /*
+  * void aesni_enc(struct crypto_aes_ctx *ctx, u8 *dst, const u8 *src)
+  */
+-ENTRY(aesni_enc)
++RAP_ENTRY(aesni_enc)
+ 	FRAME_BEGIN
+ #ifndef __x86_64__
+ 	pushl KEYP
+@@ -1925,14 +1926,14 @@ ENTRY(aesni_enc)
+ #endif
+ 	movl 480(KEYP), KLEN		# key length
+ 	movups (INP), STATE		# input
+-	call _aesni_enc1
++	pax_direct_call _aesni_enc1
+ 	movups STATE, (OUTP)		# output
+ #ifndef __x86_64__
+ 	popl KLEN
+ 	popl KEYP
+ #endif
+ 	FRAME_END
+-	ret
++	pax_ret aesni_enc
+ ENDPROC(aesni_enc)
+ 
+ /*
+@@ -1990,7 +1991,7 @@ _aesni_enc1:
+ 	AESENC KEY STATE
+ 	movaps 0x70(TKEYP), KEY
+ 	AESENCLAST KEY STATE
+-	ret
++	pax_ret _aesni_enc1
+ ENDPROC(_aesni_enc1)
+ 
+ /*
+@@ -2099,13 +2100,13 @@ _aesni_enc4:
+ 	AESENCLAST KEY STATE2
+ 	AESENCLAST KEY STATE3
+ 	AESENCLAST KEY STATE4
+-	ret
++	pax_ret _aesni_enc4
+ ENDPROC(_aesni_enc4)
+ 
+ /*
+  * void aesni_dec (struct crypto_aes_ctx *ctx, u8 *dst, const u8 *src)
+  */
+-ENTRY(aesni_dec)
++RAP_ENTRY(aesni_dec)
+ 	FRAME_BEGIN
+ #ifndef __x86_64__
+ 	pushl KEYP
+@@ -2117,14 +2118,14 @@ ENTRY(aesni_dec)
+ 	mov 480(KEYP), KLEN		# key length
+ 	add $240, KEYP
+ 	movups (INP), STATE		# input
+-	call _aesni_dec1
++	pax_direct_call _aesni_dec1
+ 	movups STATE, (OUTP)		#output
+ #ifndef __x86_64__
+ 	popl KLEN
+ 	popl KEYP
+ #endif
+ 	FRAME_END
+-	ret
++	pax_ret aesni_dec
+ ENDPROC(aesni_dec)
+ 
+ /*
+@@ -2182,7 +2183,7 @@ _aesni_dec1:
+ 	AESDEC KEY STATE
+ 	movaps 0x70(TKEYP), KEY
+ 	AESDECLAST KEY STATE
+-	ret
++	pax_ret _aesni_dec1
+ ENDPROC(_aesni_dec1)
+ 
+ /*
+@@ -2291,7 +2292,7 @@ _aesni_dec4:
+ 	AESDECLAST KEY STATE2
+ 	AESDECLAST KEY STATE3
+ 	AESDECLAST KEY STATE4
+-	ret
++	pax_ret _aesni_dec4
+ ENDPROC(_aesni_dec4)
+ 
+ /*
+@@ -2322,7 +2323,7 @@ ENTRY(aesni_ecb_enc)
+ 	movups 0x10(INP), STATE2
+ 	movups 0x20(INP), STATE3
+ 	movups 0x30(INP), STATE4
+-	call _aesni_enc4
++	pax_direct_call _aesni_enc4
+ 	movups STATE1, (OUTP)
+ 	movups STATE2, 0x10(OUTP)
+ 	movups STATE3, 0x20(OUTP)
+@@ -2337,7 +2338,7 @@ ENTRY(aesni_ecb_enc)
+ .align 4
+ .Lecb_enc_loop1:
+ 	movups (INP), STATE1
+-	call _aesni_enc1
++	pax_direct_call _aesni_enc1
+ 	movups STATE1, (OUTP)
+ 	sub $16, LEN
+ 	add $16, INP
+@@ -2351,7 +2352,7 @@ ENTRY(aesni_ecb_enc)
+ 	popl LEN
+ #endif
+ 	FRAME_END
+-	ret
++	pax_ret aesni_ecb_enc
+ ENDPROC(aesni_ecb_enc)
+ 
+ /*
+@@ -2383,7 +2384,7 @@ ENTRY(aesni_ecb_dec)
+ 	movups 0x10(INP), STATE2
+ 	movups 0x20(INP), STATE3
+ 	movups 0x30(INP), STATE4
+-	call _aesni_dec4
++	pax_direct_call _aesni_dec4
+ 	movups STATE1, (OUTP)
+ 	movups STATE2, 0x10(OUTP)
+ 	movups STATE3, 0x20(OUTP)
+@@ -2398,7 +2399,7 @@ ENTRY(aesni_ecb_dec)
+ .align 4
+ .Lecb_dec_loop1:
+ 	movups (INP), STATE1
+-	call _aesni_dec1
++	pax_direct_call _aesni_dec1
+ 	movups STATE1, (OUTP)
+ 	sub $16, LEN
+ 	add $16, INP
+@@ -2412,7 +2413,7 @@ ENTRY(aesni_ecb_dec)
+ 	popl LEN
+ #endif
+ 	FRAME_END
+-	ret
++	pax_ret aesni_ecb_dec
+ ENDPROC(aesni_ecb_dec)
+ 
+ /*
+@@ -2440,7 +2441,7 @@ ENTRY(aesni_cbc_enc)
+ .Lcbc_enc_loop:
+ 	movups (INP), IN	# load input
+ 	pxor IN, STATE
+-	call _aesni_enc1
++	pax_direct_call _aesni_enc1
+ 	movups STATE, (OUTP)	# store output
+ 	sub $16, LEN
+ 	add $16, INP
+@@ -2456,7 +2457,7 @@ ENTRY(aesni_cbc_enc)
+ 	popl IVP
+ #endif
+ 	FRAME_END
+-	ret
++	pax_ret aesni_cbc_enc
+ ENDPROC(aesni_cbc_enc)
+ 
+ /*
+@@ -2500,7 +2501,7 @@ ENTRY(aesni_cbc_dec)
+ 	movups 0x30(INP), IN2
+ 	movaps IN2, STATE4
+ #endif
+-	call _aesni_dec4
++	pax_direct_call _aesni_dec4
+ 	pxor IV, STATE1
+ #ifdef __x86_64__
+ 	pxor IN1, STATE2
+@@ -2530,7 +2531,7 @@ ENTRY(aesni_cbc_dec)
+ .Lcbc_dec_loop1:
+ 	movups (INP), IN
+ 	movaps IN, STATE
+-	call _aesni_dec1
++	pax_direct_call _aesni_dec1
+ 	pxor IV, STATE
+ 	movups STATE, (OUTP)
+ 	movaps IN, IV
+@@ -2549,7 +2550,7 @@ ENTRY(aesni_cbc_dec)
+ 	popl IVP
+ #endif
+ 	FRAME_END
+-	ret
++	pax_ret aesni_cbc_dec
+ ENDPROC(aesni_cbc_dec)
+ 
+ #ifdef __x86_64__
+@@ -2578,7 +2579,7 @@ _aesni_inc_init:
+ 	mov $1, TCTR_LOW
+ 	MOVQ_R64_XMM TCTR_LOW INC
+ 	MOVQ_R64_XMM CTR TCTR_LOW
+-	ret
++	pax_ret _aesni_inc_init
+ ENDPROC(_aesni_inc_init)
+ 
+ /*
+@@ -2607,37 +2608,37 @@ _aesni_inc:
+ .Linc_low:
+ 	movaps CTR, IV
+ 	PSHUFB_XMM BSWAP_MASK IV
+-	ret
++	pax_ret _aesni_inc
+ ENDPROC(_aesni_inc)
+ 
+ /*
+  * void aesni_ctr_enc(struct crypto_aes_ctx *ctx, const u8 *dst, u8 *src,
+  *		      size_t len, u8 *iv)
+  */
+-ENTRY(aesni_ctr_enc)
++RAP_ENTRY(aesni_ctr_enc)
+ 	FRAME_BEGIN
+ 	cmp $16, LEN
+ 	jb .Lctr_enc_just_ret
+ 	mov 480(KEYP), KLEN
+ 	movups (IVP), IV
+-	call _aesni_inc_init
++	pax_direct_call _aesni_inc_init
+ 	cmp $64, LEN
+ 	jb .Lctr_enc_loop1
+ .align 4
+ .Lctr_enc_loop4:
+ 	movaps IV, STATE1
+-	call _aesni_inc
++	pax_direct_call _aesni_inc
+ 	movups (INP), IN1
+ 	movaps IV, STATE2
+-	call _aesni_inc
++	pax_direct_call _aesni_inc
+ 	movups 0x10(INP), IN2
+ 	movaps IV, STATE3
+-	call _aesni_inc
++	pax_direct_call _aesni_inc
+ 	movups 0x20(INP), IN3
+ 	movaps IV, STATE4
+-	call _aesni_inc
++	pax_direct_call _aesni_inc
+ 	movups 0x30(INP), IN4
+-	call _aesni_enc4
++	pax_direct_call _aesni_enc4
+ 	pxor IN1, STATE1
+ 	movups STATE1, (OUTP)
+ 	pxor IN2, STATE2
+@@ -2656,9 +2657,9 @@ ENTRY(aesni_ctr_enc)
+ .align 4
+ .Lctr_enc_loop1:
+ 	movaps IV, STATE
+-	call _aesni_inc
++	pax_direct_call _aesni_inc
+ 	movups (INP), IN
+-	call _aesni_enc1
++	pax_direct_call _aesni_enc1
+ 	pxor IN, STATE
+ 	movups STATE, (OUTP)
+ 	sub $16, LEN
+@@ -2670,7 +2671,7 @@ ENTRY(aesni_ctr_enc)
+ 	movups IV, (IVP)
+ .Lctr_enc_just_ret:
+ 	FRAME_END
+-	ret
++	pax_ret aesni_ctr_enc
+ ENDPROC(aesni_ctr_enc)
+ 
+ /*
+@@ -2734,7 +2735,7 @@ ENTRY(aesni_xts_crypt8)
+ 	pxor INC, STATE4
+ 	movdqu IV, 0x30(OUTP)
+ 
+-	call *%r11
++	pax_indirect_call "%r11", _aesni_enc4
+ 
+ 	movdqu 0x00(OUTP), INC
+ 	pxor INC, STATE1
+@@ -2779,7 +2780,7 @@ ENTRY(aesni_xts_crypt8)
+ 	_aesni_gf128mul_x_ble()
+ 	movups IV, (IVP)
+ 
+-	call *%r11
++	pax_indirect_call "%r11", _aesni_enc4
+ 
+ 	movdqu 0x40(OUTP), INC
+ 	pxor INC, STATE1
+@@ -2798,7 +2799,7 @@ ENTRY(aesni_xts_crypt8)
+ 	movdqu STATE4, 0x70(OUTP)
+ 
+ 	FRAME_END
+-	ret
++	pax_ret aesni_xts_crypt8
+ ENDPROC(aesni_xts_crypt8)
+ 
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/aesni-intel_avx-x86_64.S linux-4.9.24-pax/arch/x86/crypto/aesni-intel_avx-x86_64.S
+--- linux-4.9.24/arch/x86/crypto/aesni-intel_avx-x86_64.S	2014-03-31 12:47:57.215131323 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/aesni-intel_avx-x86_64.S	2017-01-31 00:53:09.393348213 +0100
+@@ -121,6 +121,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/inst.h>
++#include <asm/alternative-asm.h>
+ 
+ .data
+ .align 16
+@@ -1486,7 +1487,7 @@ ENTRY(aesni_gcm_precomp_avx_gen2)
+         pop     %r14
+         pop     %r13
+         pop     %r12
+-        ret
++        pax_ret aesni_gcm_precomp_avx_gen2
+ ENDPROC(aesni_gcm_precomp_avx_gen2)
+ 
+ ###############################################################################
+@@ -1507,7 +1508,7 @@ ENDPROC(aesni_gcm_precomp_avx_gen2)
+ ###############################################################################
+ ENTRY(aesni_gcm_enc_avx_gen2)
+         GCM_ENC_DEC_AVX     ENC
+-	ret
++	pax_ret aesni_gcm_enc_avx_gen2
+ ENDPROC(aesni_gcm_enc_avx_gen2)
+ 
+ ###############################################################################
+@@ -1528,7 +1529,7 @@ ENDPROC(aesni_gcm_enc_avx_gen2)
+ ###############################################################################
+ ENTRY(aesni_gcm_dec_avx_gen2)
+         GCM_ENC_DEC_AVX     DEC
+-	ret
++	pax_ret aesni_gcm_dec_avx_gen2
+ ENDPROC(aesni_gcm_dec_avx_gen2)
+ #endif /* CONFIG_AS_AVX */
+ 
+@@ -2762,7 +2763,7 @@ ENTRY(aesni_gcm_precomp_avx_gen4)
+         pop     %r14
+         pop     %r13
+         pop     %r12
+-        ret
++        pax_ret aesni_gcm_precomp_avx_gen4
+ ENDPROC(aesni_gcm_precomp_avx_gen4)
+ 
+ 
+@@ -2784,7 +2785,7 @@ ENDPROC(aesni_gcm_precomp_avx_gen4)
+ ###############################################################################
+ ENTRY(aesni_gcm_enc_avx_gen4)
+         GCM_ENC_DEC_AVX2     ENC
+-	ret
++	pax_ret aesni_gcm_enc_avx_gen4
+ ENDPROC(aesni_gcm_enc_avx_gen4)
+ 
+ ###############################################################################
+@@ -2805,7 +2806,7 @@ ENDPROC(aesni_gcm_enc_avx_gen4)
+ ###############################################################################
+ ENTRY(aesni_gcm_dec_avx_gen4)
+         GCM_ENC_DEC_AVX2     DEC
+-	ret
++	pax_ret aesni_gcm_dec_avx_gen4
+ ENDPROC(aesni_gcm_dec_avx_gen4)
+ 
+ #endif /* CONFIG_AS_AVX2 */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/camellia-aesni-avx-asm_64.S linux-4.9.24-pax/arch/x86/crypto/camellia-aesni-avx-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/camellia-aesni-avx-asm_64.S	2016-05-22 01:55:29.007565012 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/camellia-aesni-avx-asm_64.S	2017-02-10 05:42:13.525795661 +0100
+@@ -17,6 +17,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ 
+ #define CAMELLIA_TABLE_BYTE_LEN 272
+ 
+@@ -192,7 +193,7 @@ roundsm16_x0_x1_x2_x3_x4_x5_x6_x7_y0_y1_
+ 	roundsm16(%xmm0, %xmm1, %xmm2, %xmm3, %xmm4, %xmm5, %xmm6, %xmm7,
+ 		  %xmm8, %xmm9, %xmm10, %xmm11, %xmm12, %xmm13, %xmm14, %xmm15,
+ 		  %rcx, (%r9));
+-	ret;
++	pax_ret roundsm16_x0_x1_x2_x3_x4_x5_x6_x7_y0_y1_y2_y3_y4_y5_y6_y7_cd;
+ ENDPROC(roundsm16_x0_x1_x2_x3_x4_x5_x6_x7_y0_y1_y2_y3_y4_y5_y6_y7_cd)
+ 
+ .align 8
+@@ -200,7 +201,7 @@ roundsm16_x4_x5_x6_x7_x0_x1_x2_x3_y4_y5_
+ 	roundsm16(%xmm4, %xmm5, %xmm6, %xmm7, %xmm0, %xmm1, %xmm2, %xmm3,
+ 		  %xmm12, %xmm13, %xmm14, %xmm15, %xmm8, %xmm9, %xmm10, %xmm11,
+ 		  %rax, (%r9));
+-	ret;
++	pax_ret roundsm16_x4_x5_x6_x7_x0_x1_x2_x3_y4_y5_y6_y7_y0_y1_y2_y3_ab;
+ ENDPROC(roundsm16_x4_x5_x6_x7_x0_x1_x2_x3_y4_y5_y6_y7_y0_y1_y2_y3_ab)
+ 
+ /*
+@@ -212,7 +213,7 @@ ENDPROC(roundsm16_x4_x5_x6_x7_x0_x1_x2_x
+ #define two_roundsm16(x0, x1, x2, x3, x4, x5, x6, x7, y0, y1, y2, y3, y4, y5, \
+ 		      y6, y7, mem_ab, mem_cd, i, dir, store_ab) \
+ 	leaq (key_table + (i) * 8)(CTX), %r9; \
+-	call roundsm16_x0_x1_x2_x3_x4_x5_x6_x7_y0_y1_y2_y3_y4_y5_y6_y7_cd; \
++	pax_direct_call roundsm16_x0_x1_x2_x3_x4_x5_x6_x7_y0_y1_y2_y3_y4_y5_y6_y7_cd; \
+ 	\
+ 	vmovdqu x4, 0 * 16(mem_cd); \
+ 	vmovdqu x5, 1 * 16(mem_cd); \
+@@ -224,7 +225,7 @@ ENDPROC(roundsm16_x4_x5_x6_x7_x0_x1_x2_x
+ 	vmovdqu x3, 7 * 16(mem_cd); \
+ 	\
+ 	leaq (key_table + ((i) + (dir)) * 8)(CTX), %r9; \
+-	call roundsm16_x4_x5_x6_x7_x0_x1_x2_x3_y4_y5_y6_y7_y0_y1_y2_y3_ab; \
++	pax_direct_call roundsm16_x4_x5_x6_x7_x0_x1_x2_x3_y4_y5_y6_y7_y0_y1_y2_y3_ab; \
+ 	\
+ 	store_ab(x0, x1, x2, x3, x4, x5, x6, x7, mem_ab);
+ 
+@@ -783,7 +784,7 @@ __camellia_enc_blk16:
+ 		    %xmm15, (key_table)(CTX, %r8, 8), (%rax), 1 * 16(%rax));
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret camellia_xts_enc_16way;
+ 
+ .align 8
+ .Lenc_max32:
+@@ -870,7 +871,7 @@ __camellia_dec_blk16:
+ 		    %xmm15, (key_table)(CTX), (%rax), 1 * 16(%rax));
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret camellia_xts_dec_16way;
+ 
+ .align 8
+ .Ldec_max32:
+@@ -889,7 +890,7 @@ __camellia_dec_blk16:
+ 	jmp .Ldec_max24;
+ ENDPROC(__camellia_dec_blk16)
+ 
+-ENTRY(camellia_ecb_enc_16way)
++RAP_ENTRY(camellia_ecb_enc_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (16 blocks)
+@@ -904,17 +905,17 @@ ENTRY(camellia_ecb_enc_16way)
+ 	/* now dst can be used as temporary buffer (even in src == dst case) */
+ 	movq	%rsi, %rax;
+ 
+-	call __camellia_enc_blk16;
++	pax_direct_call __camellia_enc_blk16;
+ 
+ 	write_output(%xmm7, %xmm6, %xmm5, %xmm4, %xmm3, %xmm2, %xmm1, %xmm0,
+ 		     %xmm15, %xmm14, %xmm13, %xmm12, %xmm11, %xmm10, %xmm9,
+ 		     %xmm8, %rsi);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret camellia_ecb_enc_16way;
+ ENDPROC(camellia_ecb_enc_16way)
+ 
+-ENTRY(camellia_ecb_dec_16way)
++RAP_ENTRY(camellia_ecb_dec_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (16 blocks)
+@@ -934,17 +935,17 @@ ENTRY(camellia_ecb_dec_16way)
+ 	/* now dst can be used as temporary buffer (even in src == dst case) */
+ 	movq	%rsi, %rax;
+ 
+-	call __camellia_dec_blk16;
++	pax_direct_call __camellia_dec_blk16;
+ 
+ 	write_output(%xmm7, %xmm6, %xmm5, %xmm4, %xmm3, %xmm2, %xmm1, %xmm0,
+ 		     %xmm15, %xmm14, %xmm13, %xmm12, %xmm11, %xmm10, %xmm9,
+ 		     %xmm8, %rsi);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret camellia_ecb_dec_16way;
+ ENDPROC(camellia_ecb_dec_16way)
+ 
+-ENTRY(camellia_cbc_dec_16way)
++RAP_ENTRY(camellia_cbc_dec_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (16 blocks)
+@@ -968,7 +969,7 @@ ENTRY(camellia_cbc_dec_16way)
+ 	subq $(16 * 16), %rsp;
+ 	movq %rsp, %rax;
+ 
+-	call __camellia_dec_blk16;
++	pax_direct_call __camellia_dec_blk16;
+ 
+ 	addq $(16 * 16), %rsp;
+ 
+@@ -992,7 +993,7 @@ ENTRY(camellia_cbc_dec_16way)
+ 		     %xmm8, %rsi);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret camellia_cbc_dec_16way;
+ ENDPROC(camellia_cbc_dec_16way)
+ 
+ #define inc_le128(x, minus_one, tmp) \
+@@ -1001,7 +1002,7 @@ ENDPROC(camellia_cbc_dec_16way)
+ 	vpslldq $8, tmp, tmp; \
+ 	vpsubq tmp, x, x;
+ 
+-ENTRY(camellia_ctr_16way)
++RAP_ENTRY(camellia_ctr_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (16 blocks)
+@@ -1080,7 +1081,7 @@ ENTRY(camellia_ctr_16way)
+ 	vpxor 14 * 16(%rax), %xmm15, %xmm14;
+ 	vpxor 15 * 16(%rax), %xmm15, %xmm15;
+ 
+-	call __camellia_enc_blk16;
++	pax_direct_call __camellia_enc_blk16;
+ 
+ 	addq $(16 * 16), %rsp;
+ 
+@@ -1105,7 +1106,7 @@ ENTRY(camellia_ctr_16way)
+ 		     %xmm8, %rsi);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret camellia_ctr_16way;
+ ENDPROC(camellia_ctr_16way)
+ 
+ #define gf128mul_x_ble(iv, mask, tmp) \
+@@ -1224,7 +1225,7 @@ camellia_xts_crypt_16way:
+ 	vpxor 14 * 16(%rax), %xmm15, %xmm14;
+ 	vpxor 15 * 16(%rax), %xmm15, %xmm15;
+ 
+-	call *%r9;
++	pax_indirect_call "%r9", camellia_xts_enc_16way;
+ 
+ 	addq $(16 * 16), %rsp;
+ 
+@@ -1249,10 +1250,10 @@ camellia_xts_crypt_16way:
+ 		     %xmm8, %rsi);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret camellia_xts_crypt_16way;
+ ENDPROC(camellia_xts_crypt_16way)
+ 
+-ENTRY(camellia_xts_enc_16way)
++RAP_ENTRY(camellia_xts_enc_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (16 blocks)
+@@ -1266,7 +1267,7 @@ ENTRY(camellia_xts_enc_16way)
+ 	jmp camellia_xts_crypt_16way;
+ ENDPROC(camellia_xts_enc_16way)
+ 
+-ENTRY(camellia_xts_dec_16way)
++RAP_ENTRY(camellia_xts_dec_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (16 blocks)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/camellia-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/camellia-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/camellia-x86_64-asm_64.S	2015-03-18 15:21:50.228349253 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/camellia-x86_64-asm_64.S	2017-01-31 00:37:11.976337672 +0100
+@@ -21,6 +21,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .file "camellia-x86_64-asm_64.S"
+ .text
+@@ -228,16 +229,16 @@ ENTRY(__camellia_enc_blk)
+ 	enc_outunpack(mov, RT1);
+ 
+ 	movq RRBP, %rbp;
+-	ret;
++	pax_ret __camellia_enc_blk;
+ 
+ .L__enc_xor:
+ 	enc_outunpack(xor, RT1);
+ 
+ 	movq RRBP, %rbp;
+-	ret;
++	pax_ret __camellia_enc_blk;
+ ENDPROC(__camellia_enc_blk)
+ 
+-ENTRY(camellia_dec_blk)
++RAP_ENTRY(camellia_dec_blk)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -272,7 +273,7 @@ ENTRY(camellia_dec_blk)
+ 	dec_outunpack();
+ 
+ 	movq RRBP, %rbp;
+-	ret;
++	pax_ret camellia_dec_blk;
+ ENDPROC(camellia_dec_blk)
+ 
+ /**********************************************************************
+@@ -463,17 +464,17 @@ ENTRY(__camellia_enc_blk_2way)
+ 
+ 	movq RRBP, %rbp;
+ 	popq %rbx;
+-	ret;
++	pax_ret __camellia_enc_blk_2way;
+ 
+ .L__enc2_xor:
+ 	enc_outunpack2(xor, RT2);
+ 
+ 	movq RRBP, %rbp;
+ 	popq %rbx;
+-	ret;
++	pax_ret __camellia_enc_blk_2way;
+ ENDPROC(__camellia_enc_blk_2way)
+ 
+-ENTRY(camellia_dec_blk_2way)
++RAP_ENTRY(camellia_dec_blk_2way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -510,5 +511,5 @@ ENTRY(camellia_dec_blk_2way)
+ 
+ 	movq RRBP, %rbp;
+ 	movq RXOR, %rbx;
+-	ret;
++	pax_ret camellia_dec_blk_2way;
+ ENDPROC(camellia_dec_blk_2way)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/cast5-avx-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/cast5-avx-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/cast5-avx-x86_64-asm_64.S	2016-05-22 01:55:29.007565012 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/cast5-avx-x86_64-asm_64.S	2017-01-31 01:30:31.139264095 +0100
+@@ -25,6 +25,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ 
+ .file "cast5-avx-x86_64-asm_64.S"
+ 
+@@ -282,7 +283,7 @@ __cast5_enc_blk16:
+ 	outunpack_blocks(RR3, RL3, RTMP, RX, RKM);
+ 	outunpack_blocks(RR4, RL4, RTMP, RX, RKM);
+ 
+-	ret;
++	pax_ret __cast5_enc_blk16;
+ ENDPROC(__cast5_enc_blk16)
+ 
+ .align 16
+@@ -353,14 +354,14 @@ __cast5_dec_blk16:
+ 	outunpack_blocks(RR3, RL3, RTMP, RX, RKM);
+ 	outunpack_blocks(RR4, RL4, RTMP, RX, RKM);
+ 
+-	ret;
++	pax_ret __cast5_dec_blk16;
+ 
+ .L__skip_dec:
+ 	vpsrldq $4, RKR, RKR;
+ 	jmp .L__dec_tail;
+ ENDPROC(__cast5_dec_blk16)
+ 
+-ENTRY(cast5_ecb_enc_16way)
++RAP_ENTRY(cast5_ecb_enc_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -379,7 +380,7 @@ ENTRY(cast5_ecb_enc_16way)
+ 	vmovdqu (6*4*4)(%rdx), RL4;
+ 	vmovdqu (7*4*4)(%rdx), RR4;
+ 
+-	call __cast5_enc_blk16;
++	pax_direct_call __cast5_enc_blk16;
+ 
+ 	vmovdqu RR1, (0*4*4)(%r11);
+ 	vmovdqu RL1, (1*4*4)(%r11);
+@@ -391,10 +392,10 @@ ENTRY(cast5_ecb_enc_16way)
+ 	vmovdqu RL4, (7*4*4)(%r11);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret cast5_ecb_enc_16way;
+ ENDPROC(cast5_ecb_enc_16way)
+ 
+-ENTRY(cast5_ecb_dec_16way)
++RAP_ENTRY(cast5_ecb_dec_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -413,7 +414,7 @@ ENTRY(cast5_ecb_dec_16way)
+ 	vmovdqu (6*4*4)(%rdx), RL4;
+ 	vmovdqu (7*4*4)(%rdx), RR4;
+ 
+-	call __cast5_dec_blk16;
++	pax_direct_call __cast5_dec_blk16;
+ 
+ 	vmovdqu RR1, (0*4*4)(%r11);
+ 	vmovdqu RL1, (1*4*4)(%r11);
+@@ -425,7 +426,7 @@ ENTRY(cast5_ecb_dec_16way)
+ 	vmovdqu RL4, (7*4*4)(%r11);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret cast5_ecb_dec_16way;
+ ENDPROC(cast5_ecb_dec_16way)
+ 
+ ENTRY(cast5_cbc_dec_16way)
+@@ -473,10 +474,10 @@ ENTRY(cast5_cbc_dec_16way)
+ 	vmovdqu RR4, (6*16)(%r11);
+ 	vmovdqu RL4, (7*16)(%r11);
+ 
+-	popq %r12;
++	popq %r14;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret cast5_cbc_dec_16way;
+ ENDPROC(cast5_cbc_dec_16way)
+ 
+ ENTRY(cast5_ctr_16way)
+@@ -528,17 +529,17 @@ ENTRY(cast5_ctr_16way)
+ 	vpshufb R1ST, RX, RX; /* be: IV16, IV16 */
+ 	vmovq RX, (%rcx);
+ 
+-	call __cast5_enc_blk16;
++	pax_direct_call __cast5_enc_blk16;
+ 
+ 	/* dst = src ^ iv */
+-	vpxor (0*16)(%r12), RR1, RR1;
+-	vpxor (1*16)(%r12), RL1, RL1;
+-	vpxor (2*16)(%r12), RR2, RR2;
+-	vpxor (3*16)(%r12), RL2, RL2;
+-	vpxor (4*16)(%r12), RR3, RR3;
+-	vpxor (5*16)(%r12), RL3, RL3;
+-	vpxor (6*16)(%r12), RR4, RR4;
+-	vpxor (7*16)(%r12), RL4, RL4;
++	vpxor (0*16)(%r14), RR1, RR1;
++	vpxor (1*16)(%r14), RL1, RL1;
++	vpxor (2*16)(%r14), RR2, RR2;
++	vpxor (3*16)(%r14), RL2, RL2;
++	vpxor (4*16)(%r14), RR3, RR3;
++	vpxor (5*16)(%r14), RL3, RL3;
++	vpxor (6*16)(%r14), RR4, RR4;
++	vpxor (7*16)(%r14), RL4, RL4;
+ 	vmovdqu RR1, (0*16)(%r11);
+ 	vmovdqu RL1, (1*16)(%r11);
+ 	vmovdqu RR2, (2*16)(%r11);
+@@ -548,8 +549,8 @@ ENTRY(cast5_ctr_16way)
+ 	vmovdqu RR4, (6*16)(%r11);
+ 	vmovdqu RL4, (7*16)(%r11);
+ 
+-	popq %r12;
++	popq %r14;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret cast5_ctr_16way;
+ ENDPROC(cast5_ctr_16way)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/cast6-avx-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/cast6-avx-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/cast6-avx-x86_64-asm_64.S	2016-05-22 01:55:29.007565012 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/cast6-avx-x86_64-asm_64.S	2017-01-31 01:29:29.668605714 +0100
+@@ -25,6 +25,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ #include "glue_helper-asm-avx.S"
+ 
+ .file "cast6-avx-x86_64-asm_64.S"
+@@ -296,7 +297,7 @@ __cast6_enc_blk8:
+ 	outunpack_blocks(RA1, RB1, RC1, RD1, RTMP, RX, RKRF, RKM);
+ 	outunpack_blocks(RA2, RB2, RC2, RD2, RTMP, RX, RKRF, RKM);
+ 
+-	ret;
++	pax_ret __cast6_enc_blk8;
+ ENDPROC(__cast6_enc_blk8)
+ 
+ .align 8
+@@ -341,10 +342,10 @@ __cast6_dec_blk8:
+ 	outunpack_blocks(RA1, RB1, RC1, RD1, RTMP, RX, RKRF, RKM);
+ 	outunpack_blocks(RA2, RB2, RC2, RD2, RTMP, RX, RKRF, RKM);
+ 
+-	ret;
++	pax_ret __cast6_dec_blk8;
+ ENDPROC(__cast6_dec_blk8)
+ 
+-ENTRY(cast6_ecb_enc_8way)
++RAP_ENTRY(cast6_ecb_enc_8way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -356,15 +357,15 @@ ENTRY(cast6_ecb_enc_8way)
+ 
+ 	load_8way(%rdx, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	call __cast6_enc_blk8;
++	pax_direct_call __cast6_enc_blk8;
+ 
+ 	store_8way(%r11, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret cast6_ecb_enc_8way;
+ ENDPROC(cast6_ecb_enc_8way)
+ 
+-ENTRY(cast6_ecb_dec_8way)
++RAP_ENTRY(cast6_ecb_dec_8way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -376,15 +377,15 @@ ENTRY(cast6_ecb_dec_8way)
+ 
+ 	load_8way(%rdx, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	call __cast6_dec_blk8;
++	pax_direct_call __cast6_dec_blk8;
+ 
+ 	store_8way(%r11, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret cast6_ecb_dec_8way;
+ ENDPROC(cast6_ecb_dec_8way)
+ 
+-ENTRY(cast6_cbc_dec_8way)
++RAP_ENTRY(cast6_cbc_dec_8way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -451,16 +452,16 @@ ENTRY(cast6_xts_enc_8way)
+ 	load_xts_8way(%rcx, %rdx, %rsi, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2,
+ 		      RX, RKR, RKM, .Lxts_gf128mul_and_shl1_mask);
+ 
+-	call __cast6_enc_blk8;
++	pax_direct_call __cast6_enc_blk8;
+ 
+ 	/* dst <= regs xor IVs(in dst) */
+ 	store_xts_8way(%r11, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret cast6_xts_enc_8way;
+ ENDPROC(cast6_xts_enc_8way)
+ 
+-ENTRY(cast6_xts_dec_8way)
++RAP_ENTRY(cast6_xts_dec_8way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -475,11 +476,11 @@ ENTRY(cast6_xts_dec_8way)
+ 	load_xts_8way(%rcx, %rdx, %rsi, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2,
+ 		      RX, RKR, RKM, .Lxts_gf128mul_and_shl1_mask);
+ 
+-	call __cast6_dec_blk8;
++	pax_direct_call __cast6_dec_blk8;
+ 
+ 	/* dst <= regs xor IVs(in dst) */
+ 	store_xts_8way(%r11, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret cast6_xts_dec_8way;
+ ENDPROC(cast6_xts_dec_8way)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/chacha20-avx2-x86_64.S linux-4.9.24-pax/arch/x86/crypto/chacha20-avx2-x86_64.S
+--- linux-4.9.24/arch/x86/crypto/chacha20-avx2-x86_64.S	2015-11-03 01:48:55.443331480 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/chacha20-avx2-x86_64.S	2017-01-31 00:51:15.283123278 +0100
+@@ -10,6 +10,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .data
+ .align 32
+@@ -439,5 +440,5 @@ ENTRY(chacha20_8block_xor_avx2)
+ 
+ 	vzeroupper
+ 	mov		%r8,%rsp
+-	ret
++	pax_ret chacha20_8block_xor_avx2
+ ENDPROC(chacha20_8block_xor_avx2)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/chacha20-ssse3-x86_64.S linux-4.9.24-pax/arch/x86/crypto/chacha20-ssse3-x86_64.S
+--- linux-4.9.24/arch/x86/crypto/chacha20-ssse3-x86_64.S	2016-03-14 11:51:46.924827408 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/chacha20-ssse3-x86_64.S	2017-01-31 00:09:38.239236280 +0100
+@@ -10,6 +10,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .data
+ .align 16
+@@ -139,7 +140,7 @@ ENTRY(chacha20_block_xor_ssse3)
+ 	pxor		%xmm7,%xmm3
+ 	movdqu		%xmm3,0x30(%rsi)
+ 
+-	ret
++	pax_ret chacha20_block_xor_ssse3
+ ENDPROC(chacha20_block_xor_ssse3)
+ 
+ ENTRY(chacha20_4block_xor_ssse3)
+@@ -623,5 +624,5 @@ ENTRY(chacha20_4block_xor_ssse3)
+ 	movdqu		%xmm15,0xf0(%rsi)
+ 
+ 	mov		%r11,%rsp
+-	ret
++	pax_ret chacha20_4block_xor_ssse3
+ ENDPROC(chacha20_4block_xor_ssse3)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/crc32c-pcl-intel-asm_64.S linux-4.9.24-pax/arch/x86/crypto/crc32c-pcl-intel-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/crc32c-pcl-intel-asm_64.S	2016-05-22 01:55:29.007565012 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/crc32c-pcl-intel-asm_64.S	2017-01-30 23:26:58.791266606 +0100
+@@ -45,6 +45,7 @@
+ 
+ #include <asm/inst.h>
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ ## ISCSI CRC 32 Implementation with crc32 and pclmulqdq Instruction
+ 
+@@ -309,7 +310,7 @@ do_return:
+ 	popq    %rsi
+ 	popq    %rdi
+ 	popq    %rbx
+-        ret
++	pax_ret crc_pcl
+ ENDPROC(crc_pcl)
+ 
+ .section	.rodata, "a", %progbits
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/crc32-pclmul_asm.S linux-4.9.24-pax/arch/x86/crypto/crc32-pclmul_asm.S
+--- linux-4.9.24/arch/x86/crypto/crc32-pclmul_asm.S	2013-07-08 01:58:01.360266200 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/crc32-pclmul_asm.S	2017-01-31 00:00:43.444637796 +0100
+@@ -39,6 +39,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/inst.h>
++#include <asm/alternative-asm.h>
+ 
+ 
+ .align 16
+@@ -242,5 +248,5 @@ fold_64:
+ 	pxor    %xmm2, %xmm1
+ 	PEXTRD  0x01, %xmm1, %eax
+ 
+-	ret
++	pax_ret crc32_pclmul_le_16
+ ENDPROC(crc32_pclmul_le_16)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/crct10dif-pcl-asm_64.S linux-4.9.24-pax/arch/x86/crypto/crct10dif-pcl-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/crct10dif-pcl-asm_64.S	2013-11-04 01:46:22.079116283 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/crct10dif-pcl-asm_64.S	2017-01-31 00:51:57.089981305 +0100
+@@ -59,6 +59,7 @@
+ #
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .text
+ 
+@@ -367,7 +368,7 @@ _cleanup:
+ 	# scale the result back to 16 bits
+ 	shr	$16, %eax
+ 	mov     %rcx, %rsp
+-	ret
++	pax_ret crc_t10dif_pcl
+ 
+ ########################################################################
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/des3_ede-asm_64.S linux-4.9.24-pax/arch/x86/crypto/des3_ede-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/des3_ede-asm_64.S	2014-10-05 21:52:05.051976593 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/des3_ede-asm_64.S	2017-01-31 00:00:18.753602722 +0100
+@@ -15,6 +15,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .file "des3_ede-asm_64.S"
+ .text
+@@ -250,7 +251,7 @@ ENTRY(des3_ede_x86_64_crypt_blk)
+ 	popq %rbx;
+ 	popq %rbp;
+ 
+-	ret;
++	pax_ret des3_ede_x86_64_crypt_blk;
+ ENDPROC(des3_ede_x86_64_crypt_blk)
+ 
+ /***********************************************************************
+@@ -534,7 +535,7 @@ ENTRY(des3_ede_x86_64_crypt_blk_3way)
+ 	popq %rbx;
+ 	popq %rbp;
+ 
+-	ret;
++	pax_ret des3_ede_x86_64_crypt_blk_3way;
+ ENDPROC(des3_ede_x86_64_crypt_blk_3way)
+ 
+ .data
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/ghash-clmulni-intel_asm.S linux-4.9.24-pax/arch/x86/crypto/ghash-clmulni-intel_asm.S
+--- linux-4.9.24/arch/x86/crypto/ghash-clmulni-intel_asm.S	2016-05-22 01:55:29.011564970 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/ghash-clmulni-intel_asm.S	2017-01-31 00:50:38.079073783 +0100
+@@ -19,6 +19,7 @@
+ #include <linux/linkage.h>
+ #include <asm/inst.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ 
+ .data
+ 
+@@ -90,7 +91,7 @@ __clmul_gf128mul_ble:
+ 	psrlq $1, T2
+ 	pxor T2, T1
+ 	pxor T1, DATA
+-	ret
++	pax_ret __clmul_gf128mul_ble
+ ENDPROC(__clmul_gf128mul_ble)
+ 
+ /* void clmul_ghash_mul(char *dst, const u128 *shash) */
+@@ -100,11 +101,11 @@ ENTRY(clmul_ghash_mul)
+ 	movups (%rsi), SHASH
+ 	movaps .Lbswap_mask, BSWAP
+ 	PSHUFB_XMM BSWAP DATA
+-	call __clmul_gf128mul_ble
++	pax_direct_call __clmul_gf128mul_ble
+ 	PSHUFB_XMM BSWAP DATA
+ 	movups DATA, (%rdi)
+ 	FRAME_END
+-	ret
++	pax_ret clmul_ghash_mul
+ ENDPROC(clmul_ghash_mul)
+ 
+ /*
+@@ -124,7 +125,7 @@ ENTRY(clmul_ghash_update)
+ 	movups (%rsi), IN1
+ 	PSHUFB_XMM BSWAP IN1
+ 	pxor IN1, DATA
+-	call __clmul_gf128mul_ble
++	pax_direct_call __clmul_gf128mul_ble
+ 	sub $16, %rdx
+ 	add $16, %rsi
+ 	cmp $16, %rdx
+@@ -133,5 +134,5 @@ ENTRY(clmul_ghash_update)
+ 	movups DATA, (%rdi)
+ .Lupdate_just_ret:
+ 	FRAME_END
+-	ret
++	pax_ret clmul_ghash_update
+ ENDPROC(clmul_ghash_update)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/poly1305-avx2-x86_64.S linux-4.9.24-pax/arch/x86/crypto/poly1305-avx2-x86_64.S
+--- linux-4.9.24/arch/x86/crypto/poly1305-avx2-x86_64.S	2015-11-03 01:48:55.459331489 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/poly1305-avx2-x86_64.S	2017-01-31 00:24:07.349468658 +0100
+@@ -10,6 +10,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .data
+ .align 32
+@@ -382,5 +383,5 @@ ENTRY(poly1305_4block_avx2)
+ 	pop		%r13
+ 	pop		%r12
+ 	pop		%rbx
+-	ret
++	pax_ret poly1305_4block_avx2
+ ENDPROC(poly1305_4block_avx2)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/poly1305-sse2-x86_64.S linux-4.9.24-pax/arch/x86/crypto/poly1305-sse2-x86_64.S
+--- linux-4.9.24/arch/x86/crypto/poly1305-sse2-x86_64.S	2015-11-03 01:48:55.463331492 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/poly1305-sse2-x86_64.S	2017-01-31 00:37:38.611903013 +0100
+@@ -10,6 +10,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .data
+ .align 16
+@@ -273,7 +274,7 @@ ENTRY(poly1305_block_sse2)
+ 	add		$0x10,%rsp
+ 	pop		%r12
+ 	pop		%rbx
+-	ret
++	pax_ret poly1305_block_sse2
+ ENDPROC(poly1305_block_sse2)
+ 
+ 
+@@ -578,5 +579,5 @@ ENTRY(poly1305_2block_sse2)
+ 	pop		%r13
+ 	pop		%r12
+ 	pop		%rbx
+-	ret
++	pax_ret poly1305_2block_sse2
+ ENDPROC(poly1305_2block_sse2)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/salsa20-i586-asm_32.S linux-4.9.24-pax/arch/x86/crypto/salsa20-i586-asm_32.S
+--- linux-4.9.24/arch/x86/crypto/salsa20-i586-asm_32.S	2013-04-30 01:25:06.231586518 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/salsa20-i586-asm_32.S	2017-01-31 18:45:18.763029036 +0100
+@@ -3,6 +3,7 @@
+ # Public domain.
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .text
+ 
+@@ -924,7 +925,7 @@ ENTRY(salsa20_encrypt_bytes)
+ 	movl	96(%esp),%ebp
+ 	#     leave
+ 	add	%eax,%esp
+-	ret
++	pax_ret salsa20_encrypt_bytes
+ ._bytesatleast65:
+ 	#   bytes -= 64
+ 	sub	$64,%ebx
+@@ -1059,7 +1060,7 @@ ENTRY(salsa20_keysetup)
+ 	movl	80(%esp),%ebp
+ 	# leave
+ 	add	%eax,%esp
+-	ret
++	pax_ret salsa20_keysetup
+ ENDPROC(salsa20_keysetup)
+ 
+ # enter salsa20_ivsetup
+@@ -1110,5 +1111,5 @@ ENTRY(salsa20_ivsetup)
+ 	movl	80(%esp),%ebp
+ 	# leave
+ 	add	%eax,%esp
+-	ret
++	pax_ret salsa20_ivsetup
+ ENDPROC(salsa20_ivsetup)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/salsa20-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/salsa20-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/salsa20-x86_64-asm_64.S	2015-03-18 15:21:50.228349253 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/salsa20-x86_64-asm_64.S	2017-01-31 00:53:42.046000990 +0100
+@@ -1,4 +1,5 @@
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ # enter salsa20_encrypt_bytes
+ ENTRY(salsa20_encrypt_bytes)
+@@ -789,7 +790,7 @@ ENTRY(salsa20_encrypt_bytes)
+ 	add	%r11,%rsp
+ 	mov	%rdi,%rax
+ 	mov	%rsi,%rdx
+-	ret
++	pax_ret salsa20_encrypt_bytes
+ #   bytesatleast65:
+ ._bytesatleast65:
+ 	#   bytes -= 64
+@@ -889,7 +890,7 @@ ENTRY(salsa20_keysetup)
+ 	add	%r11,%rsp
+ 	mov	%rdi,%rax
+ 	mov	%rsi,%rdx
+-	ret
++	pax_ret salsa20_keysetup
+ ENDPROC(salsa20_keysetup)
+ 
+ # enter salsa20_ivsetup
+@@ -914,5 +915,5 @@ ENTRY(salsa20_ivsetup)
+ 	add	%r11,%rsp
+ 	mov	%rdi,%rax
+ 	mov	%rsi,%rdx
+-	ret
++	pax_ret salsa20_ivsetup
+ ENDPROC(salsa20_ivsetup)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/serpent-avx2-asm_64.S linux-4.9.24-pax/arch/x86/crypto/serpent-avx2-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/serpent-avx2-asm_64.S	2016-05-22 01:55:29.011564970 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/serpent-avx2-asm_64.S	2017-01-31 01:28:33.410461982 +0100
+@@ -16,6 +16,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ #include "glue_helper-asm-avx2.S"
+ 
+ .file "serpent-avx2-asm_64.S"
+@@ -611,7 +612,7 @@ __serpent_enc_blk16:
+ 	write_blocks(RA1, RB1, RC1, RD1, RK0, RK1, RK2);
+ 	write_blocks(RA2, RB2, RC2, RD2, RK0, RK1, RK2);
+ 
+-	ret;
++	pax_ret __serpent_enc_blk16;
+ ENDPROC(__serpent_enc_blk16)
+ 
+ .align 8
+@@ -665,10 +666,10 @@ __serpent_dec_blk16:
+ 	write_blocks(RC1, RD1, RB1, RE1, RK0, RK1, RK2);
+ 	write_blocks(RC2, RD2, RB2, RE2, RK0, RK1, RK2);
+ 
+-	ret;
++	pax_ret __serpent_dec_blk16;
+ ENDPROC(__serpent_dec_blk16)
+ 
+-ENTRY(serpent_ecb_enc_16way)
++RAP_ENTRY(serpent_ecb_enc_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -680,17 +681,17 @@ ENTRY(serpent_ecb_enc_16way)
+ 
+ 	load_16way(%rdx, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	call __serpent_enc_blk16;
++	pax_direct_call __serpent_enc_blk16;
+ 
+ 	store_16way(%rsi, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+ 	vzeroupper;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret serpent_ecb_enc_16way;
+ ENDPROC(serpent_ecb_enc_16way)
+ 
+-ENTRY(serpent_ecb_dec_16way)
++RAP_ENTRY(serpent_ecb_dec_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -702,17 +703,17 @@ ENTRY(serpent_ecb_dec_16way)
+ 
+ 	load_16way(%rdx, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	call __serpent_dec_blk16;
++	pax_direct_call __serpent_dec_blk16;
+ 
+ 	store_16way(%rsi, RC1, RD1, RB1, RE1, RC2, RD2, RB2, RE2);
+ 
+ 	vzeroupper;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret serpent_ecb_dec_16way;
+ ENDPROC(serpent_ecb_dec_16way)
+ 
+-ENTRY(serpent_cbc_dec_16way)
++RAP_ENTRY(serpent_cbc_dec_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -724,7 +725,7 @@ ENTRY(serpent_cbc_dec_16way)
+ 
+ 	load_16way(%rdx, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	call __serpent_dec_blk16;
++	pax_direct_call __serpent_dec_blk16;
+ 
+ 	store_cbc_16way(%rdx, %rsi, RC1, RD1, RB1, RE1, RC2, RD2, RB2, RE2,
+ 			RK0);
+@@ -732,10 +733,10 @@ ENTRY(serpent_cbc_dec_16way)
+ 	vzeroupper;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret serpent_cbc_dec_16way;
+ ENDPROC(serpent_cbc_dec_16way)
+ 
+-ENTRY(serpent_ctr_16way)
++RAP_ENTRY(serpent_ctr_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (16 blocks)
+@@ -750,17 +751,17 @@ ENTRY(serpent_ctr_16way)
+ 		       RD2, RK0, RK0x, RK1, RK1x, RK2, RK2x, RK3, RK3x, RNOT,
+ 		       tp);
+ 
+-	call __serpent_enc_blk16;
++	pax_direct_call __serpent_enc_blk16;
+ 
+ 	store_ctr_16way(%rdx, %rsi, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+ 	vzeroupper;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret serpent_ctr_16way;
+ ENDPROC(serpent_ctr_16way)
+ 
+-ENTRY(serpent_xts_enc_16way)
++RAP_ENTRY(serpent_xts_enc_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (16 blocks)
+@@ -776,17 +777,17 @@ ENTRY(serpent_xts_enc_16way)
+ 		       .Lxts_gf128mul_and_shl1_mask_0,
+ 		       .Lxts_gf128mul_and_shl1_mask_1);
+ 
+-	call __serpent_enc_blk16;
++	pax_direct_call __serpent_enc_blk16;
+ 
+ 	store_xts_16way(%rsi, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+ 	vzeroupper;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret serpent_xts_enc_16way;
+ ENDPROC(serpent_xts_enc_16way)
+ 
+-ENTRY(serpent_xts_dec_16way)
++RAP_ENTRY(serpent_xts_dec_16way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (16 blocks)
+@@ -802,12 +803,12 @@ ENTRY(serpent_xts_dec_16way)
+ 		       .Lxts_gf128mul_and_shl1_mask_0,
+ 		       .Lxts_gf128mul_and_shl1_mask_1);
+ 
+-	call __serpent_dec_blk16;
++	pax_direct_call __serpent_dec_blk16;
+ 
+ 	store_xts_16way(%rsi, RC1, RD1, RB1, RE1, RC2, RD2, RB2, RE2);
+ 
+ 	vzeroupper;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret serpent_xts_dec_16way;
+ ENDPROC(serpent_xts_dec_16way)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/serpent-avx-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/serpent-avx-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/serpent-avx-x86_64-asm_64.S	2016-05-22 01:55:29.011564970 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/serpent-avx-x86_64-asm_64.S	2017-01-31 01:25:16.483605973 +0100
+@@ -25,6 +25,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ #include "glue_helper-asm-avx.S"
+ 
+ .file "serpent-avx-x86_64-asm_64.S"
+@@ -619,7 +620,7 @@ __serpent_enc_blk8_avx:
+ 	write_blocks(RA1, RB1, RC1, RD1, RK0, RK1, RK2);
+ 	write_blocks(RA2, RB2, RC2, RD2, RK0, RK1, RK2);
+ 
+-	ret;
++	pax_ret __serpent_enc_blk8_avx;
+ ENDPROC(__serpent_enc_blk8_avx)
+ 
+ .align 8
+@@ -673,10 +674,10 @@ __serpent_dec_blk8_avx:
+ 	write_blocks(RC1, RD1, RB1, RE1, RK0, RK1, RK2);
+ 	write_blocks(RC2, RD2, RB2, RE2, RK0, RK1, RK2);
+ 
+-	ret;
++	pax_ret __serpent_dec_blk8_avx;
+ ENDPROC(__serpent_dec_blk8_avx)
+ 
+-ENTRY(serpent_ecb_enc_8way_avx)
++RAP_ENTRY(serpent_ecb_enc_8way_avx)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -686,15 +687,15 @@ ENTRY(serpent_ecb_enc_8way_avx)
+ 
+ 	load_8way(%rdx, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	call __serpent_enc_blk8_avx;
++	pax_direct_call __serpent_enc_blk8_avx;
+ 
+ 	store_8way(%rsi, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret serpent_ecb_enc_8way_avx;
+ ENDPROC(serpent_ecb_enc_8way_avx)
+ 
+-ENTRY(serpent_ecb_dec_8way_avx)
++RAP_ENTRY(serpent_ecb_dec_8way_avx)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -704,15 +705,15 @@ ENTRY(serpent_ecb_dec_8way_avx)
+ 
+ 	load_8way(%rdx, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	call __serpent_dec_blk8_avx;
++	pax_direct_call __serpent_dec_blk8_avx;
+ 
+ 	store_8way(%rsi, RC1, RD1, RB1, RE1, RC2, RD2, RB2, RE2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret serpent_ecb_dec_8way_avx;
+ ENDPROC(serpent_ecb_dec_8way_avx)
+ 
+-ENTRY(serpent_cbc_dec_8way_avx)
++RAP_ENTRY(serpent_cbc_dec_8way_avx)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -722,15 +723,15 @@ ENTRY(serpent_cbc_dec_8way_avx)
+ 
+ 	load_8way(%rdx, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	call __serpent_dec_blk8_avx;
++	pax_direct_call __serpent_dec_blk8_avx;
+ 
+ 	store_cbc_8way(%rdx, %rsi, RC1, RD1, RB1, RE1, RC2, RD2, RB2, RE2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret serpent_cbc_dec_8way_avx;
+ ENDPROC(serpent_cbc_dec_8way_avx)
+ 
+-ENTRY(serpent_ctr_8way_avx)
++RAP_ENTRY(serpent_ctr_8way_avx)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -742,15 +743,15 @@ ENTRY(serpent_ctr_8way_avx)
+ 	load_ctr_8way(%rcx, .Lbswap128_mask, RA1, RB1, RC1, RD1, RA2, RB2, RC2,
+ 		      RD2, RK0, RK1, RK2);
+ 
+-	call __serpent_enc_blk8_avx;
++	pax_direct_call __serpent_enc_blk8_avx;
+ 
+ 	store_ctr_8way(%rdx, %rsi, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret serpent_ctr_8way_avx;
+ ENDPROC(serpent_ctr_8way_avx)
+ 
+-ENTRY(serpent_xts_enc_8way_avx)
++RAP_ENTRY(serpent_xts_enc_8way_avx)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -763,16 +764,16 @@ ENTRY(serpent_xts_enc_8way_avx)
+ 	load_xts_8way(%rcx, %rdx, %rsi, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2,
+ 		      RK0, RK1, RK2, .Lxts_gf128mul_and_shl1_mask);
+ 
+-	call __serpent_enc_blk8_avx;
++	pax_direct_call __serpent_enc_blk8_avx;
+ 
+ 	/* dst <= regs xor IVs(in dst) */
+ 	store_xts_8way(%rsi, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret serpent_xts_enc_8way_avx;
+ ENDPROC(serpent_xts_enc_8way_avx)
+ 
+-ENTRY(serpent_xts_dec_8way_avx)
++RAP_ENTRY(serpent_xts_dec_8way_avx)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -785,11 +786,11 @@ ENTRY(serpent_xts_dec_8way_avx)
+ 	load_xts_8way(%rcx, %rdx, %rsi, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2,
+ 		      RK0, RK1, RK2, .Lxts_gf128mul_and_shl1_mask);
+ 
+-	call __serpent_dec_blk8_avx;
++	pax_direct_call __serpent_dec_blk8_avx;
+ 
+ 	/* dst <= regs xor IVs(in dst) */
+ 	store_xts_8way(%rsi, RC1, RD1, RB1, RE1, RC2, RD2, RB2, RE2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret serpent_xts_dec_8way_avx;
+ ENDPROC(serpent_xts_dec_8way_avx)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/serpent-sse2-i586-asm_32.S linux-4.9.24-pax/arch/x86/crypto/serpent-sse2-i586-asm_32.S
+--- linux-4.9.24/arch/x86/crypto/serpent-sse2-i586-asm_32.S	2013-04-30 01:25:06.235586517 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/serpent-sse2-i586-asm_32.S	2017-01-31 00:29:10.849325141 +0100
+@@ -25,6 +25,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .file "serpent-sse2-i586-asm_32.S"
+ .text
+@@ -568,12 +569,12 @@ ENTRY(__serpent_enc_blk_4way)
+ 
+ 	write_blocks(%eax, RA, RB, RC, RD, RT0, RT1, RE);
+ 
+-	ret;
++	pax_ret __serpent_enc_blk_4way;
+ 
+ .L__enc_xor4:
+ 	xor_blocks(%eax, RA, RB, RC, RD, RT0, RT1, RE);
+ 
+-	ret;
++	pax_ret __serpent_enc_blk_4way;
+ ENDPROC(__serpent_enc_blk_4way)
+ 
+ ENTRY(serpent_dec_blk_4way)
+@@ -627,5 +628,5 @@ ENTRY(serpent_dec_blk_4way)
+ 	movl arg_dst(%esp), %eax;
+ 	write_blocks(%eax, RC, RD, RB, RE, RT0, RT1, RA);
+ 
+-	ret;
++	pax_ret serpent_dec_blk_4way;
+ ENDPROC(serpent_dec_blk_4way)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/serpent-sse2-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/serpent-sse2-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/serpent-sse2-x86_64-asm_64.S	2015-03-18 15:21:50.232349253 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/serpent-sse2-x86_64-asm_64.S	2017-01-31 00:20:32.865069961 +0100
+@@ -25,6 +25,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .file "serpent-sse2-x86_64-asm_64.S"
+ .text
+@@ -690,13 +691,13 @@ ENTRY(__serpent_enc_blk_8way)
+ 	write_blocks(%rsi, RA1, RB1, RC1, RD1, RK0, RK1, RK2);
+ 	write_blocks(%rax, RA2, RB2, RC2, RD2, RK0, RK1, RK2);
+ 
+-	ret;
++	pax_ret __serpent_enc_blk_8way;
+ 
+ .L__enc_xor8:
+ 	xor_blocks(%rsi, RA1, RB1, RC1, RD1, RK0, RK1, RK2);
+ 	xor_blocks(%rax, RA2, RB2, RC2, RD2, RK0, RK1, RK2);
+ 
+-	ret;
++	pax_ret __serpent_enc_blk_8way;
+ ENDPROC(__serpent_enc_blk_8way)
+ 
+ ENTRY(serpent_dec_blk_8way)
+@@ -750,5 +751,5 @@ ENTRY(serpent_dec_blk_8way)
+ 	write_blocks(%rsi, RC1, RD1, RB1, RE1, RK0, RK1, RK2);
+ 	write_blocks(%rax, RC2, RD2, RB2, RE2, RK0, RK1, RK2);
+ 
+-	ret;
++	pax_ret serpent_dec_blk_8way;
+ ENDPROC(serpent_dec_blk_8way)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha1_avx2_x86_64_asm.S linux-4.9.24-pax/arch/x86/crypto/sha1_avx2_x86_64_asm.S
+--- linux-4.9.24/arch/x86/crypto/sha1_avx2_x86_64_asm.S	2014-06-09 12:45:14.253124848 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha1_avx2_x86_64_asm.S	2017-01-31 00:33:48.907612792 +0100
+@@ -70,6 +70,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ #define	CTX	%rdi	/* arg1 */
+ #define BUF	%rsi	/* arg2 */
+@@ -671,7 +672,7 @@ _loop3:
+ 	pop	%rbp
+ 	pop	%rbx
+ 
+-	ret
++	pax_ret \name
+ 
+ 	ENDPROC(\name)
+ .endm
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha1-mb/sha1_mb_mgr_flush_avx2.S linux-4.9.24-pax/arch/x86/crypto/sha1-mb/sha1_mb_mgr_flush_avx2.S
+--- linux-4.9.24/arch/x86/crypto/sha1-mb/sha1_mb_mgr_flush_avx2.S	2016-10-03 11:27:30.107115223 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha1-mb/sha1_mb_mgr_flush_avx2.S	2017-01-31 01:29:12.770754563 +0100
+@@ -53,6 +53,7 @@
+  */
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ #include "sha1_mb_mgr_datastruct.S"
+ 
+ 
+@@ -103,7 +104,7 @@ offset = \_offset
+ 
+ # JOB* sha1_mb_mgr_flush_avx2(MB_MGR *state)
+ # arg 1 : rcx : state
+-ENTRY(sha1_mb_mgr_flush_avx2)
++RAP_ENTRY(sha1_mb_mgr_flush_avx2)
+ 	FRAME_BEGIN
+ 	push	%rbx
+ 
+@@ -183,7 +184,7 @@ LABEL skip_ %I
+ 
+ 	# "state" and "args" are the same address, arg1
+ 	# len is arg2
+-	call	sha1_x8_avx2
++	pax_direct_call sha1_x8_avx2
+ 	# state and idx are intact
+ 
+ 
+@@ -215,7 +216,7 @@ len_is_0:
+ return:
+ 	pop	%rbx
+ 	FRAME_END
+-	ret
++	pax_ret sha1_mb_mgr_flush_avx2
+ 
+ return_null:
+ 	xor     job_rax, job_rax
+@@ -226,7 +227,7 @@ ENDPROC(sha1_mb_mgr_flush_avx2)
+ #################################################################
+ 
+ .align 16
+-ENTRY(sha1_mb_mgr_get_comp_job_avx2)
++RAP_ENTRY(sha1_mb_mgr_get_comp_job_avx2)
+ 	push    %rbx
+ 
+ 	## if bit 32+3 is set, then all lanes are empty
+@@ -273,12 +274,12 @@ ENTRY(sha1_mb_mgr_get_comp_job_avx2)
+ 
+ 	pop     %rbx
+ 
+-	ret
++	pax_ret sha1_mb_mgr_get_comp_job_avx2
+ 
+ .return_null:
+ 	xor     job_rax, job_rax
+ 	pop     %rbx
+-	ret
++	pax_ret sha1_mb_mgr_get_comp_job_avx2
+ ENDPROC(sha1_mb_mgr_get_comp_job_avx2)
+ 
+ .data
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha1-mb/sha1_mb_mgr_submit_avx2.S linux-4.9.24-pax/arch/x86/crypto/sha1-mb/sha1_mb_mgr_submit_avx2.S
+--- linux-4.9.24/arch/x86/crypto/sha1-mb/sha1_mb_mgr_submit_avx2.S	2016-10-03 11:27:30.107115223 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha1-mb/sha1_mb_mgr_submit_avx2.S	2017-01-31 01:29:00.741497088 +0100
+@@ -54,6 +54,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ #include "sha1_mb_mgr_datastruct.S"
+ 
+ 
+@@ -98,7 +99,7 @@ lane_data       = %r10
+ # JOB* submit_mb_mgr_submit_avx2(MB_MGR *state, job_sha1 *job)
+ # arg 1 : rcx : state
+ # arg 2 : rdx : job
+-ENTRY(sha1_mb_mgr_submit_avx2)
++RAP_ENTRY(sha1_mb_mgr_submit_avx2)
+ 	FRAME_BEGIN
+ 	push	%rbx
+ 	push	%r12
+@@ -163,7 +164,7 @@ start_loop:
+ 
+ 	# "state" and "args" are the same address, arg1
+ 	# len is arg2
+-	call    sha1_x8_avx2
++	pax_direct_call sha1_x8_avx2
+ 
+ 	# state and idx are intact
+ 
+@@ -195,7 +196,7 @@ return:
+ 	pop	%r12
+ 	pop	%rbx
+ 	FRAME_END
+-	ret
++	pax_ret sha1_mb_mgr_submit_avx2
+ 
+ return_null:
+ 	xor     job_rax, job_rax
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha1-mb/sha1_x8_avx2.S linux-4.9.24-pax/arch/x86/crypto/sha1-mb/sha1_x8_avx2.S
+--- linux-4.9.24/arch/x86/crypto/sha1-mb/sha1_x8_avx2.S	2016-10-03 11:27:30.119123743 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha1-mb/sha1_x8_avx2.S	2017-01-31 00:21:33.932559128 +0100
+@@ -53,6 +53,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ #include "sha1_mb_mgr_datastruct.S"
+ 
+ ## code to compute oct SHA1 using SSE-256
+@@ -457,7 +458,7 @@ lloop:
+ 	pop	%r13
+ 	pop	%r12
+ 
+-	ret
++	pax_ret sha1_x8_avx2
+ ENDPROC(sha1_x8_avx2)
+ 
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha1_ni_asm.S linux-4.9.24-pax/arch/x86/crypto/sha1_ni_asm.S
+--- linux-4.9.24/arch/x86/crypto/sha1_ni_asm.S	2016-01-11 01:27:31.423005738 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/sha1_ni_asm.S	2017-01-31 00:35:59.546173832 +0100
+@@ -54,6 +54,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ #define DIGEST_PTR	%rdi	/* 1st arg */
+ #define DATA_PTR	%rsi	/* 2nd arg */
+@@ -290,7 +291,7 @@ ENTRY(sha1_ni_transform)
+ .Ldone_hash:
+ 	mov		RSPSAVE, %rsp
+ 
+-	ret
++	pax_ret sha1_ni_transform
+ ENDPROC(sha1_ni_transform)
+ 
+ .data
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha1_ssse3_asm.S linux-4.9.24-pax/arch/x86/crypto/sha1_ssse3_asm.S
+--- linux-4.9.24/arch/x86/crypto/sha1_ssse3_asm.S	2015-03-18 15:21:50.232349253 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/sha1_ssse3_asm.S	2017-01-30 23:27:33.554943209 +0100
+@@ -29,6 +29,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ #define CTX	%rdi	// arg1
+ #define BUF	%rsi	// arg2
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha256-avx2-asm.S linux-4.9.24-pax/arch/x86/crypto/sha256-avx2-asm.S
+--- linux-4.9.24/arch/x86/crypto/sha256-avx2-asm.S	2015-06-22 11:14:15.352675275 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha256-avx2-asm.S	2017-01-31 00:25:15.288437415 +0100
+@@ -50,6 +50,7 @@
+ 
+ #ifdef CONFIG_AS_AVX2
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ ## assume buffers not aligned
+ #define	VMOVDQ vmovdqu
+@@ -528,8 +529,7 @@ STACK_SIZE	= _RSP      + _RSP_SIZE
+ ## arg 3 : Num blocks
+ ########################################################################
+ .text
+-ENTRY(sha256_transform_rorx)
+-.align 32
++RAP_ENTRY(sha256_transform_rorx)
+ 	pushq	%rbx
+ 	pushq	%rbp
+ 	pushq	%r12
+@@ -720,7 +720,7 @@ done_hash:
+ 	popq	%r12
+ 	popq	%rbp
+ 	popq	%rbx
+-	ret
++	pax_ret sha256_transform_rorx
+ ENDPROC(sha256_transform_rorx)
+ 
+ .data
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha256-avx-asm.S linux-4.9.24-pax/arch/x86/crypto/sha256-avx-asm.S
+--- linux-4.9.24/arch/x86/crypto/sha256-avx-asm.S	2015-06-22 11:14:15.348675275 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha256-avx-asm.S	2017-01-30 23:59:01.830636181 +0100
+@@ -49,6 +49,7 @@
+ 
+ #ifdef CONFIG_AS_AVX
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ ## assume buffers not aligned
+ #define    VMOVDQ vmovdqu
+@@ -347,8 +348,7 @@ a = TMP_
+ ## arg 3 : Num blocks
+ ########################################################################
+ .text
+-ENTRY(sha256_transform_avx)
+-.align 32
++RAP_ENTRY(sha256_transform_avx)
+ 	pushq   %rbx
+ 	pushq   %rbp
+ 	pushq   %r13
+@@ -460,7 +460,7 @@ done_hash:
+ 	popq    %r13
+ 	popq    %rbp
+ 	popq    %rbx
+-	ret
++	pax_ret sha256_transform_avx
+ ENDPROC(sha256_transform_avx)
+ 
+ .data
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha256-mb/sha256_mb_mgr_flush_avx2.S linux-4.9.24-pax/arch/x86/crypto/sha256-mb/sha256_mb_mgr_flush_avx2.S
+--- linux-4.9.24/arch/x86/crypto/sha256-mb/sha256_mb_mgr_flush_avx2.S	2016-10-03 11:27:30.123126582 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha256-mb/sha256_mb_mgr_flush_avx2.S	2017-01-31 01:30:53.697559786 +0100
+@@ -52,6 +52,7 @@
+  */
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ #include "sha256_mb_mgr_datastruct.S"
+ 
+ .extern sha256_x8_avx2
+@@ -101,7 +102,7 @@ offset = \_offset
+ 
+ # JOB_SHA256* sha256_mb_mgr_flush_avx2(MB_MGR *state)
+ # arg 1 : rcx : state
+-ENTRY(sha256_mb_mgr_flush_avx2)
++RAP_ENTRY(sha256_mb_mgr_flush_avx2)
+ 	FRAME_BEGIN
+         push    %rbx
+ 
+@@ -181,7 +182,7 @@ LABEL skip_ %I
+ 
+ 	# "state" and "args" are the same address, arg1
+ 	# len is arg2
+-	call	sha256_x8_avx2
++	pax_direct_call sha256_x8_avx2
+ 	# state and idx are intact
+ 
+ len_is_0:
+@@ -215,7 +216,7 @@ len_is_0:
+ return:
+ 	pop     %rbx
+ 	FRAME_END
+-	ret
++	pax_ret sha256_mb_mgr_flush_avx2
+ 
+ return_null:
+ 	xor	job_rax, job_rax
+@@ -225,7 +226,7 @@ ENDPROC(sha256_mb_mgr_flush_avx2)
+ ##############################################################################
+ 
+ .align 16
+-ENTRY(sha256_mb_mgr_get_comp_job_avx2)
++RAP_ENTRY(sha256_mb_mgr_get_comp_job_avx2)
+ 	push	%rbx
+ 
+ 	## if bit 32+3 is set, then all lanes are empty
+@@ -276,12 +277,12 @@ ENTRY(sha256_mb_mgr_get_comp_job_avx2)
+ 
+ 	pop	%rbx
+ 
+-	ret
++	pax_ret sha256_mb_mgr_get_comp_job_avx2
+ 
+ .return_null:
+ 	xor	job_rax, job_rax
+ 	pop	%rbx
+-	ret
++	pax_ret sha256_mb_mgr_get_comp_job_avx2
+ ENDPROC(sha256_mb_mgr_get_comp_job_avx2)
+ 
+ .data
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha256-mb/sha256_mb_mgr_submit_avx2.S linux-4.9.24-pax/arch/x86/crypto/sha256-mb/sha256_mb_mgr_submit_avx2.S
+--- linux-4.9.24/arch/x86/crypto/sha256-mb/sha256_mb_mgr_submit_avx2.S	2016-10-03 11:27:30.123126582 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha256-mb/sha256_mb_mgr_submit_avx2.S	2017-01-31 01:30:44.706102508 +0100
+@@ -53,6 +53,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ #include "sha256_mb_mgr_datastruct.S"
+ 
+ .extern sha256_x8_avx2
+@@ -96,7 +97,7 @@ lane_data	= %r10
+ # JOB* sha256_mb_mgr_submit_avx2(MB_MGR *state, JOB_SHA256 *job)
+ # arg 1 : rcx : state
+ # arg 2 : rdx : job
+-ENTRY(sha256_mb_mgr_submit_avx2)
++RAP_ENTRY(sha256_mb_mgr_submit_avx2)
+ 	FRAME_BEGIN
+ 	push	%rbx
+ 	push	%r12
+@@ -164,7 +165,7 @@ start_loop:
+ 
+ 	# "state" and "args" are the same address, arg1
+ 	# len is arg2
+-	call	sha256_x8_avx2
++	pax_direct_call sha256_x8_avx2
+ 
+ 	# state and idx are intact
+ 
+@@ -200,7 +201,7 @@ return:
+ 	pop     %r12
+         pop     %rbx
+         FRAME_END
+-	ret
++	pax_ret sha256_mb_mgr_submit_avx2
+ 
+ return_null:
+ 	xor	job_rax, job_rax
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha256-mb/sha256_x8_avx2.S linux-4.9.24-pax/arch/x86/crypto/sha256-mb/sha256_x8_avx2.S
+--- linux-4.9.24/arch/x86/crypto/sha256-mb/sha256_x8_avx2.S	2016-10-03 11:27:30.123126582 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha256-mb/sha256_x8_avx2.S	2017-01-31 00:46:49.188641002 +0100
+@@ -52,6 +52,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ #include "sha256_mb_mgr_datastruct.S"
+ 
+ ## code to compute oct SHA256 using SSE-256
+@@ -435,7 +436,7 @@ Lrounds_16_xx:
+ 	pop     %r13
+ 	pop     %r12
+ 
+-	ret
++	pax_ret sha256_x8_avx2
+ ENDPROC(sha256_x8_avx2)
+ .data
+ .align 64
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha256_ni_asm.S linux-4.9.24-pax/arch/x86/crypto/sha256_ni_asm.S
+--- linux-4.9.24/arch/x86/crypto/sha256_ni_asm.S	2016-01-11 01:27:31.427016876 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/sha256_ni_asm.S	2017-01-31 00:01:42.141072468 +0100
+@@ -54,6 +54,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ #define DIGEST_PTR	%rdi	/* 1st arg */
+ #define DATA_PTR	%rsi	/* 2nd arg */
+@@ -97,7 +98,7 @@
+ 
+ .text
+ .align 32
+-ENTRY(sha256_ni_transform)
++RAP_ENTRY(sha256_ni_transform)
+ 
+ 	shl		$6, NUM_BLKS		/*  convert to bytes */
+ 	jz		.Ldone_hash
+@@ -326,7 +327,7 @@ ENTRY(sha256_ni_transform)
+ 
+ .Ldone_hash:
+ 
+-	ret
++	pax_ret sha256_ni_transform
+ ENDPROC(sha256_ni_transform)
+ 
+ .data
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha256-ssse3-asm.S linux-4.9.24-pax/arch/x86/crypto/sha256-ssse3-asm.S
+--- linux-4.9.24/arch/x86/crypto/sha256-ssse3-asm.S	2015-06-22 11:14:15.352675275 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha256-ssse3-asm.S	2017-01-31 00:36:28.549901092 +0100
+@@ -47,6 +47,7 @@
+ ########################################################################
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ ## assume buffers not aligned
+ #define    MOVDQ movdqu
+@@ -352,9 +353,7 @@ a = TMP_
+ ## arg 2 : pointer to input data
+ ## arg 3 : Num blocks
+ ########################################################################
+-.text
+-ENTRY(sha256_transform_ssse3)
+-.align 32
++RAP_ENTRY(sha256_transform_ssse3)
+ 	pushq   %rbx
+ 	pushq   %rbp
+ 	pushq   %r13
+@@ -471,7 +470,7 @@ done_hash:
+ 	popq    %rbp
+ 	popq    %rbx
+ 
+-	ret
++	pax_ret sha256_transform_ssse3
+ ENDPROC(sha256_transform_ssse3)
+ 
+ .data
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha512-avx2-asm.S linux-4.9.24-pax/arch/x86/crypto/sha512-avx2-asm.S
+--- linux-4.9.24/arch/x86/crypto/sha512-avx2-asm.S	2015-06-22 11:14:15.352675275 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha512-avx2-asm.S	2017-01-31 00:04:05.018950720 +0100
+@@ -51,6 +51,7 @@
+ 
+ #ifdef CONFIG_AS_AVX2
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .text
+ 
+@@ -568,7 +569,8 @@ frame_size = frame_GPRSAVE + GPRSAVE_SIZ
+ #   message blocks.
+ # L is the message length in SHA512 blocks
+ ########################################################################
+-ENTRY(sha512_transform_rorx)
++ALIGN
++RAP_ENTRY(sha512_transform_rorx)
+ 	# Allocate Stack Space
+ 	mov	%rsp, %rax
+ 	sub	$frame_size, %rsp
+@@ -678,7 +680,7 @@ done_hash:
+ 
+ 	# Restore Stack Pointer
+ 	mov	frame_RSPSAVE(%rsp), %rsp
+-	ret
++	pax_ret sha512_transform_rorx
+ ENDPROC(sha512_transform_rorx)
+ 
+ ########################################################################
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha512-avx-asm.S linux-4.9.24-pax/arch/x86/crypto/sha512-avx-asm.S
+--- linux-4.9.24/arch/x86/crypto/sha512-avx-asm.S	2015-06-22 11:14:15.352675275 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha512-avx-asm.S	2017-01-31 00:25:03.721465436 +0100
+@@ -49,6 +49,7 @@
+ 
+ #ifdef CONFIG_AS_AVX
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .text
+ 
+@@ -277,7 +278,8 @@ frame_size = frame_GPRSAVE + GPRSAVE_SIZ
+ # message blocks.
+ # L is the message length in SHA512 blocks
+ ########################################################################
+-ENTRY(sha512_transform_avx)
++ALIGN
++RAP_ENTRY(sha512_transform_avx)
+ 	cmp $0, msglen
+ 	je nowork
+ 
+@@ -364,7 +366,7 @@ updateblock:
+ 	mov	frame_RSPSAVE(%rsp), %rsp
+ 
+ nowork:
+-	ret
++	pax_ret sha512_transform_avx
+ ENDPROC(sha512_transform_avx)
+ 
+ ########################################################################
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha512-mb/sha512_mb_mgr_flush_avx2.S linux-4.9.24-pax/arch/x86/crypto/sha512-mb/sha512_mb_mgr_flush_avx2.S
+--- linux-4.9.24/arch/x86/crypto/sha512-mb/sha512_mb_mgr_flush_avx2.S	2016-10-03 11:27:30.123126582 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha512-mb/sha512_mb_mgr_flush_avx2.S	2017-01-31 00:44:00.088536734 +0100
+@@ -53,6 +53,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ #include "sha512_mb_mgr_datastruct.S"
+ 
+ .extern sha512_x4_avx2
+@@ -107,7 +108,7 @@ offset = \_offset
+ 
+ # JOB* sha512_mb_mgr_flush_avx2(MB_MGR *state)
+ # arg 1 : rcx : state
+-ENTRY(sha512_mb_mgr_flush_avx2)
++RAP_ENTRY(sha512_mb_mgr_flush_avx2)
+ 	FRAME_BEGIN
+ 	push	%rbx
+ 
+@@ -177,7 +178,7 @@ LABEL skip_ %I
+ 
+         # "state" and "args" are the same address, arg1
+         # len is arg2
+-        call    sha512_x4_avx2
++        pax_direct_call sha512_x4_avx2
+         # state and idx are intact
+ 
+ len_is_0:
+@@ -212,7 +213,7 @@ len_is_0:
+ return:
+ 	pop	%rbx
+ 	FRAME_END
+-        ret
++        pax_ret sha512_mb_mgr_flush_avx2
+ 
+ return_null:
+         xor     job_rax, job_rax
+@@ -220,7 +221,7 @@ return_null:
+ ENDPROC(sha512_mb_mgr_flush_avx2)
+ .align 16
+ 
+-ENTRY(sha512_mb_mgr_get_comp_job_avx2)
++RAP_ENTRY(sha512_mb_mgr_get_comp_job_avx2)
+         push    %rbx
+ 
+ 	mov     _unused_lanes(state), unused_lanes
+@@ -273,12 +274,12 @@ ENTRY(sha512_mb_mgr_get_comp_job_avx2)
+ 
+ 	pop     %rbx
+ 
+-        ret
++	pax_ret sha512_mb_mgr_get_comp_job_avx2
+ 
+ .return_null:
+         xor     job_rax, job_rax
+ 	pop     %rbx
+-        ret
++	pax_ret sha512_mb_mgr_get_comp_job_avx2
+ ENDPROC(sha512_mb_mgr_get_comp_job_avx2)
+ .data
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha512-mb/sha512_mb_mgr_submit_avx2.S linux-4.9.24-pax/arch/x86/crypto/sha512-mb/sha512_mb_mgr_submit_avx2.S
+--- linux-4.9.24/arch/x86/crypto/sha512-mb/sha512_mb_mgr_submit_avx2.S	2016-10-03 11:27:30.135135102 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha512-mb/sha512_mb_mgr_submit_avx2.S	2017-01-31 00:42:52.040332737 +0100
+@@ -53,6 +53,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ #include "sha512_mb_mgr_datastruct.S"
+ 
+ .extern sha512_x4_avx2
+@@ -98,7 +99,7 @@
+ # JOB* sha512_mb_mgr_submit_avx2(MB_MGR *state, JOB *job)
+ # arg 1 : rcx : state
+ # arg 2 : rdx : job
+-ENTRY(sha512_mb_mgr_submit_avx2)
++RAP_ENTRY(sha512_mb_mgr_submit_avx2)
+ 	FRAME_BEGIN
+ 	push	%rbx
+ 	push	%r12
+@@ -167,7 +168,7 @@ start_loop:
+ 
+ 	# "state" and "args" are the same address, arg1
+ 	# len is arg2
+-	call    sha512_x4_avx2
++	pax_direct_call sha512_x4_avx2
+ 	# state and idx are intact
+ 
+ len_is_0:
+@@ -203,7 +204,7 @@ return:
+ 	pop	%r12
+ 	pop	%rbx
+ 	FRAME_END
+-	ret
++	pax_ret sha512_mb_mgr_submit_avx2
+ 
+ return_null:
+ 	xor     job_rax, job_rax
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha512-mb/sha512_x4_avx2.S linux-4.9.24-pax/arch/x86/crypto/sha512-mb/sha512_x4_avx2.S
+--- linux-4.9.24/arch/x86/crypto/sha512-mb/sha512_x4_avx2.S	2016-10-03 11:27:30.135135102 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha512-mb/sha512_x4_avx2.S	2017-01-31 00:42:49.215964325 +0100
+@@ -63,6 +63,7 @@
+ # clobbers ymm0-15
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ #include "sha512_mb_mgr_datastruct.S"
+ 
+ arg1 = %rdi
+@@ -358,7 +359,7 @@ Lrounds_16_xx:
+ 	pop     %r12
+ 
+ 	# outer calling routine restores XMM and other GP registers
+-	ret
++	pax_ret sha512_x4_avx2
+ ENDPROC(sha512_x4_avx2)
+ 
+ .data
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha512-ssse3-asm.S linux-4.9.24-pax/arch/x86/crypto/sha512-ssse3-asm.S
+--- linux-4.9.24/arch/x86/crypto/sha512-ssse3-asm.S	2015-06-22 11:14:15.356675275 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/sha512-ssse3-asm.S	2017-01-31 00:24:50.375956774 +0100
+@@ -48,6 +48,7 @@
+ ########################################################################
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .text
+ 
+@@ -275,7 +276,8 @@ frame_size = frame_GPRSAVE + GPRSAVE_SIZ
+ #   message blocks.
+ # L is the message length in SHA512 blocks.
+ ########################################################################
+-ENTRY(sha512_transform_ssse3)
++ALIGN
++RAP_ENTRY(sha512_transform_ssse3)
+ 
+ 	cmp $0, msglen
+ 	je nowork
+@@ -363,7 +365,7 @@ updateblock:
+ 	mov	frame_RSPSAVE(%rsp), %rsp
+ 
+ nowork:
+-	ret
++	pax_ret sha512_transform_ssse3
+ ENDPROC(sha512_transform_ssse3)
+ 
+ ########################################################################
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/twofish-avx-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/twofish-avx-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/twofish-avx-x86_64-asm_64.S	2016-05-22 01:55:29.011564970 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/twofish-avx-x86_64-asm_64.S	2017-01-31 01:28:48.415411630 +0100
+@@ -25,6 +25,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ #include "glue_helper-asm-avx.S"
+ 
+ .file "twofish-avx-x86_64-asm_64.S"
+@@ -285,7 +286,7 @@ __twofish_enc_blk8:
+ 	outunpack_blocks(RC1, RD1, RA1, RB1, RK1, RX0, RY0, RK2);
+ 	outunpack_blocks(RC2, RD2, RA2, RB2, RK1, RX0, RY0, RK2);
+ 
+-	ret;
++	pax_ret __twofish_enc_blk8;
+ ENDPROC(__twofish_enc_blk8)
+ 
+ .align 8
+@@ -325,10 +326,10 @@ __twofish_dec_blk8:
+ 	outunpack_blocks(RA1, RB1, RC1, RD1, RK1, RX0, RY0, RK2);
+ 	outunpack_blocks(RA2, RB2, RC2, RD2, RK1, RX0, RY0, RK2);
+ 
+-	ret;
++	pax_ret __twofish_dec_blk8;
+ ENDPROC(__twofish_dec_blk8)
+ 
+-ENTRY(twofish_ecb_enc_8way)
++RAP_ENTRY(twofish_ecb_enc_8way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -340,15 +341,15 @@ ENTRY(twofish_ecb_enc_8way)
+ 
+ 	load_8way(%rdx, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	call __twofish_enc_blk8;
++	pax_direct_call __twofish_enc_blk8;
+ 
+ 	store_8way(%r11, RC1, RD1, RA1, RB1, RC2, RD2, RA2, RB2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret twofish_ecb_enc_8way;
+ ENDPROC(twofish_ecb_enc_8way)
+ 
+-ENTRY(twofish_ecb_dec_8way)
++RAP_ENTRY(twofish_ecb_dec_8way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -360,15 +361,15 @@ ENTRY(twofish_ecb_dec_8way)
+ 
+ 	load_8way(%rdx, RC1, RD1, RA1, RB1, RC2, RD2, RA2, RB2);
+ 
+-	call __twofish_dec_blk8;
++	pax_direct_call __twofish_dec_blk8;
+ 
+ 	store_8way(%r11, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret twofish_ecb_dec_8way;
+ ENDPROC(twofish_ecb_dec_8way)
+ 
+-ENTRY(twofish_cbc_dec_8way)
++RAP_ENTRY(twofish_cbc_dec_8way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -435,16 +436,16 @@ ENTRY(twofish_xts_enc_8way)
+ 	load_xts_8way(%rcx, %rdx, %rsi, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2,
+ 		      RX0, RX1, RY0, .Lxts_gf128mul_and_shl1_mask);
+ 
+-	call __twofish_enc_blk8;
++	pax_direct_call __twofish_enc_blk8;
+ 
+ 	/* dst <= regs xor IVs(in dst) */
+ 	store_xts_8way(%r11, RC1, RD1, RA1, RB1, RC2, RD2, RA2, RB2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret twofish_xts_enc_8way;
+ ENDPROC(twofish_xts_enc_8way)
+ 
+-ENTRY(twofish_xts_dec_8way)
++RAP_ENTRY(twofish_xts_dec_8way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -459,11 +460,11 @@ ENTRY(twofish_xts_dec_8way)
+ 	load_xts_8way(%rcx, %rdx, %rsi, RC1, RD1, RA1, RB1, RC2, RD2, RA2, RB2,
+ 		      RX0, RX1, RY0, .Lxts_gf128mul_and_shl1_mask);
+ 
+-	call __twofish_dec_blk8;
++	pax_direct_call __twofish_dec_blk8;
+ 
+ 	/* dst <= regs xor IVs(in dst) */
+ 	store_xts_8way(%r11, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret twofish_xts_dec_8way;
+ ENDPROC(twofish_xts_dec_8way)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/twofish-i586-asm_32.S linux-4.9.24-pax/arch/x86/crypto/twofish-i586-asm_32.S
+--- linux-4.9.24/arch/x86/crypto/twofish-i586-asm_32.S	2013-04-30 01:25:06.235586517 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/twofish-i586-asm_32.S	2017-01-31 18:44:45.307608445 +0100
+@@ -22,6 +22,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/asm-offsets.h>
++#include <asm/alternative-asm.h>
+ 
+ /* return address at 0 */
+ 
+@@ -220,7 +221,7 @@
+ 	xor	%esi,		d ## D;\
+ 	ror	$1,		d ## D;
+ 
+-ENTRY(twofish_enc_blk)
++RAP_ENTRY(twofish_enc_blk)
+ 	push	%ebp			/* save registers according to calling convention*/
+ 	push    %ebx
+ 	push    %esi
+@@ -273,10 +274,10 @@ ENTRY(twofish_enc_blk)
+ 	pop	%ebx
+ 	pop	%ebp
+ 	mov	$1,	%eax
+-	ret
++	pax_ret twofish_enc_blk
+ ENDPROC(twofish_enc_blk)
+ 
+-ENTRY(twofish_dec_blk)
++RAP_ENTRY(twofish_dec_blk)
+ 	push	%ebp			/* save registers according to calling convention*/
+ 	push    %ebx
+ 	push    %esi
+@@ -330,5 +331,5 @@ ENTRY(twofish_dec_blk)
+ 	pop	%ebx
+ 	pop	%ebp
+ 	mov	$1,	%eax
+-	ret
++	pax_ret twofish_dec_blk
+ ENDPROC(twofish_dec_blk)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/twofish-x86_64-asm_64-3way.S linux-4.9.24-pax/arch/x86/crypto/twofish-x86_64-asm_64-3way.S
+--- linux-4.9.24/arch/x86/crypto/twofish-x86_64-asm_64-3way.S	2015-03-18 15:21:50.232349253 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/twofish-x86_64-asm_64-3way.S	2017-01-31 00:35:33.028454091 +0100
+@@ -21,6 +21,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .file "twofish-x86_64-asm-3way.S"
+ .text
+@@ -258,7 +259,7 @@ ENTRY(__twofish_enc_blk_3way)
+ 	popq %r13;
+ 	popq %r14;
+ 	popq %r15;
+-	ret;
++	pax_ret __twofish_enc_blk_3way;
+ 
+ .L__enc_xor3:
+ 	outunpack_enc3(xor);
+@@ -269,10 +270,10 @@ ENTRY(__twofish_enc_blk_3way)
+ 	popq %r13;
+ 	popq %r14;
+ 	popq %r15;
+-	ret;
++	pax_ret __twofish_enc_blk_3way;
+ ENDPROC(__twofish_enc_blk_3way)
+ 
+-ENTRY(twofish_dec_blk_3way)
++RAP_ENTRY(twofish_dec_blk_3way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -308,5 +309,5 @@ ENTRY(twofish_dec_blk_3way)
+ 	popq %r13;
+ 	popq %r14;
+ 	popq %r15;
+-	ret;
++	pax_ret twofish_dec_blk_3way;
+ ENDPROC(twofish_dec_blk_3way)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/twofish-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/twofish-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/twofish-x86_64-asm_64.S	2015-06-22 11:14:15.356675275 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/twofish-x86_64-asm_64.S	2017-01-31 00:10:49.279812986 +0100
+@@ -22,6 +22,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/asm-offsets.h>
++#include <asm/alternative-asm.h>
+ 
+ #define a_offset	0
+ #define b_offset	4
+@@ -215,7 +216,7 @@
+ 	xor	%r8d,		d ## D;\
+ 	ror	$1,		d ## D;
+ 
+-ENTRY(twofish_enc_blk)
++RAP_ENTRY(twofish_enc_blk)
+ 	pushq    R1
+ 
+ 	/* %rdi contains the ctx address */
+@@ -265,10 +266,10 @@ ENTRY(twofish_enc_blk)
+ 
+ 	popq	R1
+ 	movl	$1,%eax
+-	ret
++	pax_ret twofish_enc_blk
+ ENDPROC(twofish_enc_blk)
+ 
+-ENTRY(twofish_dec_blk)
++RAP_ENTRY(twofish_dec_blk)
+ 	pushq    R1
+ 
+ 	/* %rdi contains the ctx address */
+@@ -317,5 +318,5 @@ ENTRY(twofish_dec_blk)
+ 
+ 	popq	R1
+ 	movl	$1,%eax
+-	ret
++	pax_ret twofish_dec_blk
+ ENDPROC(twofish_dec_blk)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/entry/calling.h linux-4.9.24-pax/arch/x86/entry/calling.h
+--- linux-4.9.24/arch/x86/entry/calling.h	2016-05-22 01:55:29.011564970 +0200
++++ linux-4.9.24-pax/arch/x86/entry/calling.h	2017-01-30 19:55:48.900354803 +0100
+@@ -212,7 +226,7 @@ For 32-bit we have the following convent
+ #ifdef HAVE_JUMP_LABEL
+ 	STATIC_JUMP_IF_FALSE .Lafter_call_\@, context_tracking_enabled, def=0
+ #endif
+-	call enter_from_user_mode
++	pax_direct_call enter_from_user_mode
+ .Lafter_call_\@:
+ #endif
+ .endm

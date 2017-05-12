@@ -1,0 +1,20 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/kernel/alternative.c linux-4.9.24-pax/arch/x86/kernel/alternative.c
+--- linux-4.9.24/arch/x86/kernel/alternative.c	2016-07-25 02:13:19.135839649 +0200
++++ linux-4.9.24-pax/arch/x86/kernel/alternative.c	2017-01-30 00:37:12.088733010 +0100
+@@ -437,6 +437,16 @@ void __init_or_module apply_alternatives
+ 				(unsigned long)vinstr + *(s32 *)(insnbuf + 1) + 5);
+ 		}
+ 
++#ifdef CONFIG_PAX_RAP
++		/* 0xeb ... 0xe8 is a rap_call; fix the relative offset. */
++		if (*insnbuf == 0xeb && a->replacementlen == 5 + 3 + 8 + 2 && insnbuf[a->replacementlen - 5] == 0xe8) {
++			*(s32 *)(insnbuf + a->replacementlen - 4) += vreplacement - instr;
++			DPRINTK("Fix CALL offset: 0x%x, CALL 0x%lx",
++				*(s32 *)(insnbuf + a->replacementlen - 4),
++				(unsigned long)vinstr + *(s32 *)(insnbuf + a->replacementlen - 4) + 5);
++		}
++#endif
++
+ 		if (a->replacementlen && is_jmp(vreplacement[0]))
+ 			recompute_jump(a, instr, vreplacement, insnbuf);
+ 

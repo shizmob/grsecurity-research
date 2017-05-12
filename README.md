@@ -4,9 +4,9 @@ Phase 1:
 
 ```
 » ./scripts/progress.sh
-split hunks: 744 (7.3%)
-remaining hunks: 9449
-total hunks: 10173
+split hunks: 1519 (14%)
+remaining hunks: 9376
+total hunks: 10863
 ```
 
 ## Disclaimer
@@ -24,13 +24,17 @@ The point is mostly learning how grsecurity and PaX work internally, properly.
 
 ## Structure
 
-* `grsecurity-3.1-4.9.24-201704252333.patch`: Unedited original last public testing patch;
-* `scripts`: Scripts to help the splitting process;
+* `original`: Original patches, unmodified:
+  - `pax-linux-4.9.24-test7.patch`: Unmodified PaX 4.9.24-test7 patch from https://grsecurity.net/~paxguy1/pax-linux-4.9.24-test7.patch;
+  - `grsecurity-3.1-4.9.24-201704252333.patch`: Unmodified grsecurity 3.1 4.9.24-201704252333 patch from https://grsecurity.net/~spender/grsecurity-3.1-4.9.24-201704252333.patch (now removed);
+  - `grsecurity-nopax-3.1-4.9.24-201704252333.patch`: 'Split' grsecurity patch obtained by diffing an applied unedited `grsecurity-3.1-4.9.24-201704252333.patch` tree against an applied unedited `pax-linux-4.9.24-test7.patch` tree. `no-pax` is a bit of a misnomer, as it still has PaX changes and is based on PaX: it just doesn't include the PaX base;
 * `split`: The split up patches;
-  - `split/pax`: PaX features;
-  - `split/grsec`: grsecurity features;
-  - `split/misc`: Features that don't specifically belong to PaX or grsecurity like general cleanups;
-  - `split/xx-grsecurity-3.1-4.9.24-201704252333.patch`: The unsplit remainder of the original patch;
+  - `split/00-misc`: Features that don't specifically belong to PaX or grsecurity like general cleanups;
+  - `split/01-pax`: PaX features;
+  - `split/01-pax/zz-unsplit/unsplit-pax-linux-4.9.24-test7.patch`: The unsplit remainder of the original PaX patch;
+  - `split/02-grsec`: grsecurity features;
+  - `split/02-grsec/zz-unsplit/unsplit-grsecurity-nopax-3.1-4.9.24-201704252333.patch`: The unsplit remainder of the diffed grsecurity patch;
+* `scripts`: Scripts to help the splitting process;
 * `notes.txt`: Random notes taken by me while splitting up, may contain useful stuff, most likely not.
 
 ## Scripts

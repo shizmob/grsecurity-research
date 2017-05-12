@@ -1,0 +1,154 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/kernel/process.c linux-4.9.24-pax/arch/arm/kernel/process.c
+--- linux-4.9.24/arch/arm/kernel/process.c	2016-12-13 12:08:18.122317736 +0100
++++ linux-4.9.24-pax/arch/arm/kernel/process.c	2017-01-01 22:57:10.533520559 +0100
+@@ -365,92 +365,14 @@ const char *arch_vma_name(struct vm_area
+ 	return is_gate_vma(vma) ? "[vectors]" : NULL;
+ }
+ 
+-/* If possible, provide a placement hint at a random offset from the
+- * stack for the sigpage and vdso pages.
+- */
+-static unsigned long sigpage_addr(const struct mm_struct *mm,
+-				  unsigned int npages)
+-{
+-	unsigned long offset;
+-	unsigned long first;
+-	unsigned long last;
+-	unsigned long addr;
+-	unsigned int slots;
+-
+-	first = PAGE_ALIGN(mm->start_stack);
+-
+-	last = TASK_SIZE - (npages << PAGE_SHIFT);
+-
+-	/* No room after stack? */
+-	if (first > last)
+-		return 0;
+-
+-	/* Just enough room? */
+-	if (first == last)
+-		return first;
+-
+-	slots = ((last - first) >> PAGE_SHIFT) + 1;
+-
+-	offset = get_random_int() % slots;
+-
+-	addr = first + (offset << PAGE_SHIFT);
+-
+-	return addr;
+-}
+-
+-static struct page *signal_page;
+-extern struct page *get_signal_page(void);
+-
+-static const struct vm_special_mapping sigpage_mapping = {
+-	.name = "[sigpage]",
+-	.pages = &signal_page,
+-};
+-
+ int arch_setup_additional_pages(struct linux_binprm *bprm, int uses_interp)
+ {
+ 	struct mm_struct *mm = current->mm;
+-	struct vm_area_struct *vma;
+-	unsigned long npages;
+-	unsigned long addr;
+-	unsigned long hint;
+-	int ret = 0;
+-
+-	if (!signal_page)
+-		signal_page = get_signal_page();
+-	if (!signal_page)
+-		return -ENOMEM;
+-
+-	npages = 1; /* for sigpage */
+-	npages += vdso_total_pages;
+ 
+ 	if (down_write_killable(&mm->mmap_sem))
+ 		return -EINTR;
+-	hint = sigpage_addr(mm, npages);
+-	addr = get_unmapped_area(NULL, hint, npages << PAGE_SHIFT, 0, 0);
+-	if (IS_ERR_VALUE(addr)) {
+-		ret = addr;
+-		goto up_fail;
+-	}
+-
+-	vma = _install_special_mapping(mm, addr, PAGE_SIZE,
+-		VM_READ | VM_EXEC | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC,
+-		&sigpage_mapping);
+-
+-	if (IS_ERR(vma)) {
+-		ret = PTR_ERR(vma);
+-		goto up_fail;
+-	}
+-
+-	mm->context.sigpage = addr;
+-
+-	/* Unlike the sigpage, failure to install the vdso is unlikely
+-	 * to be fatal to the process, so no error check needed
+-	 * here.
+-	 */
+-	arm_install_vdso(mm, addr + PAGE_SIZE);
+-
+- up_fail:
++	mm->context.sigpage = (PAGE_OFFSET + (get_random_int() % 0x3FFEFFE0)) & 0xFFFFFFFC;
+ 	up_write(&mm->mmap_sem);
+-	return ret;
++	return 0;
+ }
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/kernel/signal.c linux-4.9.24-pax/arch/arm/kernel/signal.c
+--- linux-4.9.24/arch/arm/kernel/signal.c	2015-11-03 01:48:46.531326192 +0100
++++ linux-4.9.24-pax/arch/arm/kernel/signal.c	2017-01-01 22:57:10.533520559 +0100
+@@ -24,8 +24,6 @@
+ 
+ extern const unsigned long sigreturn_codes[7];
+ 
+-static unsigned long signal_return_offset;
+-
+ #ifdef CONFIG_CRUNCH
+ static int preserve_crunch_context(struct crunch_sigframe __user *frame)
+ {
+@@ -388,8 +386,7 @@ setup_return(struct pt_regs *regs, struc
+ 			 * except when the MPU has protected the vectors
+ 			 * page from PL0
+ 			 */
+-			retcode = mm->context.sigpage + signal_return_offset +
+-				  (idx << 2) + thumb;
++			retcode = mm->context.sigpage + (idx << 2) + thumb;
+ 		} else
+ #endif
+ 		{
+@@ -601,33 +598,3 @@ do_work_pending(struct pt_regs *regs, un
+ 	} while (thread_flags & _TIF_WORK_MASK);
+ 	return 0;
+ }
+-
+-struct page *get_signal_page(void)
+-{
+-	unsigned long ptr;
+-	unsigned offset;
+-	struct page *page;
+-	void *addr;
+-
+-	page = alloc_pages(GFP_KERNEL, 0);
+-
+-	if (!page)
+-		return NULL;
+-
+-	addr = page_address(page);
+-
+-	/* Give the signal return code some randomness */
+-	offset = 0x200 + (get_random_int() & 0x7fc);
+-	signal_return_offset = offset;
+-
+-	/*
+-	 * Copy signal return handlers into the vector page, and
+-	 * set sigreturn to be a pointer to these.
+-	 */
+-	memcpy(addr + offset, sigreturn_codes, sizeof(sigreturn_codes));
+-
+-	ptr = (unsigned long)addr + offset;
+-	flush_icache_range(ptr, ptr + sizeof(sigreturn_codes));
+-
+-	return page;
+-}

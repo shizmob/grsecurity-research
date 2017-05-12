@@ -1,0 +1,12 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mm/Kconfig linux-4.9.24-pax/arch/arm/mm/Kconfig
+--- linux-4.9.24/arch/arm/mm/Kconfig	2016-12-13 12:08:19.670328253 +0100
++++ linux-4.9.24-pax/arch/arm/mm/Kconfig	2017-01-01 22:57:10.549520598 +0100
+@@ -827,7 +829,7 @@ config KUSER_HELPERS
+ 	  See Documentation/arm/kernel_user_helpers.txt for details.
+ 
+ 	  However, the fixed address nature of these helpers can be used
+-	  by ROP (return orientated programming) authors when creating
++	  by ROP (Return Oriented Programming) authors when creating
+ 	  exploits.
+ 
+ 	  If all of the binaries and libraries which run on your platform

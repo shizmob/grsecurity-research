@@ -1,0 +1,131 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/checksum.h linux-4.9.24-pax/arch/arm/include/asm/checksum.h
+--- linux-4.9.24/arch/arm/include/asm/checksum.h	2016-05-22 01:55:27.927576539 +0200
++++ linux-4.9.24-pax/arch/arm/include/asm/checksum.h	2017-01-01 22:57:10.521520529 +0100
+@@ -37,7 +37,19 @@ __wsum
+ csum_partial_copy_nocheck(const void *src, void *dst, int len, __wsum sum);
+ 
+ __wsum
+-csum_partial_copy_from_user(const void __user *src, void *dst, int len, __wsum sum, int *err_ptr);
++__csum_partial_copy_from_user(const void __user *src, void *dst, int len, __wsum sum, int *err_ptr);
++
++static inline __wsum
++csum_partial_copy_from_user(const void __user *src, void *dst, int len, __wsum sum, int *err_ptr)
++{
++	__wsum ret;
++	pax_open_userland();
++	ret = __csum_partial_copy_from_user(src, dst, len, sum, err_ptr);
++	pax_close_userland();
++	return ret;
++}
++
++
+ 
+ /*
+  * 	Fold a partial checksum without adding pseudo headers
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/kernel/armksyms.c linux-4.9.24-pax/arch/arm/kernel/armksyms.c
+--- linux-4.9.24/arch/arm/kernel/armksyms.c	2017-04-19 22:09:31.750314351 +0200
++++ linux-4.9.24-pax/arch/arm/kernel/armksyms.c	2017-04-19 22:11:55.586421046 +0200
+@@ -59,7 +59,7 @@ EXPORT_SYMBOL(arm_delay_ops);
+ 
+ 	/* networking */
+ EXPORT_SYMBOL(csum_partial);
+-EXPORT_SYMBOL(csum_partial_copy_from_user);
++EXPORT_SYMBOL(__csum_partial_copy_from_user);
+ EXPORT_SYMBOL(csum_partial_copy_nocheck);
+ EXPORT_SYMBOL(__csum_ipv6_magic);
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/lib/csumpartialcopyuser.S linux-4.9.24-pax/arch/arm/lib/csumpartialcopyuser.S
+--- linux-4.9.24/arch/arm/lib/csumpartialcopyuser.S	2015-11-03 01:48:47.199326589 +0100
++++ linux-4.9.24-pax/arch/arm/lib/csumpartialcopyuser.S	2017-01-01 22:57:10.537520569 +0100
+@@ -71,8 +71,8 @@
+  *  Returns : r0 = checksum, [[sp, #0], #0] = 0 or -EFAULT
+  */
+ 
+-#define FN_ENTRY	ENTRY(csum_partial_copy_from_user)
+-#define FN_EXIT		ENDPROC(csum_partial_copy_from_user)
++#define FN_ENTRY	ENTRY(__csum_partial_copy_from_user)
++#define FN_EXIT		ENDPROC(__csum_partial_copy_from_user)
+ 
+ #include "csumpartialcopygeneric.S"
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/uaccess.h linux-4.9.24-pax/arch/arm/include/asm/uaccess.h
+--- linux-4.9.24/arch/arm/include/asm/uaccess.h	2016-12-13 12:08:18.014317002 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/uaccess.h	2017-01-01 22:57:10.529520549 +0100
+@@ -66,6 +66,7 @@ static inline unsigned int uaccess_save_
+ 
+ 	return old_domain;
+ #else
++	pax_open_userland();
+ 	return 0;
+ #endif
+ }
+@@ -75,6 +75,8 @@ static inline void uaccess_restore(unsig
+ #ifdef CONFIG_CPU_SW_DOMAIN_PAN
+ 	/* Restore the user access mask */
+ 	set_domain(flags);
++#else
++	pax_close_userland();
+ #endif
+ }
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mm/alignment.c linux-4.9.24-pax/arch/arm/mm/alignment.c
+--- linux-4.9.24/arch/arm/mm/alignment.c	2016-01-11 01:27:24.135059549 +0100
++++ linux-4.9.24-pax/arch/arm/mm/alignment.c	2017-01-01 22:57:10.545520588 +0100
+@@ -778,6 +778,7 @@ do_alignment(unsigned long addr, unsigne
+ 	u16 tinstr = 0;
+ 	int isize = 4;
+ 	int thumb2_32b = 0;
++	bool is_user_mode = user_mode(regs);
+ 
+ 	if (interrupts_enabled(regs))
+ 		local_irq_enable();
+@@ -786,14 +787,24 @@ do_alignment(unsigned long addr, unsigne
+ 
+ 	if (thumb_mode(regs)) {
+ 		u16 *ptr = (u16 *)(instrptr & ~1);
+-		fault = probe_kernel_address(ptr, tinstr);
++		if (is_user_mode) {
++			pax_open_userland();
++			fault = probe_kernel_address(ptr, tinstr);
++			pax_close_userland();
++		} else
++			fault = probe_kernel_address(ptr, tinstr);
+ 		tinstr = __mem_to_opcode_thumb16(tinstr);
+ 		if (!fault) {
+ 			if (cpu_architecture() >= CPU_ARCH_ARMv7 &&
+ 			    IS_T32(tinstr)) {
+ 				/* Thumb-2 32-bit */
+ 				u16 tinst2 = 0;
+-				fault = probe_kernel_address(ptr + 1, tinst2);
++				if (is_user_mode) {
++					pax_open_userland();
++					fault = probe_kernel_address(ptr + 1, tinst2);
++					pax_close_userland();
++				} else
++					fault = probe_kernel_address(ptr + 1, tinst2);
+ 				tinst2 = __mem_to_opcode_thumb16(tinst2);
+ 				instr = __opcode_thumb32_compose(tinstr, tinst2);
+ 				thumb2_32b = 1;
+@@ -803,7 +814,12 @@ do_alignment(unsigned long addr, unsigne
+ 			}
+ 		}
+ 	} else {
+-		fault = probe_kernel_address((void *)instrptr, instr);
++		if (is_user_mode) {
++			pax_open_userland();
++			fault = probe_kernel_address((void *)instrptr, instr);
++			pax_close_userland();
++		} else
++			fault = probe_kernel_address((void *)instrptr, instr);
+ 		instr = __mem_to_opcode_arm(instr);
+ 	}
+ 
+@@ -812,7 +828,7 @@ do_alignment(unsigned long addr, unsigne
+ 		goto bad_or_fault;
+ 	}
+ 
+-	if (user_mode(regs))
++	if (is_user_mode)
+ 		goto user;
+ 
+ 	ai_sys += 1;

@@ -1,0 +1,82 @@
+diff --git a/drivers/pci/proc.c b/drivers/pci/proc.c
+index 2408abe4ee8c..455d4d4cf13d 100644
+--- a/drivers/pci/proc.c
++++ b/drivers/pci/proc.c
+@@ -437,7 +437,16 @@ static const struct file_operations proc_bus_pci_dev_operations = {
+ static int __init pci_proc_init(void)
+ {
+ 	struct pci_dev *dev = NULL;
++
++#ifdef CONFIG_GRKERNSEC_PROC_ADD
++#ifdef CONFIG_GRKERNSEC_PROC_USER
++	proc_bus_pci_dir = proc_mkdir_mode("bus/pci", S_IRUSR | S_IXUSR, NULL);
++#elif defined(CONFIG_GRKERNSEC_PROC_USERGROUP)
++	proc_bus_pci_dir = proc_mkdir_mode("bus/pci", S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP, NULL);
++#endif
++#else
+ 	proc_bus_pci_dir = proc_mkdir("bus/pci", NULL);
++#endif
+ 	proc_create("devices", 0, proc_bus_pci_dir,
+ 		    &proc_bus_pci_dev_operations);
+ 	proc_initialized = 1;
+diff --git a/fs/proc/Kconfig b/fs/proc/Kconfig
+index 1ade1206bb89..a86f1a2a38fb 100644
+--- a/fs/proc/Kconfig
++++ b/fs/proc/Kconfig
+@@ -30,7 +30,7 @@ config PROC_FS
+ 
+ config PROC_KCORE
+ 	bool "/proc/kcore support" if !ARM
+-	depends on PROC_FS && MMU
++	depends on PROC_FS && MMU && !GRKERNSEC_PROC_ADD
+ 	help
+ 	  Provides a virtual ELF core file of the live kernel.  This can
+ 	  be read with gdb and other ELF tools.  No modifications can be
+diff --git a/fs/proc/cmdline.c b/fs/proc/cmdline.c
+index cbd82dff7e81..c0407d23e879 100644
+--- a/fs/proc/cmdline.c
++++ b/fs/proc/cmdline.c
+@@ -23,7 +23,11 @@ static const struct file_operations cmdline_proc_fops = {
+ 
+ static int __init proc_cmdline_init(void)
+ {
++#ifdef CONFIG_GRKERNSEC_PROC_ADD
++	proc_create_grsec("cmdline", 0, NULL, &cmdline_proc_fops);
++#else
+ 	proc_create("cmdline", 0, NULL, &cmdline_proc_fops);
++#endif
+ 	return 0;
+ }
+ fs_initcall(proc_cmdline_init);
+diff --git a/fs/proc/devices.c b/fs/proc/devices.c
+index 50493edc30e5..248166b06966 100644
+--- a/fs/proc/devices.c
++++ b/fs/proc/devices.c
+@@ -64,7 +64,11 @@ static const struct file_operations proc_devinfo_operations = {
+ 
+ static int __init proc_devices_init(void)
+ {
++#ifdef CONFIG_GRKERNSEC_PROC_ADD
++	proc_create_grsec("devices", 0, NULL, &proc_devinfo_operations);
++#else
+ 	proc_create("devices", 0, NULL, &proc_devinfo_operations);
++#endif
+ 	return 0;
+ }
+ fs_initcall(proc_devices_init);
+diff --git a/fs/proc/interrupts.c b/fs/proc/interrupts.c
+index a352d5703b41..cb94a5cc1ed1 100644
+--- a/fs/proc/interrupts.c
++++ b/fs/proc/interrupts.c
+@@ -47,7 +47,11 @@ static const struct file_operations proc_interrupts_operations = {
+ 
+ static int __init proc_interrupts_init(void)
+ {
++#ifdef CONFIG_GRKERNSEC_PROC_ADD
++	proc_create_grsec("interrupts", 0, NULL, &proc_interrupts_operations);
++#else
+ 	proc_create("interrupts", 0, NULL, &proc_interrupts_operations);
++#endif
+ 	return 0;
+ }
+ fs_initcall(proc_interrupts_init);

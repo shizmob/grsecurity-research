@@ -1,0 +1,12 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/ia64/kernel/palinfo.c linux-4.9.24-pax/arch/ia64/kernel/palinfo.c
+--- linux-4.9.24/arch/ia64/kernel/palinfo.c	2015-03-18 15:21:50.188349252 +0100
++++ linux-4.9.24-pax/arch/ia64/kernel/palinfo.c	2017-01-01 22:57:10.557520617 +0100
+@@ -980,7 +980,7 @@ static int palinfo_cpu_callback(struct n
+ 	return NOTIFY_OK;
+ }
+ 
+-static struct notifier_block __refdata palinfo_cpu_notifier =
++static struct notifier_block palinfo_cpu_notifier =
+ {
+ 	.notifier_call = palinfo_cpu_callback,
+ 	.priority = 0,

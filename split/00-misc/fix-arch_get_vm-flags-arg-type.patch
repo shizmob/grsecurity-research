@@ -1,0 +1,24 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/mmap.c linux-4.9.24-pax/mm/mmap.c
+--- linux-4.9.24/mm/mmap.c	2016-12-13 12:12:05.039900758 +0100
++++ linux-4.9.24-pax/mm/mmap.c	2017-01-01 22:57:20.061543938 +0100
+@@ -99,7 +99,7 @@ static void unmap_region(struct mm_struc
+ 	__S000, __S001, __S010, __S011, __S100, __S101, __S110, __S111
+ };
+ 
+-pgprot_t vm_get_page_prot(unsigned long vm_flags)
++pgprot_t vm_get_page_prot(vm_flags_t vm_flags)
+ {
+ 	return __pgprot(pgprot_val(protection_map[vm_flags &
+ }
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/include/asm/mman.h linux-4.9.24-pax/arch/powerpc/include/asm/mman.h
+--- linux-4.9.24/arch/powerpc/include/asm/mman.h	2016-10-03 11:27:24.382349694 +0200
++++ linux-4.9.24-pax/arch/powerpc/include/asm/mman.h	2017-01-01 22:57:10.573520657 +0100
+@@ -26,7 +26,7 @@ static inline unsigned long arch_calc_vm
+ }
+ #define arch_calc_vm_prot_bits(prot, pkey) arch_calc_vm_prot_bits(prot, pkey)
+ 
+-static inline pgprot_t arch_vm_get_page_prot(unsigned long vm_flags)
++static inline pgprot_t arch_vm_get_page_prot(vm_flags_t vm_flags)
+ {
+ 	return (vm_flags & VM_SAO) ? __pgprot(_PAGE_SAO) : __pgprot(0);
+ }

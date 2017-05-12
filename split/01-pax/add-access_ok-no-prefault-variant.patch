@@ -1,0 +1,77 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/uaccess.h linux-4.9.24-pax/arch/arm/include/asm/uaccess.h
+--- linux-4.9.24/arch/arm/include/asm/uaccess.h	2016-12-13 12:08:18.014317002 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/uaccess.h	2017-01-01 22:57:10.529520549 +0100
+@@ -268,6 +299,7 @@ static inline void set_fs(mm_segment_t f
+ 
+ #endif /* CONFIG_MMU */
+ 
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size)	(__range_ok(addr, size) == 0)
+ 
+ #define user_addr_max() \
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm64/include/asm/uaccess.h linux-4.9.24-pax/arch/arm64/include/asm/uaccess.h
+--- linux-4.9.24/arch/arm64/include/asm/uaccess.h	2016-12-13 12:08:20.434333448 +0100
++++ linux-4.9.24-pax/arch/arm64/include/asm/uaccess.h	2017-01-01 22:57:10.553520608 +0100
+@@ -110,6 +110,7 @@ static inline void set_fs(mm_segment_t f
+  */
+ #define untagged_addr(addr)		sign_extend64(addr, 55)
+ 
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size)	__range_ok(addr, size)
+ #define user_addr_max			get_fs
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/ia64/include/asm/uaccess.h linux-4.9.24-pax/arch/ia64/include/asm/uaccess.h
+--- linux-4.9.24/arch/ia64/include/asm/uaccess.h	2016-10-03 11:27:19.748989592 +0200
++++ linux-4.9.24-pax/arch/ia64/include/asm/uaccess.h	2017-01-01 22:57:10.557520617 +0100
+@@ -70,6 +70,7 @@
+ 	 && ((segment).seg == KERNEL_DS.seg						\
+ 	     || likely(REGION_OFFSET((unsigned long) (addr)) < RGN_MAP_LIMIT)));	\
+ })
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size)	__access_ok((addr), (size), get_fs())
+ 
+ /*
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/include/asm/uaccess.h linux-4.9.24-pax/arch/mips/include/asm/uaccess.h
+--- linux-4.9.24/arch/mips/include/asm/uaccess.h	2016-12-13 12:08:22.374346639 +0100
++++ linux-4.9.24-pax/arch/mips/include/asm/uaccess.h	2017-01-01 22:57:10.561520627 +0100
+@@ -148,6 +148,7 @@ static inline bool eva_kernel_access(voi
+ 	__ok == 0;							\
+ })
+ 
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size)					\
+ 	likely(__access_ok((addr), (size), __access_mask))
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/include/asm/uaccess.h linux-4.9.24-pax/arch/powerpc/include/asm/uaccess.h
+--- linux-4.9.24/arch/powerpc/include/asm/uaccess.h	2016-10-03 11:27:24.642601243 +0200
++++ linux-4.9.24-pax/arch/powerpc/include/asm/uaccess.h	2017-01-01 22:57:10.577520667 +0100
+@@ -58,6 +58,7 @@
+ 
+ #endif
+ 
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size)		\
+ 	(__chk_user_ptr(addr),			\
+ 	 __access_ok((__force unsigned long)(addr), (size), get_fs()))
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/s390/include/asm/uaccess.h linux-4.9.24-pax/arch/s390/include/asm/uaccess.h
+--- linux-4.9.24/arch/s390/include/asm/uaccess.h	2017-04-19 22:09:32.010314546 +0200
++++ linux-4.9.24-pax/arch/s390/include/asm/uaccess.h	2017-04-19 22:11:55.598421055 +0200
+@@ -59,6 +59,7 @@ static inline int __range_ok(unsigned lo
+ 	__range_ok((unsigned long)(addr), (size));	\
+ })
+ 
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size) __access_ok(addr, size)
+ 
+ /*
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/include/asm/uaccess_32.h linux-4.9.24-pax/arch/sparc/include/asm/uaccess_32.h
+--- linux-4.9.24/arch/sparc/include/asm/uaccess_32.h	2016-10-03 11:27:29.334546834 +0200
++++ linux-4.9.24-pax/arch/sparc/include/asm/uaccess_32.h	2017-01-01 22:57:10.589520696 +0100
+@@ -47,6 +47,7 @@
+ #define __user_ok(addr, size) ({ (void)(size); (addr) < STACK_TOP; })
+ #define __kernel_ok (segment_eq(get_fs(), KERNEL_DS))
+ #define __access_ok(addr, size) (__user_ok((addr) & get_fs().seg, (size)))
++#define access_ok_noprefault(type, addr, size) access_ok((type), (addr), (size))
+ #define access_ok(type, addr, size) \
+ 	({ (void)(type); __access_ok((unsigned long)(addr), size); })
+ 

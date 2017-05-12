@@ -1,0 +1,11 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/kernel/reboot.c linux-4.9.24-pax/arch/arm/kernel/reboot.c
+--- linux-4.9.24/arch/arm/kernel/reboot.c	2016-07-25 02:13:12.233951855 +0200
++++ linux-4.9.24-pax/arch/arm/kernel/reboot.c	2017-01-01 22:57:10.533520559 +0100
+@@ -120,6 +120,7 @@ void machine_power_off(void)
+ 
+ 	if (pm_power_off)
+ 		pm_power_off();
++	while (1);
+ }
+ 
+ /*

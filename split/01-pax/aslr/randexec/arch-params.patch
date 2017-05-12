@@ -1,0 +1,213 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/alpha/include/asm/elf.h linux-4.9.24-pax/arch/alpha/include/asm/elf.h
+--- linux-4.9.24/arch/alpha/include/asm/elf.h	2015-03-18 15:21:50.164349252 +0100
++++ linux-4.9.24-pax/arch/alpha/include/asm/elf.h	2017-01-01 22:57:10.517520519 +0100
+@@ -91,6 +91,13 @@ typedef elf_fpreg_t elf_fpregset_t[ELF_N
+ 
+ #define ELF_ET_DYN_BASE		(TASK_UNMAPPED_BASE + 0x1000000)
+ 
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	(current->personality & ADDR_LIMIT_32BIT ? 0x10000 : 0x120000000UL)
++
++#define PAX_DELTA_MMAP_LEN	(current->personality & ADDR_LIMIT_32BIT ? 14 : 28)
++#define PAX_DELTA_STACK_LEN	(current->personality & ADDR_LIMIT_32BIT ? 14 : 19)
++#endif
++
+ /* $0 is set by ld.so to a pointer to a function which might be 
+    registered using atexit.  This provides a mean for the dynamic
+    linker to call DT_FINI functions for shared libraries that have
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/elf.h linux-4.9.24-pax/arch/arm/include/asm/elf.h
+--- linux-4.9.24/arch/arm/include/asm/elf.h	2015-06-22 11:14:08.564675290 +0200
++++ linux-4.9.24-pax/arch/arm/include/asm/elf.h	2017-01-01 22:57:10.521520529 +0100
+@@ -117,7 +117,14 @@ int dump_task_regs(struct task_struct *t
+    the loader.  We need to make sure that it is out of the way of the program
+    that it will "exec", and that there is sufficient room for the brk.  */
+ 
+-#define ELF_ET_DYN_BASE	(TASK_SIZE / 3 * 2)
++#define ELF_ET_DYN_BASE		(TASK_SIZE / 3 * 2)
++
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	0x00008000UL
++
++#define PAX_DELTA_MMAP_LEN	((current->personality == PER_LINUX_32BIT) ? 16 : 10)
++#define PAX_DELTA_STACK_LEN	((current->personality == PER_LINUX_32BIT) ? 16 : 10)
++#endif
+ 
+ /* When the program starts, a1 contains a pointer to a function to be 
+    registered with atexit, as per the SVR4 ABI.  A value of 0 means we 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/avr32/include/asm/elf.h linux-4.9.24-pax/arch/avr32/include/asm/elf.h
+--- linux-4.9.24/arch/avr32/include/asm/elf.h	2015-06-22 11:14:09.664675288 +0200
++++ linux-4.9.24-pax/arch/avr32/include/asm/elf.h	2017-01-01 22:57:10.553520608 +0100
+@@ -84,8 +84,14 @@ typedef struct user_fpu_struct elf_fpreg
+    the loader.  We need to make sure that it is out of the way of the program
+    that it will "exec", and that there is sufficient room for the brk.  */
+ 
+-#define ELF_ET_DYN_BASE         (TASK_SIZE / 3 * 2)
++#define ELF_ET_DYN_BASE		(TASK_SIZE / 3 * 2)
+ 
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	0x00001000UL
++
++#define PAX_DELTA_MMAP_LEN	15
++#define PAX_DELTA_STACK_LEN	15
++#endif
+ 
+ /* This yields a mask that user programs can use to figure out what
+    instruction set this CPU supports.  This could be done in user space,
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/ia64/include/asm/elf.h linux-4.9.24-pax/arch/ia64/include/asm/elf.h
+--- linux-4.9.24/arch/ia64/include/asm/elf.h	2015-03-18 15:21:50.188349252 +0100
++++ linux-4.9.24-pax/arch/ia64/include/asm/elf.h	2017-01-01 22:57:10.557520617 +0100
+@@ -42,6 +42,13 @@
+  */
+ #define ELF_ET_DYN_BASE		(TASK_UNMAPPED_BASE + 0x800000000UL)
+ 
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	(current->personality == PER_LINUX32 ? 0x08048000UL : 0x4000000000000000UL)
++
++#define PAX_DELTA_MMAP_LEN	(current->personality == PER_LINUX32 ? 16 : 3*PAGE_SHIFT - 13)
++#define PAX_DELTA_STACK_LEN	(current->personality == PER_LINUX32 ? 16 : 3*PAGE_SHIFT - 13)
++#endif
++
+ #define PT_IA_64_UNWIND		0x70000001
+ 
+ /* IA-64 relocations: */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/include/asm/elf.h linux-4.9.24-pax/arch/mips/include/asm/elf.h
+--- linux-4.9.24/arch/mips/include/asm/elf.h	2016-10-03 11:27:22.580480527 +0200
++++ linux-4.9.24-pax/arch/mips/include/asm/elf.h	2017-01-01 22:57:10.561520627 +0100
+@@ -458,6 +458,13 @@ extern const char *__elf_platform;
+ #define ELF_ET_DYN_BASE		(TASK_SIZE / 3 * 2)
+ #endif
+ 
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	(TASK_IS_32BIT_ADDR ? 0x00400000UL : 0x00400000UL)
++
++#define PAX_DELTA_MMAP_LEN	(TASK_IS_32BIT_ADDR ? 27-PAGE_SHIFT : 36-PAGE_SHIFT)
++#define PAX_DELTA_STACK_LEN	(TASK_IS_32BIT_ADDR ? 27-PAGE_SHIFT : 36-PAGE_SHIFT)
++#endif
++
+ /* update AT_VECTOR_SIZE_ARCH if the number of NEW_AUX_ENT entries changes */
+ #define ARCH_DLINFO							\
+ do {									\
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/kernel/binfmt_elfn32.c linux-4.9.24-pax/arch/mips/kernel/binfmt_elfn32.c
+--- linux-4.9.24/arch/mips/kernel/binfmt_elfn32.c	2016-12-13 12:08:22.402346829 +0100
++++ linux-4.9.24-pax/arch/mips/kernel/binfmt_elfn32.c	2017-01-01 22:57:10.565520637 +0100
+@@ -37,6 +37,13 @@ typedef elf_fpreg_t elf_fpregset_t[ELF_N
+ #undef ELF_ET_DYN_BASE
+ #define ELF_ET_DYN_BASE		(TASK32_SIZE / 3 * 2)
+ 
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	(TASK_IS_32BIT_ADDR ? 0x00400000UL : 0x00400000UL)
++
++#define PAX_DELTA_MMAP_LEN	(TASK_IS_32BIT_ADDR ? 27-PAGE_SHIFT : 36-PAGE_SHIFT)
++#define PAX_DELTA_STACK_LEN	(TASK_IS_32BIT_ADDR ? 27-PAGE_SHIFT : 36-PAGE_SHIFT)
++#endif
++
+ #include <asm/processor.h>
+ #include <linux/elfcore.h>
+ #include <linux/compat.h>
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/kernel/binfmt_elfo32.c linux-4.9.24-pax/arch/mips/kernel/binfmt_elfo32.c
+--- linux-4.9.24/arch/mips/kernel/binfmt_elfo32.c	2016-12-13 12:08:22.402346829 +0100
++++ linux-4.9.24-pax/arch/mips/kernel/binfmt_elfo32.c	2017-01-01 22:57:10.565520637 +0100
+@@ -41,6 +41,13 @@ typedef elf_fpreg_t elf_fpregset_t[ELF_N
+ #undef ELF_ET_DYN_BASE
+ #define ELF_ET_DYN_BASE		(TASK32_SIZE / 3 * 2)
+ 
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	(TASK_IS_32BIT_ADDR ? 0x00400000UL : 0x00400000UL)
++
++#define PAX_DELTA_MMAP_LEN	(TASK_IS_32BIT_ADDR ? 27-PAGE_SHIFT : 36-PAGE_SHIFT)
++#define PAX_DELTA_STACK_LEN	(TASK_IS_32BIT_ADDR ? 27-PAGE_SHIFT : 36-PAGE_SHIFT)
++#endif
++
+ #include <asm/processor.h>
+ 
+ #include <linux/elfcore.h>
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/parisc/include/asm/elf.h linux-4.9.24-pax/arch/parisc/include/asm/elf.h
+--- linux-4.9.24/arch/parisc/include/asm/elf.h	2015-06-22 11:14:11.052675285 +0200
++++ linux-4.9.24-pax/arch/parisc/include/asm/elf.h	2017-01-01 22:57:10.569520647 +0100
+@@ -342,6 +342,13 @@ struct pt_regs;	/* forward declaration..
+ 
+ #define ELF_ET_DYN_BASE         (TASK_UNMAPPED_BASE + 0x01000000)
+ 
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	0x10000UL
++
++#define PAX_DELTA_MMAP_LEN	16
++#define PAX_DELTA_STACK_LEN	16
++#endif
++
+ /* This yields a mask that user programs can use to figure out what
+    instruction set this CPU supports.  This could be done in user space,
+    but it's not easy, and we've already done it here.  */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/include/asm/elf.h linux-4.9.24-pax/arch/powerpc/include/asm/elf.h
+--- linux-4.9.24/arch/powerpc/include/asm/elf.h	2015-06-22 11:14:11.240675284 +0200
++++ linux-4.9.24-pax/arch/powerpc/include/asm/elf.h	2017-01-01 22:57:10.573520657 +0100
+@@ -30,6 +30,18 @@
+ 
+ #define ELF_ET_DYN_BASE	0x20000000
+ 
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	(0x10000000UL)
++
++#ifdef __powerpc64__
++#define PAX_DELTA_MMAP_LEN	(is_32bit_task() ? 16 : 28)
++#define PAX_DELTA_STACK_LEN	(is_32bit_task() ? 16 : 28)
++#else
++#define PAX_DELTA_MMAP_LEN	15
++#define PAX_DELTA_STACK_LEN	15
++#endif
++#endif
++
+ #define ELF_CORE_EFLAGS (is_elf2_task() ? 2 : 0)
+ 
+ /*
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/s390/include/asm/elf.h linux-4.9.24-pax/arch/s390/include/asm/elf.h
+--- linux-4.9.24/arch/s390/include/asm/elf.h	2016-10-03 11:27:28.181666439 +0200
++++ linux-4.9.24-pax/arch/s390/include/asm/elf.h	2017-01-01 22:57:10.581520676 +0100
+@@ -167,6 +167,13 @@ extern unsigned int vdso_enabled;
+ 				(STACK_TOP / 3 * 2) : \
+ 				(STACK_TOP / 3 * 2) & ~((1UL << 32) - 1))
+ 
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	(test_thread_flag(TIF_31BIT) ? 0x10000UL : 0x80000000UL)
++
++#define PAX_DELTA_MMAP_LEN	(test_thread_flag(TIF_31BIT) ? 15 : 26)
++#define PAX_DELTA_STACK_LEN	(test_thread_flag(TIF_31BIT) ? 15 : 26)
++#endif
++
+ /* This yields a mask that user programs can use to figure out what
+    instruction set this CPU supports. */
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/include/asm/elf_32.h linux-4.9.24-pax/arch/sparc/include/asm/elf_32.h
+--- linux-4.9.24/arch/sparc/include/asm/elf_32.h	2015-03-18 15:21:50.216349253 +0100
++++ linux-4.9.24-pax/arch/sparc/include/asm/elf_32.h	2017-01-01 22:57:10.585520686 +0100
+@@ -114,6 +114,13 @@ typedef struct {
+ 
+ #define ELF_ET_DYN_BASE         (TASK_UNMAPPED_BASE)
+ 
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	0x10000UL
++
++#define PAX_DELTA_MMAP_LEN	16
++#define PAX_DELTA_STACK_LEN	16
++#endif
++
+ /* This yields a mask that user programs can use to figure out what
+    instruction set this cpu supports.  This can NOT be done in userspace
+    on Sparc.  */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/include/asm/elf_64.h linux-4.9.24-pax/arch/sparc/include/asm/elf_64.h
+--- linux-4.9.24/arch/sparc/include/asm/elf_64.h	2016-12-13 12:08:25.706369310 +0100
++++ linux-4.9.24-pax/arch/sparc/include/asm/elf_64.h	2017-01-01 22:57:10.585520686 +0100
+@@ -190,6 +190,13 @@ typedef struct {
+ #define ELF_ET_DYN_BASE		0x0000010000000000UL
+ #define COMPAT_ELF_ET_DYN_BASE	0x0000000070000000UL
+ 
++#ifdef CONFIG_PAX_ASLR
++#define PAX_ELF_ET_DYN_BASE	(test_thread_flag(TIF_32BIT) ? 0x10000UL : 0x100000UL)
++
++#define PAX_DELTA_MMAP_LEN	(test_thread_flag(TIF_32BIT) ? 14 : 28)
++#define PAX_DELTA_STACK_LEN	(test_thread_flag(TIF_32BIT) ? 15 : 29)
++#endif
++
+ extern unsigned long sparc64_elf_hwcap;
+ #define ELF_HWCAP	sparc64_elf_hwcap
+ 

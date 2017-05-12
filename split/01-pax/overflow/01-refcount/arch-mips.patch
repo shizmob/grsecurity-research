@@ -1,0 +1,23 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/kernel/traps.c linux-4.9.24-pax/arch/mips/kernel/traps.c
+--- linux-4.9.24/arch/mips/kernel/traps.c	2017-04-19 22:09:31.902314465 +0200
++++ linux-4.9.24-pax/arch/mips/kernel/traps.c	2017-04-19 22:11:55.594421052 +0200
+@@ -702,7 +702,18 @@ asmlinkage void do_ov(struct pt_regs *re
+ 	};
+ 
+ 	prev_state = exception_enter();
+-	die_if_kernel("Integer overflow", regs);
++	if (unlikely(!user_mode(regs))) {
++
++#ifdef CONFIG_PAX_REFCOUNT
++		if (fixup_exception(regs)) {
++			pax_report_refcount_error(regs, NULL);
++			exception_exit(prev_state);
++			return;
++		}
++#endif
++
++		die("Integer overflow", regs);
++	}
+ 
+ 	force_sig_info(SIGFPE, &info, current);
+ 	exception_exit(prev_state);

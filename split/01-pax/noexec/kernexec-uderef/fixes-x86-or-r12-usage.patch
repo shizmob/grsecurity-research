@@ -1,0 +1,580 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/aesni-intel_asm.S linux-4.9.24-pax/arch/x86/crypto/aesni-intel_asm.S
+--- linux-4.9.24/arch/x86/crypto/aesni-intel_asm.S	2016-05-22 01:55:29.007565012 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/aesni-intel_asm.S	2017-02-10 05:39:09.849683656 +0100
+@@ -218,7 +219,7 @@ enc:        .octa 0x2
+ * num_initial_blocks = b mod 4
+ * encrypt the initial num_initial_blocks blocks and apply ghash on
+ * the ciphertext
+-* %r10, %r11, %r12, %rax, %xmm5, %xmm6, %xmm7, %xmm8, %xmm9 registers
++* %r10, %r11, %r15, %rax, %xmm5, %xmm6, %xmm7, %xmm8, %xmm9 registers
+ * are clobbered
+ * arg1, %arg2, %arg3, %r14 are used as a pointer only, not modified
+ */
+@@ -228,8 +229,8 @@ enc:        .octa 0x2
+ XMM2 XMM3 XMM4 XMMDst TMP6 TMP7 i i_seq operation
+         MOVADQ     SHUF_MASK(%rip), %xmm14
+ 	mov	   arg7, %r10           # %r10 = AAD
+-	mov	   arg8, %r12           # %r12 = aadLen
+-	mov	   %r12, %r11
++	mov	   arg8, %r15           # %r15 = aadLen
++	mov	   %r15, %r11
+ 	pxor	   %xmm\i, %xmm\i
+ 
+ _get_AAD_loop\num_initial_blocks\operation:
+@@ -238,17 +239,17 @@ _get_AAD_loop\num_initial_blocks\operati
+ 	psrldq	   $4, %xmm\i
+ 	pxor	   \TMP1, %xmm\i
+ 	add	   $4, %r10
+-	sub	   $4, %r12
++	sub	   $4, %r15
+ 	jne	   _get_AAD_loop\num_initial_blocks\operation
+ 
+ 	cmp	   $16, %r11
+ 	je	   _get_AAD_loop2_done\num_initial_blocks\operation
+ 
+-	mov	   $16, %r12
++	mov	   $16, %r15
+ _get_AAD_loop2\num_initial_blocks\operation:
+ 	psrldq	   $4, %xmm\i
+-	sub	   $4, %r12
+-	cmp	   %r11, %r12
++	sub	   $4, %r15
++	cmp	   %r11, %r15
+ 	jne	   _get_AAD_loop2\num_initial_blocks\operation
+ 
+ _get_AAD_loop2_done\num_initial_blocks\operation:
+@@ -443,7 +444,7 @@ _initial_blocks_done\num_initial_blocks\
+ * num_initial_blocks = b mod 4
+ * encrypt the initial num_initial_blocks blocks and apply ghash on
+ * the ciphertext
+-* %r10, %r11, %r12, %rax, %xmm5, %xmm6, %xmm7, %xmm8, %xmm9 registers
++* %r10, %r11, %r15, %rax, %xmm5, %xmm6, %xmm7, %xmm8, %xmm9 registers
+ * are clobbered
+ * arg1, %arg2, %arg3, %r14 are used as a pointer only, not modified
+ */
+@@ -453,8 +454,8 @@ _initial_blocks_done\num_initial_blocks\
+ XMM2 XMM3 XMM4 XMMDst TMP6 TMP7 i i_seq operation
+         MOVADQ     SHUF_MASK(%rip), %xmm14
+ 	mov	   arg7, %r10           # %r10 = AAD
+-	mov	   arg8, %r12           # %r12 = aadLen
+-	mov	   %r12, %r11
++	mov	   arg8, %r15           # %r15 = aadLen
++	mov	   %r15, %r11
+ 	pxor	   %xmm\i, %xmm\i
+ _get_AAD_loop\num_initial_blocks\operation:
+ 	movd	   (%r10), \TMP1
+@@ -462,15 +463,15 @@ _get_AAD_loop\num_initial_blocks\operati
+ 	psrldq	   $4, %xmm\i
+ 	pxor	   \TMP1, %xmm\i
+ 	add	   $4, %r10
+-	sub	   $4, %r12
++	sub	   $4, %r15
+ 	jne	   _get_AAD_loop\num_initial_blocks\operation
+ 	cmp	   $16, %r11
+ 	je	   _get_AAD_loop2_done\num_initial_blocks\operation
+-	mov	   $16, %r12
++	mov	   $16, %r15
+ _get_AAD_loop2\num_initial_blocks\operation:
+ 	psrldq	   $4, %xmm\i
+-	sub	   $4, %r12
+-	cmp	   %r11, %r12
++	sub	   $4, %r15
++	cmp	   %r11, %r15
+ 	jne	   _get_AAD_loop2\num_initial_blocks\operation
+ _get_AAD_loop2_done\num_initial_blocks\operation:
+ 	PSHUFB_XMM   %xmm14, %xmm\i # byte-reflect the AAD data
+@@ -1291,8 +1292,8 @@ ENTRY(aesni_gcm_dec)
+ */
+ 	sub	$VARIABLE_OFFSET, %rsp
+ 	and	$~63, %rsp                        # align rsp to 64 bytes
+-	mov	%arg6, %r12
+-	movdqu	(%r12), %xmm13			  # %xmm13 = HashKey
++	mov	%arg6, %r15
++	movdqu	(%r15), %xmm13			  # %xmm13 = HashKey
+         movdqa  SHUF_MASK(%rip), %xmm2
+ 	PSHUFB_XMM %xmm2, %xmm13
+ 
+@@ -1320,10 +1321,10 @@ ENTRY(aesni_gcm_dec)
+ 	movdqa %xmm13, HashKey(%rsp)           # store HashKey<<1 (mod poly)
+ 	mov %arg4, %r13    # save the number of bytes of plaintext/ciphertext
+ 	and $-16, %r13                      # %r13 = %r13 - (%r13 mod 16)
+-	mov %r13, %r12
+-	and $(3<<4), %r12
++	mov %r13, %r15
++	and $(3<<4), %r15
+ 	jz _initial_num_blocks_is_0_decrypt
+-	cmp $(2<<4), %r12
++	cmp $(2<<4), %r15
+ 	jb _initial_num_blocks_is_1_decrypt
+ 	je _initial_num_blocks_is_2_decrypt
+ _initial_num_blocks_is_3_decrypt:
+@@ -1373,16 +1374,16 @@ _zero_cipher_left_decrypt:
+ 	sub $16, %r11
+ 	add %r13, %r11
+ 	movdqu (%arg3,%r11,1), %xmm1   # receive the last <16 byte block
+-	lea SHIFT_MASK+16(%rip), %r12
+-	sub %r13, %r12
++	lea SHIFT_MASK+16(%rip), %r15
++	sub %r13, %r15
+ # adjust the shuffle mask pointer to be able to shift 16-%r13 bytes
+ # (%r13 is the number of bytes in plaintext mod 16)
+-	movdqu (%r12), %xmm2           # get the appropriate shuffle mask
++	movdqu (%r15), %xmm2           # get the appropriate shuffle mask
+ 	PSHUFB_XMM %xmm2, %xmm1            # right shift 16-%r13 butes
+ 
+ 	movdqa  %xmm1, %xmm2
+ 	pxor %xmm1, %xmm0            # Ciphertext XOR E(K, Yn)
+-	movdqu ALL_F-SHIFT_MASK(%r12), %xmm1
++	movdqu ALL_F-SHIFT_MASK(%r15), %xmm1
+ 	# get the appropriate mask to mask out top 16-%r13 bytes of %xmm0
+ 	pand %xmm1, %xmm0            # mask out top 16-%r13 bytes of %xmm0
+ 	pand    %xmm1, %xmm2
+@@ -1411,9 +1412,9 @@ _less_than_8_bytes_left_decrypt:
+ 	sub	$1, %r13
+ 	jne	_less_than_8_bytes_left_decrypt
+ _multiple_of_16_bytes_decrypt:
+-	mov	arg8, %r12		  # %r13 = aadLen (number of bytes)
+-	shl	$3, %r12		  # convert into number of bits
+-	movd	%r12d, %xmm15		  # len(A) in %xmm15
++	mov	arg8, %r15		  # %r13 = aadLen (number of bytes)
++	shl	$3, %r15		  # convert into number of bits
++	movd	%r15d, %xmm15		  # len(A) in %xmm15
+ 	shl	$3, %arg4		  # len(C) in bits (*128)
+ 	MOVQ_R64_XMM	%arg4, %xmm1
+ 	pslldq	$8, %xmm15		  # %xmm15 = len(A)||0x0000000000000000
+@@ -1551,8 +1552,8 @@ ENTRY(aesni_gcm_enc)
+ #
+ 	sub	$VARIABLE_OFFSET, %rsp
+ 	and	$~63, %rsp
+-	mov	%arg6, %r12
+-	movdqu	(%r12), %xmm13
++	mov	%arg6, %r15
++	movdqu	(%r15), %xmm13
+         movdqa  SHUF_MASK(%rip), %xmm2
+ 	PSHUFB_XMM %xmm2, %xmm13
+ 
+@@ -1576,13 +1577,13 @@ ENTRY(aesni_gcm_enc)
+ 	movdqa	%xmm13, HashKey(%rsp)
+ 	mov	%arg4, %r13            # %xmm13 holds HashKey<<1 (mod poly)
+ 	and	$-16, %r13
+-	mov	%r13, %r12
++	mov	%r13, %r15
+ 
+         # Encrypt first few blocks
+ 
+-	and	$(3<<4), %r12
++	and	$(3<<4), %r15
+ 	jz	_initial_num_blocks_is_0_encrypt
+-	cmp	$(2<<4), %r12
++	cmp	$(2<<4), %r15
+ 	jb	_initial_num_blocks_is_1_encrypt
+ 	je	_initial_num_blocks_is_2_encrypt
+ _initial_num_blocks_is_3_encrypt:
+@@ -1635,14 +1636,14 @@ _zero_cipher_left_encrypt:
+ 	sub $16, %r11
+ 	add %r13, %r11
+ 	movdqu (%arg3,%r11,1), %xmm1     # receive the last <16 byte blocks
+-	lea SHIFT_MASK+16(%rip), %r12
+-	sub %r13, %r12
++	lea SHIFT_MASK+16(%rip), %r15
++	sub %r13, %r15
+ 	# adjust the shuffle mask pointer to be able to shift 16-r13 bytes
+ 	# (%r13 is the number of bytes in plaintext mod 16)
+-	movdqu	(%r12), %xmm2           # get the appropriate shuffle mask
++	movdqu	(%r15), %xmm2           # get the appropriate shuffle mask
+ 	PSHUFB_XMM	%xmm2, %xmm1            # shift right 16-r13 byte
+ 	pxor	%xmm1, %xmm0            # Plaintext XOR Encrypt(K, Yn)
+-	movdqu	ALL_F-SHIFT_MASK(%r12), %xmm1
++	movdqu	ALL_F-SHIFT_MASK(%r15), %xmm1
+ 	# get the appropriate mask to mask out top 16-r13 bytes of xmm0
+ 	pand	%xmm1, %xmm0            # mask out top 16-r13 bytes of xmm0
+         movdqa SHUF_MASK(%rip), %xmm10
+@@ -1675,9 +1676,9 @@ _less_than_8_bytes_left_encrypt:
+ 	sub $1, %r13
+ 	jne _less_than_8_bytes_left_encrypt
+ _multiple_of_16_bytes_encrypt:
+-	mov	arg8, %r12    # %r12 = addLen (number of bytes)
+-	shl	$3, %r12
+-	movd	%r12d, %xmm15       # len(A) in %xmm15
++	mov	arg8, %r15    # %r15 = addLen (number of bytes)
++	shl	$3, %r15
++	movd	%r15d, %xmm15       # len(A) in %xmm15
+ 	shl	$3, %arg4               # len(C) in bits (*128)
+ 	MOVQ_R64_XMM	%arg4, %xmm1
+ 	pslldq	$8, %xmm15          # %xmm15 = len(A)||0x0000000000000000
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/cast5-avx-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/cast5-avx-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/cast5-avx-x86_64-asm_64.S	2016-05-22 01:55:29.007565012 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/cast5-avx-x86_64-asm_64.S	2017-01-31 01:30:31.139264095 +0100
+@@ -436,10 +437,10 @@ ENTRY(cast5_cbc_dec_16way)
+ 	 */
+ 	FRAME_BEGIN
+ 
+-	pushq %r12;
++	pushq %r14;
+ 
+ 	movq %rsi, %r11;
+-	movq %rdx, %r12;
++	movq %rdx, %r14;
+ 
+ 	vmovdqu (0*16)(%rdx), RL1;
+ 	vmovdqu (1*16)(%rdx), RR1;
+@@ -450,19 +451,19 @@ ENTRY(cast5_cbc_dec_16way)
+ 	vmovdqu (6*16)(%rdx), RL4;
+ 	vmovdqu (7*16)(%rdx), RR4;
+ 
+-	call __cast5_dec_blk16;
++	pax_direct_call __cast5_dec_blk16;
+ 
+ 	/* xor with src */
+-	vmovq (%r12), RX;
++	vmovq (%r14), RX;
+ 	vpshufd $0x4f, RX, RX;
+ 	vpxor RX, RR1, RR1;
+-	vpxor 0*16+8(%r12), RL1, RL1;
+-	vpxor 1*16+8(%r12), RR2, RR2;
+-	vpxor 2*16+8(%r12), RL2, RL2;
+-	vpxor 3*16+8(%r12), RR3, RR3;
+-	vpxor 4*16+8(%r12), RL3, RL3;
+-	vpxor 5*16+8(%r12), RR4, RR4;
+-	vpxor 6*16+8(%r12), RL4, RL4;
++	vpxor 0*16+8(%r14), RL1, RL1;
++	vpxor 1*16+8(%r14), RR2, RR2;
++	vpxor 2*16+8(%r14), RL2, RL2;
++	vpxor 3*16+8(%r14), RR3, RR3;
++	vpxor 4*16+8(%r14), RL3, RL3;
++	vpxor 5*16+8(%r14), RR4, RR4;
++	vpxor 6*16+8(%r14), RL4, RL4;
+ 
+ 	vmovdqu RR1, (0*16)(%r11);
+ 	vmovdqu RL1, (1*16)(%r11);
+@@ -488,10 +489,10 @@ ENTRY(cast5_ctr_16way)
+ 	 */
+ 	FRAME_BEGIN
+ 
+-	pushq %r12;
++	pushq %r14;
+ 
+ 	movq %rsi, %r11;
+-	movq %rdx, %r12;
++	movq %rdx, %r14;
+ 
+ 	vpcmpeqd RTMP, RTMP, RTMP;
+ 	vpsrldq $8, RTMP, RTMP; /* low: -1, high: 0 */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/cast6-avx-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/cast6-avx-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/cast6-avx-x86_64-asm_64.S	2016-05-22 01:55:29.007565012 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/cast6-avx-x86_64-asm_64.S	2017-01-31 01:29:29.668605714 +0100
+@@ -392,24 +393,24 @@ ENTRY(cast6_cbc_dec_8way)
+ 	 */
+ 	FRAME_BEGIN
+ 
+-	pushq %r12;
++	pushq %r14;
+ 
+ 	movq %rsi, %r11;
+-	movq %rdx, %r12;
++	movq %rdx, %r14;
+ 
+ 	load_8way(%rdx, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	call __cast6_dec_blk8;
++	pax_direct_call __cast6_dec_blk8;
+ 
+-	store_cbc_8way(%r12, %r11, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
++	store_cbc_8way(%r14, %r11, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	popq %r12;
++	popq %r14;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret cast6_cbc_dec_8way;
+ ENDPROC(cast6_cbc_dec_8way)
+ 
+-ENTRY(cast6_ctr_8way)
++RAP_ENTRY(cast6_ctr_8way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -418,25 +419,25 @@ ENTRY(cast6_ctr_8way)
+ 	 */
+ 	FRAME_BEGIN
+ 
+-	pushq %r12;
++	pushq %r14;
+ 
+ 	movq %rsi, %r11;
+-	movq %rdx, %r12;
++	movq %rdx, %r14;
+ 
+ 	load_ctr_8way(%rcx, .Lbswap128_mask, RA1, RB1, RC1, RD1, RA2, RB2, RC2,
+ 		      RD2, RX, RKR, RKM);
+ 
+-	call __cast6_enc_blk8;
++	pax_direct_call __cast6_enc_blk8;
+ 
+-	store_ctr_8way(%r12, %r11, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
++	store_ctr_8way(%r14, %r11, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	popq %r12;
++	popq %r14;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret cast6_ctr_8way;
+ ENDPROC(cast6_ctr_8way)
+ 
+-ENTRY(cast6_xts_enc_8way)
++RAP_ENTRY(cast6_xts_enc_8way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/sha1_ssse3_asm.S linux-4.9.24-pax/arch/x86/crypto/sha1_ssse3_asm.S
+--- linux-4.9.24/arch/x86/crypto/sha1_ssse3_asm.S	2015-03-18 15:21:50.232349253 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/sha1_ssse3_asm.S	2017-01-30 23:27:33.554943209 +0100
+@@ -71,13 +72,14 @@
+  * param: function's name
+  */
+ .macro SHA1_VECTOR_ASM  name
+-	ENTRY(\name)
++ALIGN
++	RAP_ENTRY(\name)
+ 
+ 	push	%rbx
+ 	push	%rbp
+-	push	%r12
++	push	%r14
+ 
+-	mov	%rsp, %r12
++	mov	%rsp, %r14
+ 	sub	$64, %rsp		# allocate workspace
+ 	and	$~15, %rsp		# align stack
+ 
+@@ -99,12 +101,12 @@
+ 	xor	%rax, %rax
+ 	rep stosq
+ 
+-	mov	%r12, %rsp		# deallocate workspace
++	mov	%r14, %rsp		# deallocate workspace
+ 
+-	pop	%r12
++	pop	%r14
+ 	pop	%rbp
+ 	pop	%rbx
+-	ret
++	pax_ret \name
+ 
+ 	ENDPROC(\name)
+ .endm
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/twofish-avx-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/twofish-avx-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/twofish-avx-x86_64-asm_64.S	2016-05-22 01:55:29.011564970 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/twofish-avx-x86_64-asm_64.S	2017-01-31 01:28:48.415411630 +0100
+@@ -376,24 +377,24 @@ ENTRY(twofish_cbc_dec_8way)
+ 	 */
+ 	FRAME_BEGIN
+ 
+-	pushq %r12;
++	pushq %r14;
+ 
+ 	movq %rsi, %r11;
+-	movq %rdx, %r12;
++	movq %rdx, %r14;
+ 
+ 	load_8way(%rdx, RC1, RD1, RA1, RB1, RC2, RD2, RA2, RB2);
+ 
+-	call __twofish_dec_blk8;
++	pax_direct_call __twofish_dec_blk8;
+ 
+-	store_cbc_8way(%r12, %r11, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
++	store_cbc_8way(%r14, %r11, RA1, RB1, RC1, RD1, RA2, RB2, RC2, RD2);
+ 
+-	popq %r12;
++	popq %r14;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret twofish_cbc_dec_8way;
+ ENDPROC(twofish_cbc_dec_8way)
+ 
+-ENTRY(twofish_ctr_8way)
++RAP_ENTRY(twofish_ctr_8way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -402,25 +403,25 @@ ENTRY(twofish_ctr_8way)
+ 	 */
+ 	FRAME_BEGIN
+ 
+-	pushq %r12;
++	pushq %r14;
+ 
+ 	movq %rsi, %r11;
+-	movq %rdx, %r12;
++	movq %rdx, %r14;
+ 
+ 	load_ctr_8way(%rcx, .Lbswap128_mask, RA1, RB1, RC1, RD1, RA2, RB2, RC2,
+ 		      RD2, RX0, RX1, RY0);
+ 
+-	call __twofish_enc_blk8;
++	pax_direct_call __twofish_enc_blk8;
+ 
+-	store_ctr_8way(%r12, %r11, RC1, RD1, RA1, RB1, RC2, RD2, RA2, RB2);
++	store_ctr_8way(%r14, %r11, RC1, RD1, RA1, RB1, RC2, RD2, RA2, RB2);
+ 
+-	popq %r12;
++	popq %r14;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret twofish_ctr_8way;
+ ENDPROC(twofish_ctr_8way)
+ 
+-ENTRY(twofish_xts_enc_8way)
++RAP_ENTRY(twofish_xts_enc_8way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/entry/calling.h linux-4.9.24-pax/arch/x86/entry/calling.h
+--- linux-4.9.24/arch/x86/entry/calling.h	2016-05-22 01:55:29.011564970 +0200
++++ linux-4.9.24-pax/arch/x86/entry/calling.h	2017-01-30 19:55:48.900354803 +0100
+@@ -95,23 +95,26 @@ For 32-bit we have the following convent
+ 	.endm
+ 
+ 	.macro SAVE_C_REGS_HELPER offset=0 rax=1 rcx=1 r8910=1 r11=1
++#ifdef CONFIG_PAX_KERNEXEC_PLUGIN_METHOD_OR
++	movq %r12, R12+\offset(%rsp)
++#endif
+ 	.if \r11
+-	movq %r11, 6*8+\offset(%rsp)
++	movq %r11, R11+\offset(%rsp)
+ 	.endif
+ 	.if \r8910
+-	movq %r10, 7*8+\offset(%rsp)
+-	movq %r9,  8*8+\offset(%rsp)
+-	movq %r8,  9*8+\offset(%rsp)
++	movq %r10, R10+\offset(%rsp)
++	movq %r9,  R9+\offset(%rsp)
++	movq %r8,  R8+\offset(%rsp)
+ 	.endif
+ 	.if \rax
+-	movq %rax, 10*8+\offset(%rsp)
++	movq %rax, RAX+\offset(%rsp)
+ 	.endif
+ 	.if \rcx
+-	movq %rcx, 11*8+\offset(%rsp)
++	movq %rcx, RCX+\offset(%rsp)
+ 	.endif
+-	movq %rdx, 12*8+\offset(%rsp)
+-	movq %rsi, 13*8+\offset(%rsp)
+-	movq %rdi, 14*8+\offset(%rsp)
++	movq %rdx, RDX+\offset(%rsp)
++	movq %rsi, RSI+\offset(%rsp)
++	movq %rdi, RDI+\offset(%rsp)
+ 	.endm
+ 	.macro SAVE_C_REGS offset=0
+ 	SAVE_C_REGS_HELPER \offset, 1, 1, 1, 1
+@@ -130,67 +133,78 @@ For 32-bit we have the following convent
+ 	.endm
+ 
+ 	.macro SAVE_EXTRA_REGS offset=0
+-	movq %r15, 0*8+\offset(%rsp)
+-	movq %r14, 1*8+\offset(%rsp)
+-	movq %r13, 2*8+\offset(%rsp)
+-	movq %r12, 3*8+\offset(%rsp)
+-	movq %rbp, 4*8+\offset(%rsp)
+-	movq %rbx, 5*8+\offset(%rsp)
++	movq %r15, R15+\offset(%rsp)
++	movq %r14, R14+\offset(%rsp)
++	movq %r13, R13+\offset(%rsp)
++#ifndef CONFIG_PAX_KERNEXEC_PLUGIN_METHOD_OR
++	movq %r12, R12+\offset(%rsp)
++#endif
++	movq %rbp, RBP+\offset(%rsp)
++	movq %rbx, RBX+\offset(%rsp)
+ 	.endm
+ 
+ 	.macro RESTORE_EXTRA_REGS offset=0
+-	movq 0*8+\offset(%rsp), %r15
+-	movq 1*8+\offset(%rsp), %r14
+-	movq 2*8+\offset(%rsp), %r13
+-	movq 3*8+\offset(%rsp), %r12
+-	movq 4*8+\offset(%rsp), %rbp
+-	movq 5*8+\offset(%rsp), %rbx
++	movq R15+\offset(%rsp), %r15
++	movq R14+\offset(%rsp), %r14
++	movq R13+\offset(%rsp), %r13
++#ifndef CONFIG_PAX_KERNEXEC_PLUGIN_METHOD_OR
++	movq R12+\offset(%rsp), %r12
++#endif
++	movq RBP+\offset(%rsp), %rbp
++	movq RBX+\offset(%rsp), %rbx
+ 	.endm
+ 
+ 	.macro ZERO_EXTRA_REGS
+ 	xorl	%r15d, %r15d
+ 	xorl	%r14d, %r14d
+ 	xorl	%r13d, %r13d
++#ifndef CONFIG_PAX_KERNEXEC_PLUGIN_METHOD_OR
+ 	xorl	%r12d, %r12d
++#endif
+ 	xorl	%ebp, %ebp
+ 	xorl	%ebx, %ebx
+ 	.endm
+ 
+-	.macro RESTORE_C_REGS_HELPER rstor_rax=1, rstor_rcx=1, rstor_r11=1, rstor_r8910=1, rstor_rdx=1
++	.macro RESTORE_C_REGS_HELPER rstor_rax=1, rstor_rcx=1, rstor_r11=1, rstor_r8910=1, rstor_rdx=1, rstor_r12=1
++#ifdef CONFIG_PAX_KERNEXEC_PLUGIN_METHOD_OR
++	.if \rstor_r12
++	movq R12(%rsp), %r12
++	.endif
++#endif
+ 	.if \rstor_r11
+-	movq 6*8(%rsp), %r11
++	movq R11(%rsp), %r11
+ 	.endif
+ 	.if \rstor_r8910
+-	movq 7*8(%rsp), %r10
+-	movq 8*8(%rsp), %r9
+-	movq 9*8(%rsp), %r8
++	movq R10(%rsp), %r10
++	movq R9(%rsp), %r9
++	movq R8(%rsp), %r8
+ 	.endif
+ 	.if \rstor_rax
+-	movq 10*8(%rsp), %rax
++	movq RAX(%rsp), %rax
+ 	.endif
+ 	.if \rstor_rcx
+-	movq 11*8(%rsp), %rcx
++	movq RCX(%rsp), %rcx
+ 	.endif
+ 	.if \rstor_rdx
+-	movq 12*8(%rsp), %rdx
++	movq RDX(%rsp), %rdx
+ 	.endif
+-	movq 13*8(%rsp), %rsi
+-	movq 14*8(%rsp), %rdi
++	movq RSI(%rsp), %rsi
++	movq RDI(%rsp), %rdi
+ 	.endm
+ 	.macro RESTORE_C_REGS
+-	RESTORE_C_REGS_HELPER 1,1,1,1,1
++	RESTORE_C_REGS_HELPER 1,1,1,1,1,1
+ 	.endm
+ 	.macro RESTORE_C_REGS_EXCEPT_RAX
+-	RESTORE_C_REGS_HELPER 0,1,1,1,1
++	RESTORE_C_REGS_HELPER 0,1,1,1,1,0
+ 	.endm
+ 	.macro RESTORE_C_REGS_EXCEPT_RCX
+-	RESTORE_C_REGS_HELPER 1,0,1,1,1
++	RESTORE_C_REGS_HELPER 1,0,1,1,1,0
+ 	.endm
+ 	.macro RESTORE_C_REGS_EXCEPT_R11
+-	RESTORE_C_REGS_HELPER 1,1,0,1,1
++	RESTORE_C_REGS_HELPER 1,1,0,1,1,1
+ 	.endm
+ 	.macro RESTORE_C_REGS_EXCEPT_RCX_R11
+-	RESTORE_C_REGS_HELPER 1,0,0,1,1
++	RESTORE_C_REGS_HELPER 1,0,0,1,1,1
+ 	.endm
+ 
+ 	.macro REMOVE_PT_GPREGS_FROM_STACK addskip=0

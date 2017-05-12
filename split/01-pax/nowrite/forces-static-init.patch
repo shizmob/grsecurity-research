@@ -1,0 +1,23 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-omap2/wd_timer.c linux-4.9.24-pax/arch/arm/mach-omap2/wd_timer.c
+--- linux-4.9.24/arch/arm/mach-omap2/wd_timer.c	2015-03-18 15:21:50.180349252 +0100
++++ linux-4.9.24-pax/arch/arm/mach-omap2/wd_timer.c	2017-01-01 22:57:10.541520578 +0100
+@@ -110,7 +110,9 @@ static int __init omap_init_wdt(void)
+ 	struct omap_hwmod *oh;
+ 	char *oh_name = "wd_timer2";
+ 	char *dev_name = "omap_wdt";
+-	struct omap_wd_timer_platform_data pdata;
++	static struct omap_wd_timer_platform_data pdata = {
++		.read_reset_sources = prm_read_reset_sources
++	};
+ 
+ 	if (!cpu_class_is_omap2() || of_have_populated_dt())
+ 		return 0;
+@@ -121,8 +123,6 @@ static int __init omap_init_wdt(void)
+ 		return -EINVAL;
+ 	}
+ 
+-	pdata.read_reset_sources = prm_read_reset_sources;
+-
+ 	pdev = omap_device_build(dev_name, id, oh, &pdata,
+ 				 sizeof(struct omap_wd_timer_platform_data));
+ 	WARN(IS_ERR(pdev), "Can't build omap_device for %s:%s.\n",

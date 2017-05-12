@@ -1,0 +1,198 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/parisc/include/asm/pgtable.h linux-4.9.24-pax/arch/parisc/include/asm/pgtable.h
+--- linux-4.9.24/arch/parisc/include/asm/pgtable.h	2016-12-13 12:08:23.398353604 +0100
++++ linux-4.9.24-pax/arch/parisc/include/asm/pgtable.h	2017-01-01 22:57:10.569520647 +0100
+@@ -236,6 +236,17 @@ static inline void purge_tlb_entries(str
+ #define PAGE_EXECREAD   __pgprot(_PAGE_PRESENT | _PAGE_USER | _PAGE_READ | _PAGE_EXEC |_PAGE_ACCESSED)
+ #define PAGE_COPY       PAGE_EXECREAD
+ #define PAGE_RWX        __pgprot(_PAGE_PRESENT | _PAGE_USER | _PAGE_READ | _PAGE_WRITE | _PAGE_EXEC |_PAGE_ACCESSED)
++
++#ifdef CONFIG_PAX_PAGEEXEC
++# define PAGE_SHARED_NOEXEC	__pgprot(_PAGE_PRESENT | _PAGE_USER | _PAGE_READ | _PAGE_WRITE | _PAGE_ACCESSED)
++# define PAGE_COPY_NOEXEC	__pgprot(_PAGE_PRESENT | _PAGE_USER | _PAGE_READ | _PAGE_ACCESSED)
++# define PAGE_READONLY_NOEXEC	__pgprot(_PAGE_PRESENT | _PAGE_USER | _PAGE_READ | _PAGE_ACCESSED)
++#else
++# define PAGE_SHARED_NOEXEC	PAGE_SHARED
++# define PAGE_COPY_NOEXEC	PAGE_COPY
++# define PAGE_READONLY_NOEXEC	PAGE_READONLY
++#endif
++
+ #define PAGE_KERNEL	__pgprot(_PAGE_KERNEL)
+ #define PAGE_KERNEL_EXEC	__pgprot(_PAGE_KERNEL_EXEC)
+ #define PAGE_KERNEL_RWX	__pgprot(_PAGE_KERNEL_RWX)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/parisc/mm/fault.c linux-4.9.24-pax/arch/parisc/mm/fault.c
+--- linux-4.9.24/arch/parisc/mm/fault.c	2017-04-19 22:08:36.398272579 +0200
++++ linux-4.9.24-pax/arch/parisc/mm/fault.c	2017-04-19 22:11:31.402403274 +0200
+@@ -16,6 +16,7 @@
+ #include <linux/interrupt.h>
+ #include <linux/extable.h>
+ #include <linux/uaccess.h>
++#include <linux/unistd.h>
+ 
+ #include <asm/traps.h>
+ 
+@@ -136,6 +137,116 @@ parisc_acctyp(unsigned long code, unsign
+ 			}
+ #endif
+ 
++#ifdef CONFIG_PAX_PAGEEXEC
++/*
++ * PaX: decide what to do with offenders (instruction_pointer(regs) = fault address)
++ *
++ * returns 1 when task should be killed
++ *         2 when rt_sigreturn trampoline was detected
++ *         3 when unpatched PLT trampoline was detected
++ */
++static int pax_handle_fetch_fault(struct pt_regs *regs)
++{
++
++#ifdef CONFIG_PAX_EMUPLT
++	int err;
++
++	do { /* PaX: unpatched PLT emulation */
++		unsigned int bl, depwi;
++
++		err = get_user(bl, (unsigned int *)instruction_pointer(regs));
++		err |= get_user(depwi, (unsigned int *)(instruction_pointer(regs)+4));
++
++		if (err)
++			break;
++
++		if (bl == 0xEA9F1FDDU && depwi == 0xD6801C1EU) {
++			unsigned int ldw, bv, ldw2, addr = instruction_pointer(regs)-12;
++
++			err = get_user(ldw, (unsigned int *)addr);
++			err |= get_user(bv, (unsigned int *)(addr+4));
++			err |= get_user(ldw2, (unsigned int *)(addr+8));
++
++			if (err)
++				break;
++
++			if (ldw == 0x0E801096U &&
++			    bv == 0xEAC0C000U &&
++			    ldw2 == 0x0E881095U)
++			{
++				unsigned int resolver, map;
++
++				err = get_user(resolver, (unsigned int *)(instruction_pointer(regs)+8));
++				err |= get_user(map, (unsigned int *)(instruction_pointer(regs)+12));
++				if (err)
++					break;
++
++				regs->gr[20] = instruction_pointer(regs)+8;
++				regs->gr[21] = map;
++				regs->gr[22] = resolver;
++				regs->iaoq[0] = resolver | 3UL;
++				regs->iaoq[1] = regs->iaoq[0] + 4;
++				return 3;
++			}
++		}
++	} while (0);
++#endif
++
++#ifdef CONFIG_PAX_EMUTRAMP
++
++#ifndef CONFIG_PAX_EMUSIGRT
++	if (!(current->mm->pax_flags & MF_PAX_EMUTRAMP))
++		return 1;
++#endif
++
++	do { /* PaX: rt_sigreturn emulation */
++		unsigned int ldi1, ldi2, bel, nop;
++
++		err = get_user(ldi1, (unsigned int *)instruction_pointer(regs));
++		err |= get_user(ldi2, (unsigned int *)(instruction_pointer(regs)+4));
++		err |= get_user(bel, (unsigned int *)(instruction_pointer(regs)+8));
++		err |= get_user(nop, (unsigned int *)(instruction_pointer(regs)+12));
++
++		if (err)
++			break;
++
++		if ((ldi1 == 0x34190000U || ldi1 == 0x34190002U) &&
++		    ldi2 == 0x3414015AU &&
++		    bel == 0xE4008200U &&
++		    nop == 0x08000240U)
++		{
++			regs->gr[25] = (ldi1 & 2) >> 1;
++			regs->gr[20] = __NR_rt_sigreturn;
++			regs->gr[31] = regs->iaoq[1] + 16;
++			regs->sr[0] = regs->iasq[1];
++			regs->iaoq[0] = 0x100UL;
++			regs->iaoq[1] = regs->iaoq[0] + 4;
++			regs->iasq[0] = regs->sr[2];
++			regs->iasq[1] = regs->sr[2];
++			return 2;
++		}
++	} while (0);
++#endif
++
++	return 1;
++}
++
++void pax_report_insns(struct pt_regs *regs, void *pc, void *sp)
++{
++	unsigned long i;
++
++	printk(KERN_ERR "PAX: bytes at PC: ");
++	for (i = 0; i < 5; i++) {
++		unsigned int c;
++		if (get_user(c, (unsigned int *)pc+i))
++			printk(KERN_CONT "???????? ");
++		else
++			printk(KERN_CONT "%08x ", c);
++	}
++	printk("\n");
++}
++#endif
++
+ int fixup_exception(struct pt_regs *regs)
+ {
+ 	const struct exception_table_entry *fix;
+@@ -298,8 +409,33 @@ retry:
+ 
+ good_area:
+ 
+-	if ((vma->vm_flags & acc_type) != acc_type)
++	if ((vma->vm_flags & acc_type) != acc_type) {
++
++#ifdef CONFIG_PAX_PAGEEXEC
++		if ((mm->pax_flags & MF_PAX_PAGEEXEC) && (acc_type & VM_EXEC) &&
++		    (address & ~3UL) == instruction_pointer(regs))
++		{
++			up_read(&mm->mmap_sem);
++			switch (pax_handle_fetch_fault(regs)) {
++
++#ifdef CONFIG_PAX_EMUPLT
++			case 3:
++				return;
++#endif
++
++#ifdef CONFIG_PAX_EMUTRAMP
++			case 2:
++				return;
++#endif
++
++			}
++			pax_report_fault(regs, (void *)instruction_pointer(regs), (void *)regs->gr[30]);
++			do_group_exit(SIGKILL);
++		}
++#endif
++
+ 		goto bad_area;
++	}
+ 
+ 	/*
+ 	 * If for any reason at all we couldn't handle the fault, make
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/parisc/kernel/traps.c linux-4.9.24-pax/arch/parisc/kernel/traps.c
+--- linux-4.9.24/arch/parisc/kernel/traps.c	2016-12-13 12:08:23.486354202 +0100
++++ linux-4.9.24-pax/arch/parisc/kernel/traps.c	2017-01-01 22:57:10.569520647 +0100
+@@ -719,9 +719,7 @@ void notrace handle_interruption(int cod
+ 
+ 			down_read(&current->mm->mmap_sem);
+ 			vma = find_vma(current->mm,regs->iaoq[0]);
+-			if (vma && (regs->iaoq[0] >= vma->vm_start)
+-				&& (vma->vm_flags & VM_EXEC)) {
+-
++			if (vma && (regs->iaoq[0] >= vma->vm_start)) {
+ 				fault_address = regs->iaoq[0];
+ 				fault_space = regs->iasq[0];
+ 

@@ -1,0 +1,69 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/linux/types.h linux-4.9.24-pax/include/linux/types.h
+--- linux-4.9.24/include/linux/types.h	2016-07-25 02:14:15.002526727 +0200
++++ linux-4.9.24-pax/include/linux/types.h	2017-01-01 22:57:18.025538945 +0100
+@@ -175,10 +177,26 @@ typedef struct {
+ 	int counter;
+ } atomic_t;
+ 
++#ifdef CONFIG_PAX_REFCOUNT
++typedef struct {
++	int counter;
++} atomic_unchecked_t;
++#else
++typedef atomic_t atomic_unchecked_t;
++#endif
++
+ #ifdef CONFIG_64BIT
+ typedef struct {
+ 	long counter;
+ } atomic64_t;
++
++#ifdef CONFIG_PAX_REFCOUNT
++typedef struct {
++	long counter;
++} atomic64_unchecked_t;
++#else
++typedef atomic64_t atomic64_unchecked_t;
++#endif
+ #endif
+ 
+ struct list_head {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/include/asm/alternative.h linux-4.9.24-pax/arch/x86/include/asm/alternative.h
+--- linux-4.9.24/arch/x86/include/asm/alternative.h	2016-12-13 12:08:26.902377453 +0100
++++ linux-4.9.24-pax/arch/x86/include/asm/alternative.h	2017-02-12 05:03:38.493458557 +0100
+@@ -238,6 +251,35 @@ static inline int alternatives_text_rese
+  */
+ #define ASM_NO_INPUT_CLOBBER(clbr...) "i" (0) : clbr
+ 
++#ifdef CONFIG_PAX_REFCOUNT
++#define __PAX_REFCOUNT(size)				\
++	"jo 111f\n"					\
++	".if "__stringify(size)" == 4\n\t"		\
++	".pushsection .text.refcount_overflow\n"	\
++	".elseif "__stringify(size)" == -4\n\t"		\
++	".pushsection .text.refcount_underflow\n"	\
++	".elseif "__stringify(size)" == 8\n\t"		\
++	".pushsection .text.refcount64_overflow\n"	\
++	".elseif "__stringify(size)" == -8\n\t"		\
++	".pushsection .text.refcount64_underflow\n"	\
++	".else\n"					\
++	".error \"invalid size\"\n"			\
++	".endif\n"					\
++	"111:\tlea %[counter],%%"_ASM_CX"\n\t"		\
++	"int $"__stringify(X86_REFCOUNT_VECTOR)"\n"	\
++	"222:\n\t"					\
++	".popsection\n"					\
++	"333:\n"					\
++	_ASM_EXTABLE(222b, 333b)
++
++#define PAX_REFCOUNT_OVERFLOW(size)	__PAX_REFCOUNT(size)
++#define PAX_REFCOUNT_UNDERFLOW(size)	__PAX_REFCOUNT(-(size))
++#else
++#define __PAX_REFCOUNT(size)
++#define PAX_REFCOUNT_OVERFLOW(size)
++#define PAX_REFCOUNT_UNDERFLOW(size)
++#endif
++
+ #endif /* __ASSEMBLY__ */
+ 
+ #endif /* _ASM_X86_ALTERNATIVE_H */

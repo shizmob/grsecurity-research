@@ -1,0 +1,69 @@
+diff --git a/drivers/tty/hvc/hvc_console.c b/drivers/tty/hvc/hvc_console.c
+index 8ff3311d14cf..c64337636687 100644
+--- a/drivers/tty/hvc/hvc_console.c
++++ b/drivers/tty/hvc/hvc_console.c
+@@ -143,7 +143,9 @@ static uint32_t vtermnos[MAX_NR_HVC_CONSOLES] =
+ static void hvc_console_print(struct console *co, const char *b,
+ 			      unsigned count)
+ {
+-	char c[N_OUTBUF] __ALIGNED__;
++	char c_stack[N_OUTBUF] __ALIGNED__;
++	char *c_alloc = NULL;
++	char *c;
+ 	unsigned i = 0, n = 0;
+ 	int r, donecr = 0, index = co->index;
+ 
+@@ -155,8 +157,13 @@ static void hvc_console_print(struct console *co, const char *b,
+ 	if (vtermnos[index] == -1)
+ 		return;
+ 
++	if (slab_is_available())
++		c = c_alloc = kmalloc(N_OUTBUF, GFP_ATOMIC);
++	else
++		c = c_stack;
++
+ 	while (count > 0 || i > 0) {
+-		if (count > 0 && i < sizeof(c)) {
++		if (count > 0 && i < sizeof(c_stack)) {
+ 			if (b[n] == '\n' && !donecr) {
+ 				c[i++] = '\r';
+ 				donecr = 1;
+@@ -179,6 +186,8 @@ static void hvc_console_print(struct console *co, const char *b,
+ 			}
+ 		}
+ 	}
++
++	kfree(c_alloc);
+ }
+ 
+ static struct tty_driver *hvc_console_device(struct console *c, int *index)
+diff --git a/drivers/usb/host/hwa-hc.c b/drivers/usb/host/hwa-hc.c
+index 58c3e772c531..2e9f5ea5b217 100644
+--- a/drivers/usb/host/hwa-hc.c
++++ b/drivers/usb/host/hwa-hc.c
+@@ -337,7 +337,10 @@ static int __hwahc_op_bwa_set(struct wusbhc *wusbhc, s8 stream_index,
+ 	struct hwahc *hwahc = container_of(wusbhc, struct hwahc, wusbhc);
+ 	struct wahc *wa = &hwahc->wa;
+ 	struct device *dev = &wa->usb_iface->dev;
+-	u8 mas_le[UWB_NUM_MAS/8];
++	u8 *mas_le = kmalloc(UWB_NUM_MAS/8, GFP_KERNEL);
++
++	if (mas_le == NULL)
++		return -ENOMEM;
+ 
+ 	/* Set the stream index */
+ 	result = usb_control_msg(wa->usb_dev, usb_sndctrlpipe(wa->usb_dev, 0),
+@@ -356,10 +359,12 @@ static int __hwahc_op_bwa_set(struct wusbhc *wusbhc, s8 stream_index,
+ 			WUSB_REQ_SET_WUSB_MAS,
+ 			USB_DIR_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE,
+ 			0, wa->usb_iface->cur_altsetting->desc.bInterfaceNumber,
+-			mas_le, 32, USB_CTRL_SET_TIMEOUT);
++			mas_le, UWB_NUM_MAS/8, USB_CTRL_SET_TIMEOUT);
+ 	if (result < 0)
+ 		dev_err(dev, "Cannot set WUSB MAS allocation: %d\n", result);
+ out:
++	kfree(mas_le);
++
+ 	return result;
+ }
+ 

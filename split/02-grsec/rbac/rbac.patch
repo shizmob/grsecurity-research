@@ -1,0 +1,272 @@
+diff --git a/drivers/char/mem.c b/drivers/char/mem.c
+index b87301eaddbb..dbd8a278ef52 100644
+--- a/drivers/char/mem.c
++++ b/drivers/char/mem.c
+@@ -37,6 +38,10 @@
+ 
+ #define DEVPORT_MINOR	4
+ 
++#if defined(CONFIG_GRKERNSEC) && !defined(CONFIG_GRKERNSEC_NO_RBAC)
++extern const struct file_operations grsec_fops;
++#endif
++
+ static inline unsigned long size_inside_page(unsigned long start,
+ 					     unsigned long size)
+ {
+@@ -873,6 +887,9 @@ static const struct memdev {
+ #ifdef CONFIG_PRINTK
+ 	[11] = { "kmsg", 0644, &kmsg_fops, 0 },
+ #endif
++#if defined(CONFIG_GRKERNSEC) && !defined(CONFIG_GRKERNSEC_NO_RBAC)
++	[13] = { "grsec",S_IRUSR | S_IWUGO, &grsec_fops, 0 },
++#endif
+ };
+ 
+ static int memory_open(struct inode *inode, struct file *filp)
+diff --git a/fs/proc/array.c b/fs/proc/array.c
+index 1dbfdcaa168c..aa676306b7f1 100644
+--- a/fs/proc/array.c
++++ b/fs/proc/array.c
+@@ -402,6 +402,10 @@ int proc_pid_status(struct seq_file *m, struct pid_namespace *ns,
+ 	task_pax(m, task);
+ #endif
+ 
++#if defined(CONFIG_GRKERNSEC) && !defined(CONFIG_GRKERNSEC_NO_RBAC)
++	task_grsec_rbac(m, task);
++#endif
++
+ 	return 0;
+ }
+ 
+diff --git a/fs/compat.c b/fs/compat.c
+index 46a5d8b83745..8280c0f87c3a 100644
+--- a/fs/compat.c
++++ b/fs/compat.c
+@@ -848,6 +849,10 @@ static int compat_fillonedir(struct dir_context *ctx, const char *name,
+ 		buf->result = -EOVERFLOW;
+ 		return -EOVERFLOW;
+ 	}
++
++	if (!gr_acl_handle_filldir(buf->file, name, namlen, ino))
++		return 0;
++
+ 	buf->result++;
+ 	dirent = buf->dirent;
+ 	if (!access_ok(VERIFY_WRITE, dirent,
+@@ -920,6 +927,10 @@ static int compat_filldir(struct dir_context *ctx, const char *name, int namlen,
+ 		buf->error = -EOVERFLOW;
+ 		return -EOVERFLOW;
+ 	}
++
++	if (!gr_acl_handle_filldir(buf->file, name, namlen, ino))
++		return 0;
++
+ 	dirent = buf->previous;
+ 	if (dirent) {
+ 		if (signal_pending(current))
+@@ -1005,6 +1018,10 @@ static int compat_filldir64(struct dir_context *ctx, const char *name,
+ 	buf->error = -EINVAL;	/* only used if we fail.. */
+ 	if (reclen > buf->count)
+ 		return -EINVAL;
++
++	if (!gr_acl_handle_filldir(buf->file, name, namlen, ino))
++		return 0;
++
+ 	dirent = buf->previous;
+ 
+ 	if (dirent) {
+diff --git a/fs/exec.c b/fs/exec.c
+index 12169f1226f8..4368e21d4d9d 100644
+--- a/fs/exec.c
++++ b/fs/exec.c
+@@ -1793,6 +1853,11 @@ static int do_execveat_common(int fd, struct filename *filename,
+ 	}
+ 	bprm->interp = bprm->filename;
+ 
++	if (!gr_acl_handle_execve(file->f_path.dentry, file->f_path.mnt)) {
++		retval = -EACCES;
++		goto out_unmark;
++	}
++
+ 	retval = bprm_mm_init(bprm);
+ 	if (retval)
+ 		goto out_unmark;
+diff --git a/fs/fs_struct.c b/fs/fs_struct.c
+index 697c96ee1f6e..1ff87ae13961 100644
+--- a/fs/fs_struct.c
++++ b/fs/fs_struct.c
+@@ -153,7 +169,7 @@ EXPORT_SYMBOL_GPL(unshare_fs_struct);
+ 
+ int current_umask(void)
+ {
+-	return current->fs->umask;
++	return current->fs->umask | gr_acl_umask();
+ }
+ EXPORT_SYMBOL(current_umask);
+ 
+diff --git a/fs/open.c b/fs/open.c
+index 697c96ee1f6e..1ff87ae13961 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -116,6 +118,8 @@ long vfs_truncate(const struct path *path, loff_t length)
+ 	error = locks_verify_truncate(inode, NULL, length);
+ 	if (!error)
+ 		error = security_path_truncate(path);
++	if (!error && !gr_acl_handle_truncate(path->dentry, path->mnt))
++		error = -EACCES;
+ 	if (!error)
+ 		error = do_truncate(path->dentry, length, 0, NULL);
+ 
+@@ -200,6 +204,8 @@ static long do_sys_ftruncate(unsigned int fd, loff_t length, int small)
+ 	error = locks_verify_truncate(inode, f.file, length);
+ 	if (!error)
+ 		error = security_path_truncate(&f.file->f_path);
++	if (!error && !gr_acl_handle_truncate(f.file->f_path.dentry, f.file->f_path.mnt))
++		error = -EACCES;
+ 	if (!error)
+ 		error = do_truncate(dentry, length, ATTR_MTIME|ATTR_CTIME, f.file);
+ 	sb_end_write(inode->i_sb);
+@@ -415,6 +421,9 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+ 	if (__mnt_is_readonly(path.mnt))
+ 		res = -EROFS;
+ 
++	if (!res && !gr_acl_handle_access(path.dentry, path.mnt, mode))
++		res = -EACCES;
++
+ out_path_release:
+ 	path_put(&path);
+ 	if (retry_estale(res, lookup_flags)) {
+@@ -593,6 +627,9 @@ static int chown_common(const struct path *path, uid_t user, gid_t group)
+ 	uid = make_kuid(current_user_ns(), user);
+ 	gid = make_kgid(current_user_ns(), group);
+ 
++	if (!gr_acl_handle_chown(path->dentry, path->mnt))
++		return -EACCES;
++
+ retry_deleg:
+ 	newattrs.ia_valid =  ATTR_CTIME;
+ 	if (user != (uid_t) -1) {
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index c9d48dc78495..6caa8443cd16 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -20,6 +20,7 @@
+ #include <linux/xattr.h>
+ #include <linux/export.h>
+ #include <linux/user_namespace.h>
++#include <linux/grsecurity.h>
+ 
+ static struct posix_acl **acl_by_type(struct inode *inode, int type)
+ {
+@@ -311,7 +312,7 @@ posix_acl_equiv_mode(const struct posix_acl *acl, umode_t *mode_p)
+ 		}
+ 	}
+         if (mode_p)
+-                *mode_p = (*mode_p & ~S_IRWXUGO) | mode;
++                *mode_p = ((*mode_p & ~S_IRWXUGO) | mode) & ~gr_acl_umask();
+         return not_equiv;
+ }
+ EXPORT_SYMBOL(posix_acl_equiv_mode);
+@@ -461,7 +462,7 @@ static int posix_acl_create_masq(struct posix_acl *acl, umode_t *mode_p)
+ 		mode &= (group_obj->e_perm << 3) | ~S_IRWXG;
+ 	}
+ 
+-	*mode_p = (*mode_p & ~S_IRWXUGO) | mode;
++	*mode_p = ((*mode_p & ~S_IRWXUGO) | mode) & ~gr_acl_umask();
+         return not_equiv;
+ }
+ 
+@@ -519,6 +520,8 @@ __posix_acl_create(struct posix_acl **acl, gfp_t gfp, umode_t *mode_p)
+ 	struct posix_acl *clone = posix_acl_clone(*acl, gfp);
+ 	int err = -ENOMEM;
+ 	if (clone) {
++		*mode_p &= ~gr_acl_umask();
++
+ 		err = posix_acl_create_masq(clone, mode_p);
+ 		if (err < 0) {
+ 			posix_acl_release(clone);
+@@ -728,6 +731,7 @@ posix_acl_from_xattr(struct user_namespace *user_ns,
+ 	int count;
+ 	struct posix_acl *acl;
+ 	struct posix_acl_entry *acl_e;
++	umode_t umask = gr_acl_umask();
+ 
+ 	if (!value)
+ 		return NULL;
+@@ -753,12 +757,18 @@ posix_acl_from_xattr(struct user_namespace *user_ns,
+ 
+ 		switch(acl_e->e_tag) {
+ 			case ACL_USER_OBJ:
++				acl_e->e_perm &= ~((umask & S_IRWXU) >> 6);
++				break;
+ 			case ACL_GROUP_OBJ:
+ 			case ACL_MASK:
++				acl_e->e_perm &= ~((umask & S_IRWXG) >> 3);
++				break;
+ 			case ACL_OTHER:
++				acl_e->e_perm &= ~(umask & S_IRWXO);
+ 				break;
+ 
+ 			case ACL_USER:
++				acl_e->e_perm &= ~((umask & S_IRWXU) >> 6);
+ 				acl_e->e_uid =
+ 					make_kuid(user_ns,
+ 						  le32_to_cpu(entry->e_id));
+@@ -766,6 +776,7 @@ posix_acl_from_xattr(struct user_namespace *user_ns,
+ 					goto fail;
+ 				break;
+ 			case ACL_GROUP:
++				acl_e->e_perm &= ~((umask & S_IRWXG) >> 3);
+ 				acl_e->e_gid =
+ 					make_kgid(user_ns,
+ 						  le32_to_cpu(entry->e_id));
+diff --git a/fs/proc/base.c b/fs/proc/base.c
+index 4fb5a1bc4831..a4332371b62e 100644
+--- a/fs/proc/base.c
++++ b/fs/proc/base.c
+@@ -224,6 +232,11 @@ static ssize_t proc_pid_cmdline_read(struct file *file, char __user *buf,
+ 		goto out_mmput;
+ 	}
+ 
++	if (gr_acl_handle_procpidmem(tsk)) {
++		rv = 0;
++		goto out_mmput;
++	}
++
+ 	page = (char *)__get_free_page(GFP_TEMPORARY);
+ 	if (!page) {
+ 		rv = -ENOMEM;
+diff --git a/fs/proc/fd.c b/fs/proc/fd.c
+index d21dafef3102..87425901aeb0 100644
+--- a/fs/proc/fd.c
++++ b/fs/proc/fd.c
+@@ -27,7 +27,8 @@ static int seq_show(struct seq_file *m, void *v)
+ 	if (!task)
+ 		return -ENOENT;
+ 
+-	files = get_files_struct(task);
++	if (!gr_acl_handle_procpidmem(task))
++		files = get_files_struct(task);
+ 	put_task_struct(task);
+ 
+ 	if (files) {
+@@ -296,13 +297,15 @@ int proc_fd_permission(struct inode *inode, int mask)
+ 	int rv;
+ 
+ 	rv = generic_permission(inode, mask);
+-	if (rv == 0)
+-		return rv;
+ 
+ 	rcu_read_lock();
+ 	p = pid_task(proc_pid(inode), PIDTYPE_PID);
+-	if (p && same_thread_group(p, current))
+-		rv = 0;
++	if (p) {
++		if (same_thread_group(p, current))
++			rv = 0;
++		if (gr_acl_handle_procpidmem(p))
++			rv = -EACCES;
++	}
+ 	rcu_read_unlock();
+ 
+ 	return rv;

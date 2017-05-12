@@ -1,0 +1,51 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/slab.c linux-4.9.24-pax/mm/slab.c
+--- linux-4.9.24/mm/slab.c	2017-03-28 01:15:32.550952528 +0200
++++ linux-4.9.24-pax/mm/slab.c	2017-03-28 01:42:30.354666558 +0200
+@@ -285,10 +285,10 @@ static void kmem_cache_node_init(struct
+ 		if ((x)->max_freeable < i)				\
+ 			(x)->max_freeable = i;				\
+ 	} while (0)
+-#define STATS_INC_ALLOCHIT(x)	atomic_inc(&(x)->allochit)
+-#define STATS_INC_ALLOCMISS(x)	atomic_inc(&(x)->allocmiss)
+-#define STATS_INC_FREEHIT(x)	atomic_inc(&(x)->freehit)
+-#define STATS_INC_FREEMISS(x)	atomic_inc(&(x)->freemiss)
++#define STATS_INC_ALLOCHIT(x)	atomic_inc_unchecked(&(x)->allochit)
++#define STATS_INC_ALLOCMISS(x)	atomic_inc_unchecked(&(x)->allocmiss)
++#define STATS_INC_FREEHIT(x)	atomic_inc_unchecked(&(x)->freehit)
++#define STATS_INC_FREEMISS(x)	atomic_inc_unchecked(&(x)->freemiss)
+ #else
+ #define	STATS_INC_ACTIVE(x)	do { } while (0)
+ #define	STATS_DEC_ACTIVE(x)	do { } while (0)
+@@ -4189,10 +4210,10 @@ void slabinfo_show_stats(struct seq_file
+ 	}
+ 	/* cpu stats */
+ 	{
+-		unsigned long allochit = atomic_read(&cachep->allochit);
+-		unsigned long allocmiss = atomic_read(&cachep->allocmiss);
+-		unsigned long freehit = atomic_read(&cachep->freehit);
+-		unsigned long freemiss = atomic_read(&cachep->freemiss);
++		unsigned long allochit = atomic_read_unchecked(&cachep->allochit);
++		unsigned long allocmiss = atomic_read_unchecked(&cachep->allocmiss);
++		unsigned long freehit = atomic_read_unchecked(&cachep->freehit);
++		unsigned long freemiss = atomic_read_unchecked(&cachep->freemiss);
+ 
+ 		seq_printf(m, " : cpustat %6lu %6lu %6lu %6lu",
+ 			   allochit, allocmiss, freehit, freemiss);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/linux/slab_def.h linux-4.9.24-pax/include/linux/slab_def.h
+--- linux-4.9.24/include/linux/slab_def.h	2016-10-03 11:28:31.081302375 +0200
++++ linux-4.9.24-pax/include/linux/slab_def.h	2017-01-01 22:57:17.889538611 +0100
+@@ -56,10 +56,10 @@ struct kmem_cache {
+ 	unsigned long node_allocs;
+ 	unsigned long node_frees;
+ 	unsigned long node_overflow;
+-	atomic_t allochit;
+-	atomic_t allocmiss;
+-	atomic_t freehit;
+-	atomic_t freemiss;
++	atomic_unchecked_t allochit;
++	atomic_unchecked_t allocmiss;
++	atomic_unchecked_t freehit;
++	atomic_unchecked_t freemiss;
+ #ifdef CONFIG_DEBUG_SLAB_LEAK
+ 	atomic_t store_user_clean;
+ #endif

@@ -1,0 +1,24 @@
+iff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/mach/dma.h linux-4.9.24-pax/arch/arm/include/asm/mach/dma.h
+--- linux-4.9.24/arch/arm/include/asm/mach/dma.h	2015-03-18 15:21:50.168349252 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/mach/dma.h	2017-01-01 22:57:10.525520539 +0100
+@@ -22,7 +22,7 @@ struct dma_ops {
+ 	int	(*residue)(unsigned int, dma_t *);		/* optional */
+ 	int	(*setspeed)(unsigned int, dma_t *, int);	/* optional */
+ 	const char *type;
+-};
++} __do_const;
+ 
+ struct dma_struct {
+ 	void		*addr;		/* single DMA address		*/
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mm/cache-l2x0.c linux-4.9.24-pax/arch/arm/mm/cache-l2x0.c
+--- linux-4.9.24/arch/arm/mm/cache-l2x0.c	2016-12-13 12:08:19.710328526 +0100
++++ linux-4.9.24-pax/arch/arm/mm/cache-l2x0.c	2017-01-01 22:57:10.545520588 +0100
+@@ -44,7 +44,7 @@ struct l2c_init_data {
+ 	void (*configure)(void __iomem *);
+ 	void (*unlock)(void __iomem *, unsigned);
+ 	struct outer_cache_fns outer_cache;
+-};
++} __do_const;
+ 
+ #define CACHE_LINE_SIZE		32
+ 

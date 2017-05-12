@@ -1,0 +1,56 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/include/asm/thread_info_32.h linux-4.9.24-pax/arch/sparc/include/asm/thread_info_32.h
+--- linux-4.9.24/arch/sparc/include/asm/thread_info_32.h	2015-06-22 11:14:14.944675276 +0200
++++ linux-4.9.24-pax/arch/sparc/include/asm/thread_info_32.h	2017-01-01 22:57:10.585520686 +0100
+@@ -48,6 +48,7 @@ struct thread_info {
+ 	struct reg_window32	reg_window[NSWINS];	/* align for ldd! */
+ 	unsigned long		rwbuf_stkptrs[NSWINS];
+ 	unsigned long		w_saved;
++	unsigned long		lowest_stack;
+ };
+ 
+ /*
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/include/asm/thread_info_64.h linux-4.9.24-pax/arch/sparc/include/asm/thread_info_64.h
+--- linux-4.9.24/arch/sparc/include/asm/thread_info_64.h	2016-10-03 11:27:29.322537956 +0200
++++ linux-4.9.24-pax/arch/sparc/include/asm/thread_info_64.h	2017-01-01 22:57:10.585520686 +0100
+@@ -59,6 +59,8 @@ struct thread_info {
+ 	struct pt_regs		*kern_una_regs;
+ 	unsigned int		kern_una_insn;
+ 
++	unsigned long		lowest_stack;
++
+ 	unsigned long		fpregs[(7 * 256) / sizeof(unsigned long)]
+ 		__attribute__ ((aligned(64)));
+ };
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/include/asm/processor.h linux-4.9.24-pax/arch/x86/include/asm/processor.h
+--- linux-4.9.24/arch/x86/include/asm/processor.h	2017-02-16 02:21:21.052029243 +0100
++++ linux-4.9.24-pax/arch/x86/include/asm/processor.h	2017-02-17 16:25:38.133258322 +0100
+@@ -426,6 +432,7 @@ struct thread_struct {
+ 	unsigned		io_bitmap_max;
+ 
+ 	mm_segment_t		addr_limit;
++	unsigned long		lowest_stack;
+ 
+ 	unsigned int		sig_on_uaccess_err:1;
+ 	unsigned int		uaccess_err:1;	/* uaccess failed */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/kernel/process_32.c linux-4.9.24-pax/arch/x86/kernel/process_32.c
+--- linux-4.9.24/arch/x86/kernel/process_32.c	2016-12-13 12:08:27.410380913 +0100
++++ linux-4.9.24-pax/arch/x86/kernel/process_32.c	2017-01-01 22:57:10.665520883 +0100
+@@ -131,6 +130,7 @@ int copy_thread_tls(unsigned long clone_
+ 	frame->ret_addr = (unsigned long) ret_from_fork;
+ 	p->thread.sp = (unsigned long) fork_frame;
+ 	p->thread.sp0 = (unsigned long) (childregs+1);
++	p->thread.lowest_stack = (unsigned long)task_stack_page(p) + 2 * sizeof(unsigned long);
+ 	memset(p->thread.ptrace_bps, 0, sizeof(p->thread.ptrace_bps));
+ 
+ 	if (unlikely(p->flags & PF_KTHREAD)) {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/kernel/process_64.c linux-4.9.24-pax/arch/x86/kernel/process_64.c
+--- linux-4.9.24/arch/x86/kernel/process_64.c	2016-12-13 12:08:27.410380913 +0100
++++ linux-4.9.24-pax/arch/x86/kernel/process_64.c	2017-01-22 03:21:49.201362180 +0100
+@@ -152,6 +152,7 @@ int copy_thread_tls(unsigned long clone_
+ 	frame->bp = 0;
+ 	frame->ret_addr = (unsigned long) ret_from_fork;
+ 	p->thread.sp = (unsigned long) fork_frame;
++	p->thread.lowest_stack = (unsigned long)task_stack_page(p) + 2 * sizeof(unsigned long);
+ 	p->thread.io_bitmap_ptr = NULL;
+ 
+ 	savesegment(gs, p->thread.gsindex);

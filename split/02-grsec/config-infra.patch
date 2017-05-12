@@ -1,0 +1,83 @@
+diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
+index cde2b4cbd9d9..0bb4d4fde306 100644
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -1622,6 +1622,7 @@ config AEABI
+ config OABI_COMPAT
+ 	bool "Allow old ABI binaries to run with this kernel (EXPERIMENTAL)"
+ 	depends on AEABI && !THUMB2_KERNEL
++	depends on !GRKERNSEC
+ 	help
+ 	  This option preserves the old syscall interface along with the
+ 	  new (ARM EABI) one. It also provides a compatibility layer to
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index 6fd9109002c6..1775eac0acb1 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -692,6 +692,7 @@ config SCHED_OMIT_FRAME_POINTER
+ 
+ menuconfig HYPERVISOR_GUEST
+ 	bool "Linux guest support"
++	depends on !GRKERNSEC_CONFIG_AUTO || GRKERNSEC_CONFIG_VIRT_GUEST || (GRKERNSEC_CONFIG_VIRT_HOST && GRKERNSEC_CONFIG_VIRT_XEN)
+ 	---help---
+ 	  Say Y here to enable options for running Linux under various hyper-
+ 	  visors. This option enables basic hypervisor detection and platform
+@@ -1092,6 +1093,7 @@ config VM86
+ 
+ config X86_16BIT
+ 	bool "Enable support for 16-bit segments" if EXPERT
++	depends on !GRKERNSEC
+ 	default y
+ 	depends on MODIFY_LDT_SYSCALL
+ 	---help---
+diff --git a/arch/arm/mm/Kconfig b/arch/arm/mm/Kconfig
+index 368d01d6bba9..9111dcc934b1 100644
+--- a/arch/arm/mm/Kconfig
++++ b/arch/arm/mm/Kconfig
+@@ -815,7 +815,7 @@ config NEED_KUSER_HELPERS
+ 
+ config KUSER_HELPERS
+ 	bool "Enable kuser helpers in vector page" if !NEED_KUSER_HELPERS
+-	depends on MMU && !(CPU_V6 || CPU_V6K || CPU_V7)
++	depends on MMU && (!(CPU_V6 || CPU_V6K || CPU_V7) || GRKERNSEC_OLD_ARM_USERLAND)
+ 	default y
+ 	help
+ 	  Warning: disabling this option may break user programs.
+diff --git a/arch/x86/xen/Kconfig b/arch/x86/xen/Kconfig
+index c7b15f3e2cf3..cc09a659ca78 100644
+--- a/arch/x86/xen/Kconfig
++++ b/arch/x86/xen/Kconfig
+@@ -10,6 +10,7 @@ config XEN
+ 	select XEN_HAVE_VPMU
+ 	depends on X86_64 || (X86_32 && X86_PAE)
+ 	depends on X86_LOCAL_APIC && X86_TSC
++	depends on !GRKERNSEC_CONFIG_AUTO || GRKERNSEC_CONFIG_VIRT_XEN
+ 	help
+ 	  This is the Linux Xen port.  Enabling this will allow the
+ 	  kernel to boot in a paravirtualized environment under the
+diff --git a/fs/proc/Kconfig b/fs/proc/Kconfig
+index 1ade1206bb89..a86f1a2a38fb 100644
+--- a/fs/proc/Kconfig
++++ b/fs/proc/Kconfig
+@@ -38,8 +38,8 @@ config PROC_KCORE
+ 
+ config PROC_VMCORE
+ 	bool "/proc/vmcore support"
+-	depends on PROC_FS && CRASH_DUMP
+-	default y
++	depends on PROC_FS && CRASH_DUMP && !GRKERNSEC
++	default n
+         help
+         Exports the dump image of crashed kernel in ELF format.
+ 
+@@ -63,8 +63,8 @@ config PROC_SYSCTL
+ 	  limited in memory.
+ 
+ config PROC_PAGE_MONITOR
+- 	default y
+-	depends on PROC_FS && MMU
++ 	default n
++	depends on PROC_FS && MMU && !GRKERNSEC
+ 	bool "Enable /proc page monitoring" if EXPERT
+  	help
+ 	  Various /proc files exist to monitor process memory utilization:

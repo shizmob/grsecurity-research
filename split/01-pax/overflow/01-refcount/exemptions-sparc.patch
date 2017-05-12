@@ -1,0 +1,128 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/kernel/smp_64.c linux-4.9.24-pax/arch/sparc/kernel/smp_64.c
+--- linux-4.9.24/arch/sparc/kernel/smp_64.c	2016-12-13 12:08:25.974371135 +0100
++++ linux-4.9.24-pax/arch/sparc/kernel/smp_64.c	2017-01-01 22:57:10.589520696 +0100
+@@ -895,7 +895,7 @@ void smp_flush_dcache_page_impl(struct p
+ 		return;
+ 
+ #ifdef CONFIG_DEBUG_DCFLUSH
+-	atomic_inc(&dcpage_flushes);
++	atomic_inc_unchecked(&dcpage_flushes);
+ #endif
+ 
+ 	this_cpu = get_cpu();
+@@ -919,7 +919,7 @@ void smp_flush_dcache_page_impl(struct p
+ 			xcall_deliver(data0, __pa(pg_addr),
+ 				      (u64) pg_addr, cpumask_of(cpu));
+ #ifdef CONFIG_DEBUG_DCFLUSH
+-			atomic_inc(&dcpage_flushes_xcall);
++			atomic_inc_unchecked(&dcpage_flushes_xcall);
+ #endif
+ 		}
+ 	}
+@@ -938,7 +938,7 @@ void flush_dcache_page_all(struct mm_str
+ 	preempt_disable();
+ 
+ #ifdef CONFIG_DEBUG_DCFLUSH
+-	atomic_inc(&dcpage_flushes);
++	atomic_inc_unchecked(&dcpage_flushes);
+ #endif
+ 	data0 = 0;
+ 	pg_addr = page_address(page);
+@@ -955,7 +955,7 @@ void flush_dcache_page_all(struct mm_str
+ 		xcall_deliver(data0, __pa(pg_addr),
+ 			      (u64) pg_addr, cpu_online_mask);
+ #ifdef CONFIG_DEBUG_DCFLUSH
+-		atomic_inc(&dcpage_flushes_xcall);
++		atomic_inc_unchecked(&dcpage_flushes_xcall);
+ #endif
+ 	}
+ 	__local_flush_dcache_page(page);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/kernel/traps_64.c linux-4.9.24-pax/arch/sparc/kernel/traps_64.c
+--- linux-4.9.24/arch/sparc/kernel/traps_64.c	2016-12-13 12:08:25.994371270 +0100
++++ linux-4.9.24-pax/arch/sparc/kernel/traps_64.c	2017-01-01 22:57:10.589520696 +0100
+@@ -1839,8 +1850,8 @@ struct sun4v_error_entry {
+ /*0x38*/u64		reserved_5;
+ };
+ 
+-static atomic_t sun4v_resum_oflow_cnt = ATOMIC_INIT(0);
+-static atomic_t sun4v_nonresum_oflow_cnt = ATOMIC_INIT(0);
++static atomic_unchecked_t sun4v_resum_oflow_cnt = ATOMIC_INIT(0);
++static atomic_unchecked_t sun4v_nonresum_oflow_cnt = ATOMIC_INIT(0);
+ 
+ static const char *sun4v_err_type_to_str(u8 type)
+ {
+@@ -1932,7 +1943,7 @@ static void sun4v_report_real_raddr(cons
+ }
+ 
+ static void sun4v_log_error(struct pt_regs *regs, struct sun4v_error_entry *ent,
+-			    int cpu, const char *pfx, atomic_t *ocnt)
++			    int cpu, const char *pfx, atomic_unchecked_t *ocnt)
+ {
+ 	u64 *raw_ptr = (u64 *) ent;
+ 	u32 attrs;
+@@ -1990,8 +2001,8 @@ static void sun4v_log_error(struct pt_re
+ 
+ 	show_regs(regs);
+ 
+-	if ((cnt = atomic_read(ocnt)) != 0) {
+-		atomic_set(ocnt, 0);
++	if ((cnt = atomic_read_unchecked(ocnt)) != 0) {
++		atomic_set_unchecked(ocnt, 0);
+ 		wmb();
+ 		printk("%s: Queue overflowed %d times.\n",
+ 		       pfx, cnt);
+@@ -2048,7 +2059,7 @@ out:
+  */
+ void sun4v_resum_overflow(struct pt_regs *regs)
+ {
+-	atomic_inc(&sun4v_resum_oflow_cnt);
++	atomic_inc_unchecked(&sun4v_resum_oflow_cnt);
+ }
+ 
+ /* We run with %pil set to PIL_NORMAL_MAX and PSTATE_IE enabled in %pstate.
+@@ -2101,7 +2112,7 @@ void sun4v_nonresum_overflow(struct pt_r
+ 	/* XXX Actually even this can make not that much sense.  Perhaps
+ 	 * XXX we should just pull the plug and panic directly from here?
+ 	 */
+-	atomic_inc(&sun4v_nonresum_oflow_cnt);
++	atomic_inc_unchecked(&sun4v_nonresum_oflow_cnt);
+ }
+ 
+ static void sun4v_tlb_error(struct pt_regs *regs)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/mm/init_64.c linux-4.9.24-pax/arch/sparc/mm/init_64.c
+--- linux-4.9.24/arch/sparc/mm/init_64.c	2016-12-13 12:08:26.074371816 +0100
++++ linux-4.9.24-pax/arch/sparc/mm/init_64.c	2017-01-01 22:57:10.593520706 +0100
+@@ -189,9 +189,9 @@ unsigned long sparc64_kern_sec_context _
+ int num_kernel_image_mappings;
+ 
+ #ifdef CONFIG_DEBUG_DCFLUSH
+-atomic_t dcpage_flushes = ATOMIC_INIT(0);
++atomic_unchecked_t dcpage_flushes = ATOMIC_INIT(0);
+ #ifdef CONFIG_SMP
+-atomic_t dcpage_flushes_xcall = ATOMIC_INIT(0);
++atomic_unchecked_t dcpage_flushes_xcall = ATOMIC_INIT(0);
+ #endif
+ #endif
+ 
+@@ -199,7 +199,7 @@ inline void flush_dcache_page_impl(struc
+ {
+ 	BUG_ON(tlb_type == hypervisor);
+ #ifdef CONFIG_DEBUG_DCFLUSH
+-	atomic_inc(&dcpage_flushes);
++	atomic_inc_unchecked(&dcpage_flushes);
+ #endif
+ 
+ #ifdef DCACHE_ALIASING_POSSIBLE
+@@ -462,10 +462,10 @@ void mmu_info(struct seq_file *m)
+ 
+ #ifdef CONFIG_DEBUG_DCFLUSH
+ 	seq_printf(m, "DCPageFlushes\t: %d\n",
+-		   atomic_read(&dcpage_flushes));
++		   atomic_read_unchecked(&dcpage_flushes));
+ #ifdef CONFIG_SMP
+ 	seq_printf(m, "DCPageFlushesXC\t: %d\n",
+-		   atomic_read(&dcpage_flushes_xcall));
++		   atomic_read_unchecked(&dcpage_flushes_xcall));
+ #endif /* CONFIG_SMP */
+ #endif /* CONFIG_DEBUG_DCFLUSH */
+ }

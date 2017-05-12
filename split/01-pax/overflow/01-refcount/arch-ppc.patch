@@ -1,0 +1,38 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/kernel/traps.c linux-4.9.24-pax/arch/powerpc/kernel/traps.c
+--- linux-4.9.24/arch/powerpc/kernel/traps.c	2016-12-13 12:08:24.114358475 +0100
++++ linux-4.9.24-pax/arch/powerpc/kernel/traps.c	2017-01-01 22:57:10.581520676 +0100
+@@ -37,6 +37,7 @@
+ #include <linux/debugfs.h>
+ #include <linux/ratelimit.h>
+ #include <linux/context_tracking.h>
++#include <linux/uaccess.h>
+ 
+ #include <asm/emulated_ops.h>
+ #include <asm/pgtable.h>
+@@ -1162,6 +1163,26 @@ void program_check_exception(struct pt_r
+ 	enum ctx_state prev_state = exception_enter();
+ 	unsigned int reason = get_reason(regs);
+ 
++#ifdef CONFIG_PAX_REFCOUNT
++	unsigned int bkpt;
++	const struct exception_table_entry *entry;
++
++	if (reason & REASON_ILLEGAL) {
++		/* Check if PaX bad instruction */
++		if (!probe_kernel_address((const void *)regs->nip, bkpt) && bkpt == 0xc00b00) {
++			current->thread.trap_nr = 0;
++			pax_report_refcount_error(regs, NULL);
++			/* fixup_exception() for PowerPC does not exist, simulate its job */
++			if ((entry = search_exception_tables(regs->nip)) != NULL) {
++				regs->nip = entry->fixup;
++				return;
++			}
++			/* fixup_exception() could not handle */
++			goto bail;
++		}
++	}
++#endif
++
+ 	/* We can now get here via a FP Unavailable exception if the core
+ 	 * has no FPU, in that case the reason flags will be 0 */
+ 

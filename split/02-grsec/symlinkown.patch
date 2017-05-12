@@ -1,0 +1,135 @@
+diff --git a/fs/namei.c b/fs/namei.c
+index cb3b5370ece0..32d72d14c9ad 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -524,12 +551,35 @@ struct nameidata {
+ 	struct inode	*link_inode;
+ 	unsigned	root_seq;
+ 	int		dfd;
+-};
++#ifdef CONFIG_GRKERNSEC_SYMLINKOWN
++	struct path	*symlinkown_stack;
++	struct path 	symlinkown_internal[EMBEDDED_LEVELS];
++	unsigned	symlinkown_depth;
++	int		symlinkown_enabled;
++#endif
++} __randomize_layout;
++
++static int gr_handle_nameidata_symlinkowner(const struct nameidata *nd, const struct inode *target)
++{
++#ifdef CONFIG_GRKERNSEC_SYMLINKOWN
++	int i;
++
++	for (i = 0; i < nd->symlinkown_depth; i++) {
++		if (gr_handle_symlink_owner(&nd->symlinkown_stack[i], target))
++			return -EACCES;
++	}
++#endif
++	return 0;
++}
+ 
+ static void set_nameidata(struct nameidata *p, int dfd, struct filename *name)
+ {
+ 	struct nameidata *old = current->nameidata;
+ 	p->stack = p->internal;
++#ifdef CONFIG_GRKERNSEC_SYMLINKOWN
++	p->symlinkown_stack = p->symlinkown_internal;
++	p->symlinkown_enabled = -1;
++#endif
+ 	p->dfd = dfd;
+ 	p->name = name;
+ 	p->total_link_count = old ? old->total_link_count : 0;
+@@ -546,6 +596,10 @@ static void restore_nameidata(void)
+ 		old->total_link_count = now->total_link_count;
+ 	if (now->stack != now->internal)
+ 		kfree(now->stack);
++#ifdef CONFIG_GRKERNSEC_SYMLINKOWN
++	if (now->symlinkown_stack != now->symlinkown_internal)
++		kfree(now->symlinkown_stack);
++#endif
+ }
+ 
+ static int __nd_alloc_stack(struct nameidata *nd)
+@@ -586,8 +641,32 @@ static bool path_connected(const struct path *path)
+ 	return is_subdir(path->dentry, mnt->mnt_root);
+ }
+ 
++#ifdef CONFIG_GRKERNSEC_SYMLINKOWN
++static int nd_alloc_symlinkown_stack(struct nameidata *nd)
++{
++	struct path *p;
++
++	if (likely(nd->symlinkown_depth != EMBEDDED_LEVELS))
++		return 0;
++	if (nd->symlinkown_stack != nd->symlinkown_internal)
++		return 0;
++
++	p = kmalloc(MAXSYMLINKS * sizeof(struct path), GFP_KERNEL);
++	if (unlikely(!p))
++		return -ENOMEM;
++	memcpy(p, nd->symlinkown_internal, sizeof(nd->symlinkown_internal));
++	nd->symlinkown_stack = p;
++	return 0;
++}
++#endif
++
+ static inline int nd_alloc_stack(struct nameidata *nd)
+ {
++#ifdef CONFIG_GRKERNSEC_SYMLINKOWN
++	if (nd->flags & LOOKUP_RCU)
++		return -ECHILD;
++#endif
++
+ 	if (likely(nd->depth != EMBEDDED_LEVELS))
+ 		return 0;
+ 	if (likely(nd->stack != nd->internal))
+@@ -613,6 +692,14 @@ static void terminate_walk(struct nameidata *nd)
+ 		path_put(&nd->path);
+ 		for (i = 0; i < nd->depth; i++)
+ 			path_put(&nd->stack[i].link);
++
++#ifdef CONFIG_GRKERNSEC_SYMLINKOWN
++	/* we'll only ever set our values in ref-walk mode */
++		for (i = 0; i < nd->symlinkown_depth; i++)
++			path_put(&nd->symlinkown_stack[i]);
++		nd->symlinkown_depth = 0;
++#endif
++
+ 		if (nd->root.mnt && !(nd->flags & LOOKUP_ROOT)) {
+ 			path_put(&nd->root);
+ 			nd->root.mnt = NULL;
+@@ -1714,6 +1804,23 @@ static int pick_link(struct nameidata *nd, struct path *link,
+ 		}
+ 	}
+ 
++#ifdef CONFIG_GRKERNSEC_SYMLINKOWN
++	if (unlikely(nd->symlinkown_enabled == -1))
++		nd->symlinkown_enabled = gr_get_symlinkown_enabled();
++	if (nd->symlinkown_enabled && gr_is_global_nonroot(inode->i_uid)) {
++		struct path *symlinkownlast;
++		error = nd_alloc_symlinkown_stack(nd);
++		if (unlikely(error)) {
++			path_put(link);
++			return error;
++		}
++		symlinkownlast = nd->symlinkown_stack + nd->symlinkown_depth++;
++		symlinkownlast->dentry = link->dentry;
++		symlinkownlast->mnt = link->mnt;
++		path_get(symlinkownlast);
++	}
++#endif
++
+ 	last = nd->stack + nd->depth++;
+ 	last->link = *link;
+ 	clear_delayed_call(&last->done);
+@@ -2141,6 +2248,10 @@ static const char *path_init(struct nameidata *nd, unsigned flags)
+ 	nd->last_type = LAST_ROOT; /* if there are only slashes... */
+ 	nd->flags = flags | LOOKUP_JUMPED | LOOKUP_PARENT;
+ 	nd->depth = 0;
++#ifdef CONFIG_GRKERNSEC_SYMLINKOWN
++	nd->symlinkown_depth = 0;
++#endif
++
+ 	if (flags & LOOKUP_ROOT) {
+ 		struct dentry *root = nd->root.dentry;
+ 		struct inode *inode = root->d_inode;

@@ -1,0 +1,150 @@
+diff --git a/arch/arm/mm/fault.c b/arch/arm/mm/fault.c
+index cb0ccaf1c1cd..1aae1cbe7f27 100644
+--- a/arch/arm/mm/fault.c
++++ b/arch/arm/mm/fault.c
+@@ -140,9 +140,14 @@ __do_kernel_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
+ 		return;
+ 
+ #ifdef CONFIG_PAX_MEMORY_UDEREF
+-	if (addr < TASK_SIZE)
+-		printk(KERN_EMERG "PAX: %s:%d, uid/euid: %u/%u, attempted to access userland memory at %08lx\n", current->comm, task_pid_nr(current),
+-				from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()), addr);
++	if (addr < TASK_SIZE) {
++		if (current->signal->curr_ip)
++			printk(KERN_EMERG "PAX: From %pI4: %s:%d, uid/euid: %u/%u, attempted to access userland memory at %08lx\n", &current->signal->curr_ip, current->comm, task_pid_nr(current),
++					from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()), addr);
++		else
++			printk(KERN_EMERG "PAX: %s:%d, uid/euid: %u/%u, attempted to access userland memory at %08lx\n", current->comm, task_pid_nr(current),
++					from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()), addr);
++	}
+ #endif
+ 
+ #ifdef CONFIG_PAX_KERNEXEC
+@@ -150,8 +155,12 @@ __do_kernel_fault(struct mm_struct *mm, unsigned long addr, unsigned int fsr,
+ 	    (((unsigned long)_stext <= addr && addr < init_mm.end_code) ||
+ 	     (MODULES_VADDR <= addr && addr < MODULES_END)))
+ 	{
+-		printk(KERN_EMERG "PAX: %s:%d, uid/euid: %u/%u, attempted to modify kernel code\n", current->comm, task_pid_nr(current),
+-				from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()));
++		if (current->signal->curr_ip)
++			printk(KERN_EMERG "PAX: From %pI4: %s:%d, uid/euid: %u/%u, attempted to modify kernel code\n", &current->signal->curr_ip, current->comm, task_pid_nr(current),
++					from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()));
++		else
++			printk(KERN_EMERG "PAX: %s:%d, uid/euid: %u/%u, attempted to modify kernel code\n", current->comm, task_pid_nr(current),
++					from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()));
+ 	}
+ #endif
+ 
+@@ -600,8 +609,12 @@ do_DataAbort(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
+ 
+ #ifdef CONFIG_PAX_MEMORY_UDEREF
+ 	if (addr < TASK_SIZE && is_domain_fault(fsr)) {
+-		printk(KERN_EMERG "PAX: %s:%d, uid/euid: %u/%u, attempted to access userland memory at %08lx\n", current->comm, task_pid_nr(current),
+-				from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()), addr);
++		if (current->signal->curr_ip)
++			printk(KERN_EMERG "PAX: From %pI4: %s:%d, uid/euid: %u/%u, attempted to access userland memory at %08lx\n", &current->signal->curr_ip, current->comm, task_pid_nr(current),
++					from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()), addr);
++		else
++			printk(KERN_EMERG "PAX: %s:%d, uid/euid: %u/%u, attempted to access userland memory at %08lx\n", current->comm, task_pid_nr(current),
++					from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()), addr);
+ 		goto die;
+ 	}
+ #endif
+@@ -710,11 +723,14 @@ do_PrefetchAbort(unsigned long addr, unsigned int ifsr, struct pt_regs *regs)
+ 
+ #if defined(CONFIG_PAX_KERNEXEC) || defined(CONFIG_PAX_MEMORY_UDEREF)
+ 	else if (is_domain_fault(ifsr) || is_xn_fault(ifsr)) {
+-		printk(KERN_EMERG "PAX: %s:%d, uid/euid: %u/%u, attempted to execute %s memory at %08lx\n",
+-				current->comm, task_pid_nr(current),
+-				from_kuid_munged(&init_user_ns, current_uid()),
+-				from_kuid_munged(&init_user_ns, current_euid()),
+-				pc >= TASK_SIZE ? "non-executable kernel" : "userland", pc);
++		if (current->signal->curr_ip)
++			printk(KERN_EMERG "PAX: From %pI4: %s:%d, uid/euid: %u/%u, attempted to execute %s memory at %08lx\n", &current->signal->curr_ip, current->comm, task_pid_nr(current),
++					from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()),
++					pc >= TASK_SIZE ? "non-executable kernel" : "userland", pc);
++		else
++			printk(KERN_EMERG "PAX: %s:%d, uid/euid: %u/%u, attempted to execute %s memory at %08lx\n", current->comm, task_pid_nr(current),
++					from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()),
++					pc >= TASK_SIZE ? "non-executable kernel" : "userland", pc);
+ 		goto die;
+ 	}
+ #endif
+diff --git a/arch/x86/mm/fault.c b/arch/x86/mm/fault.c
+index f01932f8d4c0..a076e4a2c4b3 100644
+--- a/arch/x86/mm/fault.c
++++ b/arch/x86/mm/fault.c
+@@ -759,9 +759,15 @@ show_fault_oops(struct pt_regs *regs, unsigned long error_code,
+ 	}
+ 
+ #ifdef CONFIG_PAX_KERNEXEC
+-	if (init_mm.start_code <= address && address < init_mm.end_code)
+-		printk(KERN_EMERG "PAX: %s:%d, uid/euid: %u/%u, attempted to modify kernel code\n", current->comm, task_pid_nr(current),
+-				from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()));
++	if (init_mm.start_code <= address && address < init_mm.end_code) {
++		if (current->signal->curr_ip)
++			printk(KERN_EMERG "PAX: From %pI4: %s:%d, uid/euid: %u/%u, attempted to modify kernel code\n",
++					&current->signal->curr_ip, current->comm, task_pid_nr(current),
++					from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()));
++		else
++			printk(KERN_EMERG "PAX: %s:%d, uid/euid: %u/%u, attempted to modify kernel code\n", current->comm, task_pid_nr(current),
++					from_kuid_munged(&init_user_ns, current_uid()), from_kuid_munged(&init_user_ns, current_euid()));
++	}
+ #endif
+ 
+ 	printk(KERN_ALERT "BUG: unable to handle kernel ");
+diff --git a/fs/exec.c b/fs/exec.c
+index 12169f1226f8..4368e21d4d9d 100644
+--- a/fs/exec.c
++++ b/fs/exec.c
+@@ -2100,7 +2219,10 @@ void pax_report_fault(struct pt_regs *regs, void *pc, void *sp)
+ 		}
+ 		up_read(&mm->mmap_sem);
+ 	}
+-	printk(KERN_ERR "PAX: execution attempt in: %s, %08lx-%08lx %08lx\n", path_fault, start, end, offset);
++	if (tsk->signal->curr_ip)
++		printk(KERN_ERR "PAX: From %pI4: execution attempt in: %s, %08lx-%08lx %08lx\n", &tsk->signal->curr_ip, path_fault, start, end, offset);
++	else
++		printk(KERN_ERR "PAX: execution attempt in: %s, %08lx-%08lx %08lx\n", path_fault, start, end, offset);
+ 	printk(KERN_ERR "PAX: terminating task: %s(%s):%d, uid/euid: %u/%u, PC: %p, SP: %p\n", path_exec, tsk->comm, task_pid_nr(tsk),
+ 			from_kuid_munged(&init_user_ns, task_uid(tsk)), from_kuid_munged(&init_user_ns, task_euid(tsk)), pc, sp);
+ 	free_page((unsigned long)buffer_exec);
+@@ -2125,11 +2247,19 @@ void pax_report_refcount_error(struct pt_regs *regs, const char *kind)
+ 	if (!__ratelimit(&refcount_ratelimit))
+ 		return;
+ 
+-	pr_emerg("PAX: %s detected in: %s:%d, uid/euid: %u/%u\n",
+-		 kind ? kind : "refcount error",
+-		 current->comm, task_pid_nr(current),
+-		 from_kuid_munged(&init_user_ns, current_uid()),
+-		 from_kuid_munged(&init_user_ns, current_euid()));
++	if (current->signal->curr_ip)
++		pr_emerg("PAX: From %pI4: %s detected in: %s:%d, uid/euid: %u/%u\n",
++			 &current->signal->curr_ip,
++			 kind ? kind : "refcount error",
++			 current->comm, task_pid_nr(current),
++			 from_kuid_munged(&init_user_ns, current_uid()),
++			 from_kuid_munged(&init_user_ns, current_euid()));
++	else
++		pr_emerg("PAX: %s detected in: %s:%d, uid/euid: %u/%u\n",
++			 kind ? kind : "refcount error",
++			 current->comm, task_pid_nr(current),
++			 from_kuid_munged(&init_user_ns, current_uid()),
++			 from_kuid_munged(&init_user_ns, current_euid()));
+ 	print_symbol(KERN_EMERG "PAX: refcount error occured at: %s\n", instruction_pointer(regs));
+ 	preempt_disable();
+ 	show_regs(regs);
+diff --git a/fs/proc/base.c b/fs/proc/base.c
+index 4fb5a1bc4831..a4332371b62e 100644
+--- a/fs/proc/base.c
++++ b/fs/proc/base.c
+@@ -2933,6 +3081,9 @@ static const struct pid_entry tgid_base_stuff[] = {
+ #ifdef CONFIG_HARDWALL
+ 	ONE("hardwall",   S_IRUGO, proc_pid_hardwall),
+ #endif
++#ifdef CONFIG_GRKERNSEC_PROC_IPADDR
++	ONE("ipaddr",     S_IRUSR, proc_pid_ipaddr),
++#endif
+ #ifdef CONFIG_USER_NS
+ 	REG("uid_map",    S_IRUGO|S_IWUSR, proc_uid_map_operations),
+ 	REG("gid_map",    S_IRUGO|S_IWUSR, proc_gid_map_operations),

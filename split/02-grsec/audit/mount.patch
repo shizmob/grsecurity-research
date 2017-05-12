@@ -1,0 +1,35 @@
+diff --git a/fs/namespace.c b/fs/namespace.c
+index a1a42b87c0f5..ff2d4585d38a 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -1568,6 +1568,9 @@ static int do_umount(struct mount *mnt, int flags)
+ 		if (!(sb->s_flags & MS_RDONLY))
+ 			retval = do_remount_sb(sb, MS_RDONLY, NULL, 0);
+ 		up_write(&sb->s_umount);
++
++		gr_log_remount(mnt->mnt_devname, retval);
++
+ 		return retval;
+ 	}
+ 
+@@ -1590,6 +1593,9 @@ static int do_umount(struct mount *mnt, int flags)
+ 	}
+ 	unlock_mount_hash();
+ 	namespace_unlock();
++
++	gr_log_unmount(mnt->mnt_devname, retval);
++
+ 	return retval;
+ }
+ 
+@@ -2809,7 +2825,10 @@ long do_mount(const char *dev_name, const char __user *dir_name,
+ 		retval = do_new_mount(&path, type_page, flags, mnt_flags,
+ 				      dev_name, data_page);
+ dput_out:
++	gr_log_mount(dev_name, &path, retval);
++
+ 	path_put(&path);
++
+ 	return retval;
+ }
+ 

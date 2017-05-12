@@ -1,0 +1,24 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/boot/memory.c linux-4.9.24-pax/arch/x86/boot/memory.c
+--- linux-4.9.24/arch/x86/boot/memory.c	2015-03-18 15:21:50.224349253 +0100
++++ linux-4.9.24-pax/arch/x86/boot/memory.c	2017-01-01 22:57:10.597520716 +0100
+@@ -19,7 +19,7 @@
+ 
+ static int detect_memory_e820(void)
+ {
+-	int count = 0;
++	unsigned int count = 0;
+ 	struct biosregs ireg, oreg;
+ 	struct e820entry *desc = boot_params.e820_map;
+ 	static struct e820entry buf; /* static so it is zeroed */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/boot/video.c linux-4.9.24-pax/arch/x86/boot/video.c
+--- linux-4.9.24/arch/x86/boot/video.c	2016-01-11 01:27:31.414983463 +0100
++++ linux-4.9.24-pax/arch/x86/boot/video.c	2017-01-01 22:57:10.597520716 +0100
+@@ -100,7 +100,7 @@ static void store_mode_params(void)
+ static unsigned int get_entry(void)
+ {
+ 	char entry_buf[4];
+-	int i, len = 0;
++	unsigned int i, len = 0;
+ 	int key;
+ 	unsigned int v;
+ 

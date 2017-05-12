@@ -1,0 +1,520 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/kmap_types.h linux-4.9.24-pax/arch/arm/include/asm/kmap_types.h
+--- linux-4.9.24/arch/arm/include/asm/kmap_types.h	2015-03-18 15:21:50.168349252 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/kmap_types.h	2017-01-01 22:57:10.525520539 +0100
+@@ -4,6 +4,6 @@
+ /*
+  * This is the "bare minimum".  AIO seems to require this.
+  */
+-#define KM_TYPE_NR 16
++#define KM_TYPE_NR 17
+ 
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/avr32/include/asm/kmap_types.h linux-4.9.24-pax/arch/avr32/include/asm/kmap_types.h
+--- linux-4.9.24/arch/avr32/include/asm/kmap_types.h	2015-03-18 15:21:50.188349252 +0100
++++ linux-4.9.24-pax/arch/avr32/include/asm/kmap_types.h	2017-01-01 22:57:10.553520608 +0100
+@@ -2,9 +2,9 @@
+ #define __ASM_AVR32_KMAP_TYPES_H
+ 
+ #ifdef CONFIG_DEBUG_HIGHMEM
+-# define KM_TYPE_NR 29
++# define KM_TYPE_NR 30
+ #else
+-# define KM_TYPE_NR 14
++# define KM_TYPE_NR 15
+ #endif
+ 
+ #endif /* __ASM_AVR32_KMAP_TYPES_H */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/frv/include/asm/kmap_types.h linux-4.9.24-pax/arch/frv/include/asm/kmap_types.h
+--- linux-4.9.24/arch/frv/include/asm/kmap_types.h	2015-03-18 15:21:50.188349252 +0100
++++ linux-4.9.24-pax/arch/frv/include/asm/kmap_types.h	2017-01-01 22:57:10.553520608 +0100
+@@ -2,6 +2,6 @@
+ #ifndef _ASM_KMAP_TYPES_H
+ #define _ASM_KMAP_TYPES_H
+ 
+-#define KM_TYPE_NR 17
++#define KM_TYPE_NR 18
+ 
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/include/asm/kmap_types.h linux-4.9.24-pax/arch/powerpc/include/asm/kmap_types.h
+--- linux-4.9.24/arch/powerpc/include/asm/kmap_types.h	2015-03-18 15:21:50.204349252 +0100
++++ linux-4.9.24-pax/arch/powerpc/include/asm/kmap_types.h	2017-01-01 22:57:10.573520657 +0100
+@@ -10,7 +10,7 @@
+  * 2 of the License, or (at your option) any later version.
+  */
+ 
+-#define KM_TYPE_NR 16
++#define KM_TYPE_NR 17
+ 
+ #endif	/* __KERNEL__ */
+ #endif	/* _ASM_POWERPC_KMAP_TYPES_H */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/um/include/asm/kmap_types.h linux-4.9.24-pax/arch/um/include/asm/kmap_types.h
+--- linux-4.9.24/arch/um/include/asm/kmap_types.h	2015-03-18 15:21:50.224349253 +0100
++++ linux-4.9.24-pax/arch/um/include/asm/kmap_types.h	2017-01-01 22:57:10.593520706 +0100
+@@ -8,6 +8,6 @@
+ 
+ /* No more #include "asm/arch/kmap_types.h" ! */
+ 
+-#define KM_TYPE_NR 14
++#define KM_TYPE_NR 15
+ 
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/asm-generic/kmap_types.h linux-4.9.24-pax/include/asm-generic/kmap_types.h
+--- linux-4.9.24/include/asm-generic/kmap_types.h	2015-03-18 15:21:50.704349254 +0100
++++ linux-4.9.24-pax/include/asm-generic/kmap_types.h	2017-01-01 22:57:16.765535854 +0100
+@@ -2,9 +2,9 @@
+ #define _ASM_GENERIC_KMAP_TYPES_H
+ 
+ #ifdef __WITH_KM_FENCE
+-# define KM_TYPE_NR 41
++# define KM_TYPE_NR 42
+ #else
+-# define KM_TYPE_NR 20
++# define KM_TYPE_NR 21
+ #endif
+ 
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/linux/highmem.h linux-4.9.24-pax/include/linux/highmem.h
+--- linux-4.9.24/include/linux/highmem.h	2016-01-11 01:28:06.154579881 +0100
++++ linux-4.9.24-pax/include/linux/highmem.h	2017-01-01 22:57:17.241537022 +0100
+@@ -190,6 +190,18 @@ static inline void clear_highpage(struct
+ 	kunmap_atomic(kaddr);
+ }
+ 
++static inline void sanitize_highpage(struct page *page)
++{
++	void *kaddr;
++	unsigned long flags;
++
++	local_irq_save(flags);
++	kaddr = kmap_atomic(page);
++	clear_page(kaddr);
++	kunmap_atomic(kaddr);
++	local_irq_restore(flags);
++}
++
+ static inline void zero_user_segments(struct page *page,
+ 	unsigned start1, unsigned end1,
+ 	unsigned start2, unsigned end2)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/page_alloc.c linux-4.9.24-pax/mm/page_alloc.c
+--- linux-4.9.24/mm/page_alloc.c	2017-04-19 22:09:32.650315027 +0200
++++ linux-4.9.24-pax/mm/page_alloc.c	2017-04-19 22:11:55.634421081 +0200
+@@ -995,6 +996,10 @@ static __always_inline bool free_pages_p
+ {
+ 	int bad = 0;
+ 
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++	unsigned long index = 1UL << order;
++#endif
++
+ 	VM_BUG_ON_PAGE(PageTail(page), page);
+ 
+ 	trace_mm_page_free(page, order);
+@@ -1041,6 +1046,12 @@ static __always_inline bool free_pages_p
+ 		debug_check_no_obj_freed(page_address(page),
+ 					   PAGE_SIZE << order);
+ 	}
++
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++	for (; index; --index)
++		sanitize_highpage(page + index - 1);
++#endif
++
+ 	arch_free_page(page, order);
+ 	kernel_poison_pages(page, 1 << order, 0);
+ 	kernel_map_pages(page, 1 << order, 0);
+@@ -1697,8 +1731,8 @@ static inline int check_new_page(struct
+ 
+ static inline bool free_pages_prezeroed(bool poisoned)
+ {
+-	return IS_ENABLED(CONFIG_PAGE_POISONING_ZERO) &&
+-		page_poisoning_enabled() && poisoned;
++	return IS_ENABLED(CONFIG_PAX_MEMORY_SANITIZE) ||
++		(IS_ENABLED(CONFIG_PAGE_POISONING_ZERO) && page_poisoning_enabled() && poisoned);
+ }
+ 
+ #ifdef CONFIG_DEBUG_VM
+@@ -1754,11 +1788,13 @@ static void prep_new_page(struct page *p
+ 	int i;
+ 	bool poisoned = true;
+ 
++#ifndef CONFIG_PAX_MEMORY_SANITIZE
+ 	for (i = 0; i < (1 << order); i++) {
+ 		struct page *p = page + i;
+ 		if (poisoned)
+ 			poisoned &= page_is_poisoned(p);
+ 	}
++#endif
+ 
+ 	post_alloc_hook(page, order, gfp_flags);
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/slab.c linux-4.9.24-pax/mm/slab.c
+--- linux-4.9.24/mm/slab.c	2017-03-28 01:15:32.550952528 +0200
++++ linux-4.9.24-pax/mm/slab.c	2017-03-28 01:42:30.354666558 +0200
+@@ -292,6 +292,8 @@ static void kmem_cache_node_init(struct
+ #define STATS_INC_ALLOCMISS(x)	atomic_inc_unchecked(&(x)->allocmiss)
+ #define STATS_INC_FREEHIT(x)	atomic_inc_unchecked(&(x)->freehit)
+ #define STATS_INC_FREEMISS(x)	atomic_inc_unchecked(&(x)->freemiss)
++#define STATS_INC_SANITIZED(x)	atomic_inc_unchecked(&(x)->sanitized)
++#define STATS_INC_NOT_SANITIZED(x) atomic_inc_unchecked(&(x)->not_sanitized)
+ #else
+ #define	STATS_INC_ACTIVE(x)	do { } while (0)
+ #define	STATS_DEC_ACTIVE(x)	do { } while (0)
+@@ -305,6 +307,8 @@ static void kmem_cache_node_init(struct
+ #define STATS_INC_ALLOCMISS(x)	do { } while (0)
+ #define STATS_INC_FREEHIT(x)	do { } while (0)
+ #define STATS_INC_FREEMISS(x)	do { } while (0)
++#define STATS_INC_SANITIZED(x)	do { } while (0)
++#define STATS_INC_NOT_SANITIZED(x) do { } while (0)
+ #endif
+ 
+ #if DEBUG
+@@ -2052,6 +2056,8 @@ __kmem_cache_create (struct kmem_cache *
+ #endif
+ #endif
+ 
++	flags = pax_sanitize_slab_flags(flags);
++
+ 	/*
+ 	 * Check that size is in terms of words.  This is needed to avoid
+ 	 * unaligned accesses for some archs when redzoning is used, and makes
+@@ -3520,6 +3526,20 @@ void ___cache_free(struct kmem_cache *ca
+ 	struct array_cache *ac = cpu_cache_get(cachep);
+ 
+ 	check_irq_off();
++
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++	if (cachep->flags & (SLAB_POISON | SLAB_NO_SANITIZE))
++		STATS_INC_NOT_SANITIZED(cachep);
++	else {
++		memset(objp, PAX_MEMORY_SANITIZE_VALUE, cachep->object_size);
++
++		if (cachep->ctor)
++			cachep->ctor(objp);
++
++		STATS_INC_SANITIZED(cachep);
++	}
++#endif
++
+ 	kmemleak_free_recursive(objp, cachep->flags);
+ 	objp = cache_free_debugcheck(cachep, objp, caller);
+ 
+@@ -4197,6 +4218,14 @@ void slabinfo_show_stats(struct seq_file
+ 		seq_printf(m, " : cpustat %6lu %6lu %6lu %6lu",
+ 			   allochit, allocmiss, freehit, freemiss);
+ 	}
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++	{
++		unsigned long sanitized = atomic_read_unchecked(&cachep->sanitized);
++		unsigned long not_sanitized = atomic_read_unchecked(&cachep->not_sanitized);
++
++		seq_printf(m, " : pax %6lu %6lu", sanitized, not_sanitized);
++	}
++#endif
+ #endif
+ }
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/slab_common.c linux-4.9.24-pax/mm/slab_common.c
+--- linux-4.9.24/mm/slab_common.c	2017-03-28 01:15:32.550952528 +0200
++++ linux-4.9.24-pax/mm/slab_common.c	2017-03-28 01:42:30.354666558 +0200
+@@ -30,6 +30,30 @@
+ DEFINE_MUTEX(slab_mutex);
+ struct kmem_cache *kmem_cache;
+ 
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++enum pax_sanitize_mode pax_sanitize_slab __read_only = PAX_SANITIZE_SLAB_FAST;
++static int __init pax_sanitize_slab_setup(char *str)
++{
++	if (!str)
++		return 0;
++
++	if (!strcmp(str, "0") || !strcmp(str, "off")) {
++		pr_info("PaX slab sanitization: %s\n", "disabled");
++		pax_sanitize_slab = PAX_SANITIZE_SLAB_OFF;
++	} else if (!strcmp(str, "1") || !strcmp(str, "fast")) {
++		pr_info("PaX slab sanitization: %s\n", "fast");
++		pax_sanitize_slab = PAX_SANITIZE_SLAB_FAST;
++	} else if (!strcmp(str, "full")) {
++		pr_info("PaX slab sanitization: %s\n", "full");
++		pax_sanitize_slab = PAX_SANITIZE_SLAB_FULL;
++	} else
++		pr_err("PaX slab sanitization: unsupported option '%s'\n", str);
++
++	return 0;
++}
++early_param("pax_sanitize_slab", pax_sanitize_slab_setup);
++#endif
++
+ /*
+  * Set of flags that will prevent slab merging
+  */
+@@ -1125,6 +1219,9 @@ static void print_slabinfo_header(struct
+ #ifdef CONFIG_DEBUG_SLAB
+ 	seq_puts(m, " : globalstat <listallocs> <maxobjs> <grown> <reaped> <error> <maxfreeable> <nodeallocs> <remotefrees> <alienoverflow>");
+ 	seq_puts(m, " : cpustat <allochit> <allocmiss> <freehit> <freemiss>");
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++	seq_puts(m, " : pax <sanitized> <not_sanitized>");
++#endif
+ #endif
+ 	seq_putc(m, '\n');
+ }
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/linux/slab_def.h linux-4.9.24-pax/include/linux/slab_def.h
+--- linux-4.9.24/include/linux/slab_def.h	2016-10-03 11:28:31.081302375 +0200
++++ linux-4.9.24-pax/include/linux/slab_def.h	2017-01-01 22:57:17.889538611 +0100
+@@ -60,6 +60,10 @@ struct kmem_cache {
+ 	atomic_unchecked_t allocmiss;
+ 	atomic_unchecked_t freehit;
+ 	atomic_unchecked_t freemiss;
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++	atomic_unchecked_t sanitized;
++	atomic_unchecked_t not_sanitized;
++#endif
+ #ifdef CONFIG_DEBUG_SLAB_LEAK
+ 	atomic_t store_user_clean;
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/slab.h linux-4.9.24-pax/mm/slab.h
+--- linux-4.9.24/include/linux/slab.h	2017-03-28 01:15:32.550952528 +0200
++++ linux-4.9.24-pax/include/linux/slab.h	2017-03-28 01:42:30.354666558 +0200
+@@ -23,6 +24,13 @@
+ #define SLAB_CONSISTENCY_CHECKS	0x00000100UL	/* DEBUG: Perform (expensive) checks on alloc/free */
+ #define SLAB_RED_ZONE		0x00000400UL	/* DEBUG: Red zone objs in a cache */
+ #define SLAB_POISON		0x00000800UL	/* DEBUG: Poison objects */
++
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++#define SLAB_NO_SANITIZE	0x00001000UL	/* PaX: Do not sanitize objs on free */
++#else
++#define SLAB_NO_SANITIZE	0x00000000UL
++#endif
++
+ #define SLAB_HWCACHE_ALIGN	0x00002000UL	/* Align objs on cache lines */
+ #define SLAB_CACHE_DMA		0x00004000UL	/* Use GFP_DMA memory */
+ #define SLAB_STORE_USER		0x00010000UL	/* DEBUG: Store the last owner for bug hunting */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/slab.h linux-4.9.24-pax/mm/slab.h
+--- linux-4.9.24/mm/slab.h	2017-03-28 01:15:32.550952528 +0200
++++ linux-4.9.24-pax/mm/slab.h	2017-03-28 01:42:30.354666558 +0200
+@@ -71,6 +73,35 @@ extern struct list_head slab_caches;
+ /* The slab cache that manages slab cache information */
+ extern struct kmem_cache *kmem_cache;
+ 
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++#ifdef CONFIG_X86_64
++#define PAX_MEMORY_SANITIZE_VALUE	'\xfe'
++#else
++#define PAX_MEMORY_SANITIZE_VALUE	'\xff'
++#endif
++enum pax_sanitize_mode {
++	PAX_SANITIZE_SLAB_OFF = 0,
++	PAX_SANITIZE_SLAB_FAST,
++	PAX_SANITIZE_SLAB_FULL,
++};
++
++extern enum pax_sanitize_mode pax_sanitize_slab;
++
++static inline unsigned long pax_sanitize_slab_flags(unsigned long flags)
++{
++	if (pax_sanitize_slab == PAX_SANITIZE_SLAB_OFF || (flags & SLAB_DESTROY_BY_RCU))
++		flags |= SLAB_NO_SANITIZE;
++	else if (pax_sanitize_slab == PAX_SANITIZE_SLAB_FULL)
++		flags &= ~SLAB_NO_SANITIZE;
++	return flags;
++}
++#else
++static inline unsigned long pax_sanitize_slab_flags(unsigned long flags)
++{
++	return flags;
++}
++#endif
++
+ unsigned long calculate_alignment(unsigned long flags,
+ 		unsigned long align, unsigned long size);
+ 
+@@ -120,7 +154,7 @@ static inline unsigned long kmem_cache_f
+ 
+ /* Legal flag mask for kmem_cache_create(), for various configurations */
+ #define SLAB_CORE_FLAGS (SLAB_HWCACHE_ALIGN | SLAB_CACHE_DMA | SLAB_PANIC | \
+-			 SLAB_DESTROY_BY_RCU | SLAB_DEBUG_OBJECTS )
++			 SLAB_DESTROY_BY_RCU | SLAB_DEBUG_OBJECTS | SLAB_NO_SANITIZE)
+ 
+ #if defined(CONFIG_DEBUG_SLAB)
+ #define SLAB_DEBUG_FLAGS (SLAB_RED_ZONE | SLAB_POISON | SLAB_STORE_USER)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/slob.c linux-4.9.24-pax/mm/slob.c
+--- linux-4.9.24/mm/slob.c	2017-03-28 01:15:32.550952528 +0200
++++ linux-4.9.24-pax/mm/slob.c	2017-03-28 01:42:30.354666558 +0200
+@@ -365,6 +365,11 @@ static void slob_free(void *block, int s
+ 		return;
+ 	}
+ 
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++	if (pax_sanitize_slab && !(c && (c->flags & SLAB_NO_SANITIZE)))
++		memset(block, PAX_MEMORY_SANITIZE_VALUE, size);
++#endif
++
+ 	if (!slob_page_free(sp)) {
+ 		/* This slob page is about to become partially free. Easy! */
+ 		sp->units = units;
+@@ -610,6 +610,8 @@ void kfree(const void *block)
+ EXPORT_SYMBOL(ksize);
+ 
+ int __kmem_cache_create(struct kmem_cache *c, unsigned long flags)
+ {
++	flags = pax_sanitize_slab_flags(flags);
++
+ 	if (flags & SLAB_DESTROY_BY_RCU) {
+ 		/* leave room for rcu footer at the end of object */
+ 		c->size += sizeof(struct slob_rcu);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/slub.c linux-4.9.24-pax/mm/slub.c
+--- linux-4.9.24/mm/slub.c	2017-03-28 01:15:32.550952528 +0200
++++ linux-4.9.24-pax/mm/slub.c	2017-03-28 01:42:30.358673334 +0200
+@@ -2915,6 +2916,23 @@ static __always_inline void do_slab_free
+ 	void *tail_obj = tail ? : head;
+ 	struct kmem_cache_cpu *c;
+ 	unsigned long tid;
++
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++	if (!(s->flags & SLAB_NO_SANITIZE)) {
++		int offset = s->offset ? 0 : sizeof(void *);
++		void *x = head;
++
++		while (1) {
++			memset(x + offset, PAX_MEMORY_SANITIZE_VALUE, s->object_size - offset);
++			if (s->ctor)
++				s->ctor(x);
++			if (x == tail_obj)
++				break;
++			x = get_freepointer(s, x);
++		}
++	}
++#endif
++
+ redo:
+ 	/*
+ 	 * Determine the currently cpus per cpu slab.
+@@ -4197,6 +4242,8 @@ int __kmem_cache_create(struct kmem_cach
+ {
+ 	int err;
+ 
++	flags = pax_sanitize_slab_flags(flags);
++
+ 	err = kmem_cache_open(s, flags);
+ 	if (err)
+ 		return err;
+@@ -4980,6 +5027,14 @@ static ssize_t cache_dma_show(struct kme
+ SLAB_ATTR_RO(usercopy);
+ #endif
+ 
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++static ssize_t sanitize_show(struct kmem_cache *s, char *buf)
++{
++	return sprintf(buf, "%d\n", !(s->flags & SLAB_NO_SANITIZE));
++}
++SLAB_ATTR_RO(sanitize);
++#endif
++
+ static ssize_t destroy_by_rcu_show(struct kmem_cache *s, char *buf)
+ {
+ 	return sprintf(buf, "%d\n", !!(s->flags & SLAB_DESTROY_BY_RCU));
+@@ -5323,6 +5383,9 @@ static struct attribute *slab_attrs[] =
+ #ifdef CONFIG_PAX_USERCOPY
+ 	&usercopy_attr.attr,
+ #endif
++#ifdef CONFIG_PAX_MEMORY_SANITIZE
++	&sanitize_attr.attr,
++#endif
+ #ifdef CONFIG_NUMA
+ 	&remote_node_defrag_ratio_attr.attr,
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/kernel/fork.c linux-4.9.24-pax/kernel/fork.c
+--- linux-4.9.24/kernel/fork.c	2017-01-28 00:00:41.930940199 +0100
++++ linux-4.9.24-pax/kernel/fork.c	2017-01-28 00:00:55.290993969 +0100
+@@ -2089,7 +2089,7 @@ void __init proc_caches_init(void)
+ 			SLAB_HWCACHE_ALIGN|SLAB_PANIC|SLAB_NOTRACK|SLAB_ACCOUNT,
+ 			offsetof(struct mm_struct, saved_auxv), sizeof(init_mm.saved_auxv),
+ 			NULL);
+-	vm_area_cachep = KMEM_CACHE(vm_area_struct, SLAB_PANIC|SLAB_ACCOUNT);
++	vm_area_cachep = KMEM_CACHE(vm_area_struct, SLAB_PANIC|SLAB_ACCOUNT|SLAB_NO_SANITIZE);
+ 	mmap_init();
+ 	nsproxy_cache_init();
+ }
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/kernel/power/snapshot.c linux-4.9.24-pax/kernel/power/snapshot.c
+--- linux-4.9.24/kernel/power/snapshot.c	2016-12-13 12:12:04.735898590 +0100
++++ linux-4.9.24-pax/kernel/power/snapshot.c	2017-01-01 22:57:19.077541525 +0100
+@@ -1134,7 +1134,7 @@ void free_basic_memory_bitmaps(void)
+ 
+ void clear_free_pages(void)
+ {
+-#ifdef CONFIG_PAGE_POISONING_ZERO
++#if defined(CONFIG_PAX_MEMORY_SANITIZE) || defined(CONFIG_PAGE_POISONING_ZERO)
+ 	struct memory_bitmap *bm = free_pages_map;
+ 	unsigned long pfn;
+ 
+@@ -1151,7 +1151,7 @@ void clear_free_pages(void)
+ 	}
+ 	memory_bm_position_reset(bm);
+ 	pr_info("PM: free pages cleared after restore\n");
+-#endif /* PAGE_POISONING_ZERO */
++#endif /* CONFIG_PAX_MEMORY_SANITIZE || PAGE_POISONING_ZERO */
+ }
+ 
+ /**
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/rmap.c linux-4.9.24-pax/mm/rmap.c
+--- linux-4.9.24/mm/rmap.c	2017-04-19 22:08:36.722272824 +0200
++++ linux-4.9.24-pax/mm/rmap.c	2017-04-19 22:11:31.438403300 +0200
+@@ -429,10 +464,10 @@ static void anon_vma_ctor(void *data)
+ void __init anon_vma_init(void)
+ {
+ 	anon_vma_cachep = kmem_cache_create("anon_vma", sizeof(struct anon_vma),
+-			0, SLAB_DESTROY_BY_RCU|SLAB_PANIC|SLAB_ACCOUNT,
++			0, SLAB_DESTROY_BY_RCU|SLAB_PANIC|SLAB_ACCOUNT|SLAB_NO_SANITIZE,
+ 			anon_vma_ctor);
+ 	anon_vma_chain_cachep = KMEM_CACHE(anon_vma_chain,
+-			SLAB_PANIC|SLAB_ACCOUNT);
++			SLAB_PANIC|SLAB_ACCOUNT|SLAB_NO_SANITIZE);
+ }
+ 
+ /*
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/net/core/skbuff.c linux-4.9.24-pax/net/core/skbuff.c
+--- linux-4.9.24/net/core/skbuff.c	2017-03-28 01:15:32.571015506 +0200
++++ linux-4.9.24-pax/net/core/skbuff.c	2017-03-28 01:42:30.358673334 +0200
+@@ -3456,12 +3457,14 @@ void __init skb_init(void)
+ 	skbuff_head_cache = kmem_cache_create("skbuff_head_cache",
+ 					      sizeof(struct sk_buff),
+ 					      0,
+-					      SLAB_HWCACHE_ALIGN|SLAB_PANIC,
++					      SLAB_HWCACHE_ALIGN|SLAB_PANIC|
++					      SLAB_NO_SANITIZE,
+ 					      NULL);
+ 	skbuff_fclone_cache = kmem_cache_create("skbuff_fclone_cache",
+ 						sizeof(struct sk_buff_fclones),
+ 						0,
+-						SLAB_HWCACHE_ALIGN|SLAB_PANIC,
++						SLAB_HWCACHE_ALIGN|SLAB_PANIC|
++						SLAB_NO_SANITIZE,
+ 						NULL);
+ }
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/fs/buffer.c linux-4.9.24-pax/fs/buffer.c
+--- linux-4.9.24/fs/buffer.c	2016-12-13 12:11:55.423832214 +0100
++++ linux-4.9.24-pax/fs/buffer.c	2017-01-01 22:57:14.761530937 +0100
+@@ -3475,7 +3475,7 @@ void __init buffer_init(void)
+ 	bh_cachep = kmem_cache_create("buffer_head",
+ 			sizeof(struct buffer_head), 0,
+ 				(SLAB_RECLAIM_ACCOUNT|SLAB_PANIC|
+-				SLAB_MEM_SPREAD),
++				SLAB_MEM_SPREAD|SLAB_NO_SANITIZE),
+ 				NULL);
+ 
+ 	/*
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/fs/dcache.c linux-4.9.24-pax/fs/dcache.c
+--- linux-4.9.24/fs/dcache.c	2017-01-28 00:00:41.878939990 +0100
++++ linux-4.9.24-pax/fs/dcache.c	2017-01-28 00:00:55.250993808 +0100
+@@ -3610,8 +3612,9 @@ void __init vfs_caches_init_early(void)
+ 
+ void __init vfs_caches_init(void)
+ {
+-	names_cachep = kmem_cache_create("names_cache", PATH_MAX, 0,
+-			SLAB_HWCACHE_ALIGN|SLAB_PANIC, NULL);
++	names_cachep = kmem_cache_create_usercopy("names_cache", PATH_MAX, 0,
++			SLAB_HWCACHE_ALIGN|SLAB_PANIC| SLAB_NO_SANITIZE,
++			0, PATH_MAX, NULL);
+ 
+ 	dcache_init();
+ 	inode_init();

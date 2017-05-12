@@ -1,0 +1,35 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm64/Kconfig linux-4.9.24-pax/arch/arm64/Kconfig
+--- linux-4.9.24/arch/arm64/Kconfig	2017-03-28 01:15:31.989182909 +0200
++++ linux-4.9.24-pax/arch/arm64/Kconfig	2017-03-28 01:42:30.322612353 +0200
+@@ -906,6 +906,7 @@ config RELOCATABLE
+ 
+ config RANDOMIZE_BASE
+ 	bool "Randomize the address of the kernel image"
++	depends on BROKEN_SECURITY
+ 	select ARM64_MODULE_PLTS if MODULES
+ 	select RELOCATABLE
+ 	help
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/Kconfig linux-4.9.24-pax/arch/Kconfig
+--- linux-4.9.24/arch/Kconfig	2016-12-13 12:08:13.078283493 +0100
++++ linux-4.9.24-pax/arch/Kconfig	2017-01-22 03:21:49.181199069 +0100
+@@ -758,7 +759,7 @@ config HAVE_ARCH_VMAP_STACK
+ config VMAP_STACK
+ 	default y
+ 	bool "Use a virtually-mapped stack"
+-	depends on HAVE_ARCH_VMAP_STACK && !KASAN
++	depends on HAVE_ARCH_VMAP_STACK && !KASAN && BROKEN_SECURITY
+ 	---help---
+ 	  Enable this if you want the use virtually-mapped kernel stacks
+ 	  with guard pages.  This causes kernel stack overflows to be
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/Kconfig linux-4.9.24-pax/arch/mips/Kconfig
+--- linux-4.9.24/arch/mips/Kconfig	2017-04-19 22:09:36.642318022 +0200
++++ linux-4.9.24-pax/arch/mips/Kconfig	2017-04-19 22:12:02.838426364 +0200
+@@ -2596,7 +2597,7 @@ config RELOCATION_TABLE_SIZE
+ 
+ config RANDOMIZE_BASE
+ 	bool "Randomize the address of the kernel image"
+-	depends on RELOCATABLE
++	depends on RELOCATABLE && BROKEN_SECURITY
+ 	---help---
+ 	   Randomizes the physical and virtual address at which the
+ 	   kernel image is loaded, as a security feature that

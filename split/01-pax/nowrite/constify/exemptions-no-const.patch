@@ -1,0 +1,108 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/cacheflush.h linux-4.9.24-pax/arch/arm/include/asm/cacheflush.h
+--- linux-4.9.24/arch/arm/include/asm/cacheflush.h	2016-12-13 12:08:17.806315589 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/cacheflush.h	2017-01-01 22:57:10.521520529 +0100
+@@ -116,7 +116,7 @@ struct cpu_cache_fns {
+ 	void (*dma_unmap_area)(const void *, size_t, int);
+ 
+ 	void (*dma_flush_range)(const void *, const void *);
+-};
++} __no_const;
+ 
+ /*
+  * Select the calling method
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/cpuidle.h linux-4.9.24-pax/arch/arm/include/asm/cpuidle.h
+--- linux-4.9.24/arch/arm/include/asm/cpuidle.h	2016-07-25 02:13:12.117833345 +0200
++++ linux-4.9.24-pax/arch/arm/include/asm/cpuidle.h	2017-01-01 22:57:10.521520529 +0100
+@@ -32,7 +32,7 @@ struct device_node;
+ struct cpuidle_ops {
+ 	int (*suspend)(unsigned long arg);
+ 	int (*init)(struct device_node *, int cpu);
+-};
++} __no_const;
+ 
+ struct of_cpuidle_method {
+ 	const char *method;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/outercache.h linux-4.9.24-pax/arch/arm/include/asm/outercache.h
+--- linux-4.9.24/arch/arm/include/asm/outercache.h	2015-11-03 01:48:46.407326119 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/outercache.h	2017-01-01 22:57:10.525520539 +0100
+@@ -39,7 +39,7 @@ struct outer_cache_fns {
+ 	/* This is an ARM L2C thing */
+ 	void (*write_sec)(unsigned long, unsigned);
+ 	void (*configure)(const struct l2x0_regs *);
+-};
++} __no_const;
+ 
+ extern struct outer_cache_fns outer_cache;
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/page.h linux-4.9.24-pax/arch/arm/include/asm/page.h
+--- linux-4.9.24/arch/arm/include/asm/page.h	2015-03-18 15:21:50.168349252 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/page.h	2017-01-01 22:57:10.525520539 +0100
+@@ -23,6 +23,7 @@
+ 
+ #else
+ 
++#include <linux/compiler.h>
+ #include <asm/glue.h>
+ 
+ /*
+@@ -114,7 +115,7 @@ struct cpu_user_fns {
+ 	void (*cpu_clear_user_highpage)(struct page *page, unsigned long vaddr);
+ 	void (*cpu_copy_user_highpage)(struct page *to, struct page *from,
+ 			unsigned long vaddr, struct vm_area_struct *vma);
+-};
++} __no_const;
+ 
+ #ifdef MULTI_USER
+ extern struct cpu_user_fns cpu_user;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/smp.h linux-4.9.24-pax/arch/arm/include/asm/smp.h
+--- linux-4.9.24/arch/arm/include/asm/smp.h	2016-01-11 01:27:22.966841558 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/smp.h	2017-01-01 22:57:10.525520539 +0100
+@@ -108,7 +108,7 @@ struct smp_operations {
+ 	int  (*cpu_disable)(unsigned int cpu);
+ #endif
+ #endif
+-};
++} __no_const;
+ 
+ struct of_cpu_method {
+ 	const char *method;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-omap2/omap_hwmod.c linux-4.9.24-pax/arch/arm/mach-omap2/omap_hwmod.c
+--- linux-4.9.24/arch/arm/mach-omap2/omap_hwmod.c	2016-10-03 11:27:17.389364371 +0200
++++ linux-4.9.24-pax/arch/arm/mach-omap2/omap_hwmod.c	2017-01-22 17:39:53.179919168 +0100
+@@ -206,10 +206,10 @@ struct omap_hwmod_soc_ops {
+ 	void (*update_context_lost)(struct omap_hwmod *oh);
+ 	int (*get_context_lost)(struct omap_hwmod *oh);
+ 	int (*disable_direct_prcm)(struct omap_hwmod *oh);
+-};
++} __no_const;
+ 
+ /* soc_ops: adapts the omap_hwmod code to the currently-booted SoC */
+-static struct omap_hwmod_soc_ops soc_ops;
++static struct omap_hwmod_soc_ops soc_ops __read_only;
+ 
+ /* omap_hwmod_list contains all registered struct omap_hwmods */
+ static LIST_HEAD(omap_hwmod_list);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-omap2/omap-mpuss-lowpower.c linux-4.9.24-pax/arch/arm/mach-omap2/omap-mpuss-lowpower.c
+--- linux-4.9.24/arch/arm/mach-omap2/omap-mpuss-lowpower.c	2017-01-28 00:00:41.678939185 +0100
++++ linux-4.9.24-pax/arch/arm/mach-omap2/omap-mpuss-lowpower.c	2017-01-28 00:00:55.042992971 +0100
+@@ -89,7 +89,7 @@ struct cpu_pm_ops {
+ 	void (*resume)(void);
+ 	void (*scu_prepare)(unsigned int cpu_id, unsigned int cpu_state);
+ 	void (*hotplug_restart)(void);
+-};
++} __no_const;
+ 
+ static DEFINE_PER_CPU(struct omap4_cpu_pm_info, omap4_pm_info);
+ static struct powerdomain *mpuss_pd;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/include/asm/smp.h linux-4.9.24-pax/arch/powerpc/include/asm/smp.h
+--- linux-4.9.24/arch/powerpc/include/asm/smp.h	2016-10-03 11:27:24.594554803 +0200
++++ linux-4.9.24-pax/arch/powerpc/include/asm/smp.h	2017-01-01 22:57:10.577520667 +0100
+@@ -51,7 +51,7 @@ struct smp_ops_t {
+ 	int   (*cpu_disable)(void);
+ 	void  (*cpu_die)(unsigned int nr);
+ 	int   (*cpu_bootable)(unsigned int nr);
+-};
++} __no_const;
+ 
+ extern void smp_send_debugger_break(void);
+ extern void start_secondary_resume(void);

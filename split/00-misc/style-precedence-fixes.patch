@@ -1,0 +1,12 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/entry/common.c linux-4.9.24-pax/arch/x86/entry/common.c
+--- linux-4.9.24/arch/x86/entry/common.c	2016-12-13 12:08:26.262373095 +0100
++++ linux-4.9.24-pax/arch/x86/entry/common.c	2017-01-31 04:45:17.400082414 +0100
+@@ -229,7 +249,7 @@ static void syscall_slow_exit_work(struc
+ 	step = unlikely(
+ 		(cached_flags & (_TIF_SINGLESTEP | _TIF_SYSCALL_EMU))
+ 		== _TIF_SINGLESTEP);
+-	if (step || cached_flags & _TIF_SYSCALL_TRACE)
++	if (step || (cached_flags & _TIF_SYSCALL_TRACE))
+ 		tracehook_report_syscall_exit(regs, step);
+ }
+ 

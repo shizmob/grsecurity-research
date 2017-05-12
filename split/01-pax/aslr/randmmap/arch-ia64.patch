@@ -1,0 +1,17 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/ia64/kernel/sys_ia64.c linux-4.9.24-pax/arch/ia64/kernel/sys_ia64.c
+--- linux-4.9.24/arch/ia64/kernel/sys_ia64.c	2015-03-18 15:21:50.192349252 +0100
++++ linux-4.9.24-pax/arch/ia64/kernel/sys_ia64.c	2017-01-01 22:57:10.557520617 +0100
+@@ -43,6 +43,13 @@ arch_get_unmapped_area (struct file *fil
+ 	if (REGION_NUMBER(addr) == RGN_HPAGE)
+ 		addr = 0;
+ #endif
++
++#ifdef CONFIG_PAX_RANDMMAP
++	if (mm->pax_flags & MF_PAX_RANDMMAP)
++		addr = mm->free_area_cache;
++	else
++#endif
++
+ 	if (!addr)
+ 		addr = TASK_UNMAPPED_BASE;
+ 

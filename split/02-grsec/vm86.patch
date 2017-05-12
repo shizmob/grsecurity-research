@@ -1,0 +1,45 @@
+diff --git a/arch/x86/kernel/verify_cpu.S b/arch/x86/kernel/verify_cpu.S
+index 014ea59aa153..03cfe40e46e7 100644
+--- a/arch/x86/kernel/verify_cpu.S
++++ b/arch/x86/kernel/verify_cpu.S
+@@ -20,6 +20,7 @@
+  *	arch/x86/boot/compressed/head_64.S: Boot cpu verification
+  *	arch/x86/kernel/trampoline_64.S: secondary processor verification
+  *	arch/x86/kernel/head_32.S: processor startup
++ *	arch/x86/kernel/acpi/realmode/wakeup.S: 32bit processor resume
+  *
+  *	verify_cpu, returns the status of longmode and SSE in register %eax.
+  *		0: Success    1: Failure
+diff --git a/arch/x86/kernel/vm86_32.c b/arch/x86/kernel/vm86_32.c
+index c387f488e796..a304a4c76b11 100644
+--- a/arch/x86/kernel/vm86_32.c
++++ b/arch/x86/kernel/vm86_32.c
+@@ -261,6 +261,13 @@ static long do_sys_vm86(struct vm86plus_struct __user *user_vm86, bool plus)
+ 		return -EPERM;
+ 	}
+ 
++#ifdef CONFIG_GRKERNSEC_VM86
++	if (!capable(CAP_SYS_RAWIO)) {
++		gr_handle_vm86();
++		return -EPERM;
++	}
++#endif
++
+ 	if (!vm86) {
+ 		if (!(vm86 = kzalloc(sizeof(*vm86), GFP_KERNEL)))
+ 			return -ENOMEM;
+@@ -829,6 +836,14 @@ static inline int get_and_reset_irq(int irqnumber)
+ static int do_vm86_irq_handling(int subfunction, int irqnumber)
+ {
+ 	int ret;
++
++#ifdef CONFIG_GRKERNSEC_VM86
++	if (!capable(CAP_SYS_RAWIO)) {
++		gr_handle_vm86();
++		return -EPERM;
++	}
++#endif
++
+ 	switch (subfunction) {
+ 		case VM86_GET_AND_RESET_IRQ: {
+ 			return get_and_reset_irq(irqnumber);

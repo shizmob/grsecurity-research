@@ -1,0 +1,30 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/include/asm/page_64.h linux-4.9.24-pax/arch/powerpc/include/asm/page_64.h
+--- linux-4.9.24/arch/powerpc/include/asm/page_64.h	2016-07-25 02:13:17.486616180 +0200
++++ linux-4.9.24-pax/arch/powerpc/include/asm/page_64.h	2017-01-01 22:57:10.573520657 +0100
+@@ -169,8 +169,9 @@ do {						\
+  * stack by default, so in the absence of a PT_GNU_STACK program header
+  * we turn execute permission off.
+  */
+-#define VM_STACK_DEFAULT_FLAGS32	(VM_READ | VM_WRITE | VM_EXEC | \
+-					 VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC)
++#define VM_STACK_DEFAULT_FLAGS32 \
++	(((current->personality & READ_IMPLIES_EXEC) ? VM_EXEC : 0) | \
++	 VM_READ | VM_WRITE | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC)
+ 
+ #define VM_STACK_DEFAULT_FLAGS64	(VM_READ | VM_WRITE | \
+ 					 VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/include/asm/page.h linux-4.9.24-pax/arch/powerpc/include/asm/page.h
+--- linux-4.9.24/arch/powerpc/include/asm/page.h	2016-10-03 11:27:24.422388394 +0200
++++ linux-4.9.24-pax/arch/powerpc/include/asm/page.h	2017-01-01 22:57:10.573520657 +0100
+@@ -230,8 +230,9 @@ extern long long virt_phys_offset;
+  * and needs to be executable.  This means the whole heap ends
+  * up being executable.
+  */
+-#define VM_DATA_DEFAULT_FLAGS32	(VM_READ | VM_WRITE | VM_EXEC | \
+-				 VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC)
++#define VM_DATA_DEFAULT_FLAGS32 \
++	(((current->personality & READ_IMPLIES_EXEC) ? VM_EXEC : 0) | \
++	 VM_READ | VM_WRITE | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC)
+ 
+ #define VM_DATA_DEFAULT_FLAGS64	(VM_READ | VM_WRITE | \
+ 				 VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC)

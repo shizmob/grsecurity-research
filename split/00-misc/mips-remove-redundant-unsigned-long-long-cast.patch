@@ -1,0 +1,15 @@
+pgtable-32.h already includes the cast, and pgtable-64.h should use 64-bit ints already.
+The other uses seem to include literals that are shifted left, or the literal 0.
+
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/include/asm/page.h linux-4.9.24-pax/arch/mips/include/asm/page.h
+--- linux-4.9.24/arch/mips/include/asm/page.h	2016-10-03 11:27:22.668578254 +0200
++++ linux-4.9.24-pax/arch/mips/include/asm/page.h	2017-01-01 22:57:10.561520627 +0100
+@@ -118,7 +118,7 @@ extern void copy_user_highpage(struct pa
+   #ifdef CONFIG_CPU_MIPS32
+     typedef struct { unsigned long pte_low, pte_high; } pte_t;
+     #define pte_val(x)	  ((x).pte_low | ((unsigned long long)(x).pte_high << 32))
+-    #define __pte(x)	  ({ pte_t __pte = {(x), ((unsigned long long)(x)) >> 32}; __pte; })
++    #define __pte(x)	  ({ pte_t __pte = {(x), (x) >> 32}; __pte; })
+   #else
+      typedef struct { unsigned long long pte; } pte_t;
+      #define pte_val(x) ((x).pte)

@@ -1,0 +1,11 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/boot/compressed/pagetable.c linux-4.9.24-pax/arch/x86/boot/compressed/pagetable.c
+--- linux-4.9.24/arch/x86/boot/compressed/pagetable.c	2016-10-03 11:27:30.059081147 +0200
++++ linux-4.9.24-pax/arch/x86/boot/compressed/pagetable.c	2017-01-01 22:57:10.597520716 +0100
+@@ -14,6 +14,7 @@
+  */
+ #define __pa(x)  ((unsigned long)(x))
+ #define __va(x)  ((void *)((unsigned long)(x)))
++#undef CONFIG_PAX_KERNEXEC
+ 
+ #include "misc.h"
+ 

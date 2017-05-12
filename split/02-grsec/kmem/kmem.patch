@@ -1,0 +1,434 @@
+diff --git a/arch/arm/Kconfig b/arch/arm/Kconfig
+index cde2b4cbd9d9..0bb4d4fde306 100644
+--- a/arch/arm/Kconfig
++++ b/arch/arm/Kconfig
+@@ -2022,6 +2023,7 @@ config KEXEC
+ 	depends on (!SMP || PM_SLEEP_SMP)
+ 	depends on !CPU_V7M
+ 	select KEXEC_CORE
++	depends on !GRKERNSEC_KMEM
+ 	help
+ 	  kexec is a system call that implements the ability to shutdown your
+ 	  current kernel, and to start another kernel.  It is like a reboot
+diff --git a/arch/arm/Kconfig.debug b/arch/arm/Kconfig.debug
+index d83f7c369e51..a6aba4c83267 100644
+--- a/arch/arm/Kconfig.debug
++++ b/arch/arm/Kconfig.debug
+@@ -7,6 +7,7 @@ config ARM_PTDUMP
+ 	depends on DEBUG_KERNEL
+ 	depends on MMU
+ 	select DEBUG_FS
++	depends on !GRKERNSEC_KMEM
+ 	---help---
+ 	  Say Y here if you want to show the kernel pagetable layout in a
+ 	  debugfs file. This information is only useful for kernel developers
+diff --git a/arch/arm64/Kconfig.debug b/arch/arm64/Kconfig.debug
+index b661fe742615..6d124fc0785f 100644
+--- a/arch/arm64/Kconfig.debug
++++ b/arch/arm64/Kconfig.debug
+@@ -6,6 +6,7 @@ config ARM64_PTDUMP
+ 	bool "Export kernel pagetable layout to userspace via debugfs"
+ 	depends on DEBUG_KERNEL
+ 	select DEBUG_FS
++	depends on !GRKERNSEC_KMEM
+         help
+ 	  Say Y here if you want to show the kernel pagetable layout in a
+ 	  debugfs file. This information is only useful for kernel developers
+diff --git a/arch/blackfin/Kconfig.debug b/arch/blackfin/Kconfig.debug
+index f3337ee03621..15b6f8d7b6f5 100644
+--- a/arch/blackfin/Kconfig.debug
++++ b/arch/blackfin/Kconfig.debug
+@@ -18,6 +18,7 @@ config DEBUG_VERBOSE
+ config DEBUG_MMRS
+ 	tristate "Generate Blackfin MMR tree"
+ 	select DEBUG_FS
++	depends on !GRKERNSEC_KMEM
+ 	help
+ 	  Create a tree of Blackfin MMRs via the debugfs tree.  If
+ 	  you enable this, you will find all MMRs laid out in the
+diff --git a/arch/ia64/Kconfig b/arch/ia64/Kconfig
+index 18ca6a9ce566..77b0e0d0ba46 100644
+--- a/arch/ia64/Kconfig
++++ b/arch/ia64/Kconfig
+@@ -519,6 +519,7 @@ config KEXEC
+ 	bool "kexec system call"
+ 	depends on !IA64_HP_SIM && (!SMP || HOTPLUG_CPU)
+ 	select KEXEC_CORE
++	depends on !GRKERNSEC_KMEM
+ 	help
+ 	  kexec is a system call that implements the ability to shutdown your
+ 	  current kernel, and to start another kernel.  It is like a reboot
+diff --git a/arch/mips/Kconfig b/arch/mips/Kconfig
+index 348b46510c1d..93c4de688879 100644
+--- a/arch/mips/Kconfig
++++ b/arch/mips/Kconfig
+@@ -2813,6 +2813,7 @@ source "kernel/Kconfig.preempt"
+ config KEXEC
+ 	bool "Kexec system call"
+ 	select KEXEC_CORE
++	depends on !GRKERNSEC_KMEM
+ 	help
+ 	  kexec is a system call that implements the ability to shutdown your
+ 	  current kernel, and to start another kernel.  It is like a reboot
+diff --git a/arch/powerpc/Kconfig b/arch/powerpc/Kconfig
+index 6cef42e71a14..3cfec12d0344 100644
+--- a/arch/powerpc/Kconfig
++++ b/arch/powerpc/Kconfig
+@@ -442,6 +442,7 @@ config KEXEC
+ 	bool "kexec system call"
+ 	depends on (PPC_BOOK3S || FSL_BOOKE || (44x && !SMP)) || PPC_BOOK3E
+ 	select KEXEC_CORE
++	depends on !GRKERNSEC_KMEM
+ 	help
+ 	  kexec is a system call that implements the ability to shutdown your
+ 	  current kernel, and to start another kernel.  It is like a reboot
+diff --git a/arch/s390/Kconfig.debug b/arch/s390/Kconfig.debug
+index 26c5d5beb4be..a308c28f4e8f 100644
+--- a/arch/s390/Kconfig.debug
++++ b/arch/s390/Kconfig.debug
+@@ -9,6 +9,7 @@ config S390_PTDUMP
+ 	bool "Export kernel pagetable layout to userspace via debugfs"
+ 	depends on DEBUG_KERNEL
+ 	select DEBUG_FS
++	depends on !GRKERNSEC_KMEM
+ 	---help---
+ 	  Say Y here if you want to show the kernel pagetable layout in a
+ 	  debugfs file. This information is only useful for kernel developers
+diff --git a/arch/tile/Kconfig b/arch/tile/Kconfig
+index 4583c0320059..5e074bb8a93c 100644
+--- a/arch/tile/Kconfig
++++ b/arch/tile/Kconfig
+@@ -192,6 +192,7 @@ source "kernel/Kconfig.hz"
+ config KEXEC
+ 	bool "kexec system call"
+ 	select KEXEC_CORE
++	depends on !GRKERNSEC_KMEM
+ 	---help---
+ 	  kexec is a system call that implements the ability to shutdown your
+ 	  current kernel, and to start another kernel.  It is like a reboot
+diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
+index 6fd9109002c6..1775eac0acb1 100644
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -1808,6 +1812,7 @@ source kernel/Kconfig.hz
+ config KEXEC
+ 	bool "kexec system call"
+ 	select KEXEC_CORE
++	depends on !GRKERNSEC_KMEM
+ 	---help---
+ 	  kexec is a system call that implements the ability to shutdown your
+ 	  current kernel, and to start another kernel.  It is like a reboot
+diff --git a/arch/x86/Kconfig.debug b/arch/x86/Kconfig.debug
+index 3e2dd82efb5a..1a5c1ab1d57e 100644
+--- a/arch/x86/Kconfig.debug
++++ b/arch/x86/Kconfig.debug
+@@ -55,6 +55,7 @@ config X86_PTDUMP
+ 	tristate "Export kernel pagetable layout to userspace via debugfs"
+ 	depends on DEBUG_KERNEL
+ 	select DEBUG_FS
++	depends on !GRKERNSEC_KMEM
+ 	select X86_PTDUMP_CORE
+ 	---help---
+ 	  Say Y here if you want to show the kernel pagetable layout in a
+@@ -354,6 +355,7 @@ config X86_DEBUG_FPU
+ config PUNIT_ATOM_DEBUG
+ 	tristate "ATOM Punit debug driver"
+ 	select DEBUG_FS
++	depends on !GRKERNSEC_KMEM
+ 	select IOSF_MBI
+ 	---help---
+ 	  This is a debug driver, which gets the power states
+diff --git a/arch/x86/kernel/msr.c b/arch/x86/kernel/msr.c
+index 9f7feab914fa..e53578342ccf 100644
+--- a/arch/x86/kernel/msr.c
++++ b/arch/x86/kernel/msr.c
+@@ -39,6 +39,7 @@
+ #include <linux/notifier.h>
+ #include <linux/uaccess.h>
+ #include <linux/gfp.h>
++#include <linux/grsecurity.h>
+ 
+ #include <asm/cpufeature.h>
+ #include <asm/msr.h>
+@@ -83,6 +84,13 @@ static ssize_t msr_write(struct file *file, const char __user *buf,
+ 	int err = 0;
+ 	ssize_t bytes = 0;
+ 
++#ifdef CONFIG_GRKERNSEC_KMEM
++	if (reg != MSR_IA32_ENERGY_PERF_BIAS) {
++		gr_handle_msr_write();
++		return -EPERM;
++	}
++#endif
++
+ 	if (count % 8)
+ 		return -EINVAL;	/* Invalid chunk size */
+ 
+@@ -130,6 +138,10 @@ static long msr_ioctl(struct file *file, unsigned int ioc, unsigned long arg)
+ 			err = -EBADF;
+ 			break;
+ 		}
++#ifdef CONFIG_GRKERNSEC_KMEM
++		gr_handle_msr_write();
++		return -EPERM;
++#endif
+ 		if (copy_from_user(&regs, uregs, sizeof regs)) {
+ 			err = -EFAULT;
+ 			break;
+diff --git a/arch/x86/mm/init.c b/arch/x86/mm/init.c
+index 294d3da613fc..0e558668c487 100644
+--- a/arch/x86/mm/init.c
++++ b/arch/x86/mm/init.c
+@@ -4,6 +4,7 @@
+ #include <linux/swap.h>
+ #include <linux/memblock.h>
+ #include <linux/bootmem.h>	/* for max_low_pfn */
++#include <linux/tboot.h>
+ 
+ #include <asm/cacheflush.h>
+ #include <asm/e820.h>
+@@ -18,6 +19,7 @@
+ #include <asm/dma.h>		/* for MAX_DMA_PFN */
+ #include <asm/microcode.h>
+ #include <asm/kaslr.h>
++#include <asm/bios_ebda.h>
+ 
+ /*
+  * We need to define the tracepoints somewhere, and tlb.c
+@@ -662,8 +664,30 @@ void __init init_mem_mapping(void)
+  * Access has to be given to non-kernel-ram areas as well, these contain the
+  * PCI mmio resources as well as potential bios/acpi data regions.
+  */
++
++#ifdef CONFIG_GRKERNSEC_KMEM
++static unsigned int ebda_start __read_only;
++static unsigned int ebda_end __read_only;
++#endif
++
+ int devmem_is_allowed(unsigned long pagenr)
+ {
++#ifdef CONFIG_GRKERNSEC_KMEM
++	/* allow BDA */
++	if (!pagenr)
++		return 1;
++	/* allow EBDA */
++	if (pagenr >= ebda_start && pagenr < ebda_end)
++		return 1;
++	/* if tboot is in use, allow access to its hardcoded serial log range */
++	if (tboot_enabled() && ((0x60000 >> PAGE_SHIFT) <= pagenr) && (pagenr < (0x68000 >> PAGE_SHIFT)))
++		return 1;
++	if ((ISA_START_ADDRESS >> PAGE_SHIFT) <= pagenr && pagenr < (ISA_END_ADDRESS >> PAGE_SHIFT))
++		return 1;
++	/* throw out everything else below 1MB */
++	if (pagenr <= 256)
++		return 0;
++#else
+ 	if (!pagenr)
+ 		return 1;
+ #ifdef CONFIG_VM86
+@@ -672,6 +696,7 @@ int devmem_is_allowed(unsigned long pagenr)
+ #endif
+ 	if ((ISA_START_ADDRESS >> PAGE_SHIFT) <= pagenr && pagenr < (ISA_END_ADDRESS >> PAGE_SHIFT))
+ 		return 1;
++#endif
+ 
+ 	if (page_is_ram(pagenr)) {
+ 		/*
+@@ -738,8 +763,33 @@ void free_init_pages(char *what, unsigned long begin, unsigned long end)
+ 	}
+ }
+ 
++#ifdef CONFIG_GRKERNSEC_KMEM
++static inline void gr_init_ebda(void)
++{
++	unsigned int ebda_addr;
++	unsigned int ebda_size = 0;
++
++	ebda_addr = get_bios_ebda();
++	if (ebda_addr) {
++		ebda_size = *(unsigned char *)phys_to_virt(ebda_addr);
++		ebda_size <<= 10;
++	}
++	if (ebda_addr && ebda_size) {
++		ebda_start = ebda_addr >> PAGE_SHIFT;
++		ebda_end = min((unsigned int)PAGE_ALIGN(ebda_addr + ebda_size), (unsigned int)0xa0000) >> PAGE_SHIFT;
++	} else {
++		ebda_start = 0x9f000 >> PAGE_SHIFT;
++		ebda_end = 0xa0000 >> PAGE_SHIFT;
++	}
++}
++#else
++static inline void gr_init_ebda(void) { }
++#endif
++
+ void __ref free_initmem(void)
+ {
++	gr_init_ebda();
++
+ 	e820_reallocate_tables();
+ 
+ 	free_init_pages("unused kernel",
+diff --git a/drivers/acpi/custom_method.c b/drivers/acpi/custom_method.c
+index c68e72414a67..e86300825f41 100644
+--- a/drivers/acpi/custom_method.c
++++ b/drivers/acpi/custom_method.c
+@@ -29,6 +29,10 @@ static ssize_t cm_write(struct file *file, const char __user * user_buf,
+ 	struct acpi_table_header table;
+ 	acpi_status status;
+ 
++#ifdef CONFIG_GRKERNSEC_KMEM
++	return -EPERM;
++#endif
++
+ 	if (!(*ppos)) {
+ 		/* parse the table header to get the table length */
+ 		if (count <= sizeof(struct acpi_table_header))
+diff --git a/drivers/char/Kconfig b/drivers/char/Kconfig
+index 8453a49471d7..aaea2ac0b82a 100644
+--- a/drivers/char/Kconfig
++++ b/drivers/char/Kconfig
+@@ -17,7 +17,8 @@ config DEVMEM
+ 
+ config DEVKMEM
+ 	bool "/dev/kmem virtual device support"
+-	default y
++	default n
++	depends on !GRKERNSEC_KMEM
+ 	help
+ 	  Say Y here if you want to support the /dev/kmem device. The
+ 	  /dev/kmem device is rarely used, but can be used for certain
+@@ -573,6 +574,7 @@ config TELCLOCK
+ config DEVPORT
+ 	bool "/dev/port character device"
+ 	depends on ISA || PCI
++	depends on !GRKERNSEC_KMEM
+ 	default y
+ 	help
+ 	  Say Y here if you want to support the /dev/port device. The /dev/port
+diff --git a/drivers/char/mem.c b/drivers/char/mem.c
+index b87301eaddbb..dbd8a278ef52 100644
+--- a/drivers/char/mem.c
++++ b/drivers/char/mem.c
+@@ -18,6 +18,7 @@
+ #include <linux/raw.h>
+ #include <linux/tty.h>
+ #include <linux/capability.h>
++#include <linux/security.h>
+ #include <linux/ptrace.h>
+ #include <linux/device.h>
+ #include <linux/highmem.h>
+@@ -71,13 +76,22 @@ static inline int range_is_allowed(unsigned long pfn, unsigned long size)
+ 	u64 cursor = from;
+ 
+ 	while (cursor < to) {
+-		if (!devmem_is_allowed(pfn))
++		if (!devmem_is_allowed(pfn)) {
++#ifdef CONFIG_GRKERNSEC_KMEM
++			gr_handle_mem_readwrite(from, to);
++#endif
+ 			return 0;
++		}
+ 		cursor += PAGE_SIZE;
+ 		pfn++;
+ 	}
+ 	return 1;
+ }
++#elif defined(CONFIG_GRKERNSEC_KMEM)
++static inline int range_is_allowed(unsigned long pfn, unsigned long size)
++{
++	return 0;
++}
+ #else
+ static inline int page_is_allowed(unsigned long pfn)
+ {
+diff --git a/drivers/md/bcache/Kconfig b/drivers/md/bcache/Kconfig
+index 4d200883c505..de60cb294e6d 100644
+--- a/drivers/md/bcache/Kconfig
++++ b/drivers/md/bcache/Kconfig
+@@ -20,6 +20,7 @@ config BCACHE_CLOSURES_DEBUG
+ 	bool "Debug closures"
+ 	depends on BCACHE
+ 	select DEBUG_FS
++	depends on !GRKERNSEC_KMEM
+ 	---help---
+ 	Keeps all active closures in a linked list and provides a debugfs
+ 	interface to list them, which makes it possible to see asynchronous
+diff --git a/drivers/media/platform/sti/c8sectpfe/Kconfig b/drivers/media/platform/sti/c8sectpfe/Kconfig
+index 7420a50572d3..e6f31a0972ad 100644
+--- a/drivers/media/platform/sti/c8sectpfe/Kconfig
++++ b/drivers/media/platform/sti/c8sectpfe/Kconfig
+@@ -4,6 +4,7 @@ config DVB_C8SECTPFE
+ 	depends on ARCH_STI || ARCH_MULTIPLATFORM || COMPILE_TEST
+ 	select FW_LOADER
+ 	select DEBUG_FS
++	depends on !GRKERNSEC_KMEM
+ 	select DVB_LNBP21 if MEDIA_SUBDRV_AUTOSELECT
+ 	select DVB_STV090x if MEDIA_SUBDRV_AUTOSELECT
+ 	select DVB_STB6100 if MEDIA_SUBDRV_AUTOSELECT
+diff --git a/drivers/platform/x86/asus-wmi.c b/drivers/platform/x86/asus-wmi.c
+index 8499d3ae4257..5e2f9e4afbf5 100644
+--- a/drivers/platform/x86/asus-wmi.c
++++ b/drivers/platform/x86/asus-wmi.c
+@@ -1900,6 +1900,10 @@ static int show_dsts(struct seq_file *m, void *data)
+ 	int err;
+ 	u32 retval = -1;
+ 
++#ifdef CONFIG_GRKERNSEC_KMEM
++	return -EPERM;
++#endif
++
+ 	err = asus_wmi_get_devstate(asus, asus->debug.dev_id, &retval);
+ 
+ 	if (err < 0)
+@@ -1916,6 +1920,10 @@ static int show_devs(struct seq_file *m, void *data)
+ 	int err;
+ 	u32 retval = -1;
+ 
++#ifdef CONFIG_GRKERNSEC_KMEM
++	return -EPERM;
++#endif
++
+ 	err = asus_wmi_set_devstate(asus->debug.dev_id, asus->debug.ctrl_param,
+ 				    &retval);
+ 
+@@ -1940,6 +1948,10 @@ static int show_call(struct seq_file *m, void *data)
+ 	union acpi_object *obj;
+ 	acpi_status status;
+ 
++#ifdef CONFIG_GRKERNSEC_KMEM
++	return -EPERM;
++#endif
++
+ 	status = wmi_evaluate_method(ASUS_WMI_MGMT_GUID,
+ 				     1, asus->debug.method_id,
+ 				     &input, &output);
+diff --git a/fs/debugfs/inode.c b/fs/debugfs/inode.c
+index 1e30f74a9527..8925fad38561 100644
+--- a/fs/debugfs/inode.c
++++ b/fs/debugfs/inode.c
+@@ -253,6 +253,10 @@ static struct dentry *start_creating(const char *name, struct dentry *parent)
+ 	struct dentry *dentry;
+ 	int error;
+ 
++#ifdef CONFIG_GRKERNSEC_KMEM
++	return ERR_PTR(-ENODEV);
++#endif
++
+ 	pr_debug("debugfs: creating file '%s'\n",name);
+ 
+ 	if (IS_ERR(parent))
+diff --git a/fs/debugfs/inode.c b/fs/debugfs/inode.c
+index 1e30f74a9527..8925fad38561 100644
+--- a/fs/debugfs/inode.c
++++ b/fs/debugfs/inode.c
+@@ -782,6 +795,10 @@ static int __init debugfs_init(void)
+ {
+ 	int retval;
+ 
++#ifdef CONFIG_GRKERNSEC_KMEM
++	return -ENOSYS;
++#endif
++
+ 	retval = sysfs_create_mount_point(kernel_kobj, "debug");
+ 	if (retval)
+ 		return retval;

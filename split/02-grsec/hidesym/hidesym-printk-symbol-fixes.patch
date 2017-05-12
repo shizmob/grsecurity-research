@@ -1,0 +1,289 @@
+diff --git a/arch/arm/kernel/process.c b/arch/arm/kernel/process.c
+index 9688ec0c6ef4..dd072c025e66 100644
+--- a/arch/arm/kernel/process.c
++++ b/arch/arm/kernel/process.c
+@@ -118,8 +118,8 @@
+ 
+ 	show_regs_print_info(KERN_DEFAULT);
+ 
+-	print_symbol("PC is at %s\n", instruction_pointer(regs));
+-	print_symbol("LR is at %s\n", regs->ARM_lr);
++	printk("PC is at %pA\n", (void *)instruction_pointer(regs));
++	printk("LR is at %pA\n", (void *)regs->ARM_lr);
+ 	printk("pc : [<%08lx>]    lr : [<%08lx>]    psr: %08lx\n"
+ 	       "sp : %08lx  ip : %08lx  fp : %08lx\n",
+ 		regs->ARM_pc, regs->ARM_lr, regs->ARM_cpsr,
+diff --git a/arch/arm/kernel/traps.c b/arch/arm/kernel/traps.c
+index 9688ec0c6ef4..dd072c025e66 100644
+--- a/arch/arm/kernel/traps.c
++++ b/arch/arm/kernel/traps.c
+@@ -65,7 +65,7 @@ static void dump_mem(const char *, const char *, unsigned long, unsigned long);
+ void dump_backtrace_entry(unsigned long where, unsigned long from, unsigned long frame)
+ {
+ #ifdef CONFIG_KALLSYMS
+-	printk("[<%08lx>] (%ps) from [<%08lx>] (%pS)\n", where, (void *)where, from, (void *)from);
++	printk("[<%08lx>] (%pA) from [<%08lx>] (%pA)\n", where, (void *)where, from, (void *)from);
+ #else
+ 	printk("Function entered at [<%08lx>] from [<%08lx>]\n", where, from);
+ #endif
+diff --git a/arch/powerpc/kernel/process.c b/arch/powerpc/kernel/process.c
+index 55781636c0c8..2514bbcbaeb7 100644
+--- a/arch/powerpc/kernel/process.c
++++ b/arch/powerpc/kernel/process.c
+@@ -1375,8 +1375,8 @@ void show_regs(struct pt_regs * regs)
+ 	 * Lookup NIP late so we have the best change of getting the
+ 	 * above info out without failing
+ 	 */
+-	printk("NIP ["REG"] %pS\n", regs->nip, (void *)regs->nip);
+-	printk("LR ["REG"] %pS\n", regs->link, (void *)regs->link);
++	printk("NIP ["REG"] %pA\n", regs->nip, (void *)regs->nip);
++	printk("LR ["REG"] %pA\n", regs->link, (void *)regs->link);
+ #endif
+ 	show_stack(current, (unsigned long *) regs->gpr[1]);
+ 	if (!user_mode(regs))
+@@ -1897,10 +1897,10 @@ void show_stack(struct task_struct *tsk, unsigned long *stack)
+ 		newsp = stack[0];
+ 		ip = stack[STACK_FRAME_LR_SAVE];
+ 		if (!firstframe || ip != lr) {
+-			printk("["REG"] ["REG"] %pS", sp, ip, (void *)ip);
++			printk("["REG"] ["REG"] %pA", sp, ip, (void *)ip);
+ #ifdef CONFIG_FUNCTION_GRAPH_TRACER
+ 			if ((ip == rth) && curr_frame >= 0) {
+-				pr_cont(" (%pS)",
++				pr_cont(" (%pA)",
+ 				       (void *)current->ret_stack[curr_frame].ret);
+ 				curr_frame--;
+ 			}
+@@ -1920,7 +1920,7 @@ void show_stack(struct task_struct *tsk, unsigned long *stack)
+ 			struct pt_regs *regs = (struct pt_regs *)
+ 				(sp + STACK_FRAME_OVERHEAD);
+ 			lr = regs->link;
+-			printk("--- interrupt: %lx at %pS\n    LR = %pS\n",
++			printk("--- interrupt: %lx at %pA\n    LR = %pA\n",
+ 			       regs->trap, (void *)regs->nip, (void *)lr);
+ 			firstframe = 1;
+ 		}
+diff --git a/arch/sparc/kernel/process_32.c b/arch/sparc/kernel/process_32.c
+index b7780a5bef11..28315f023dad 100644
+--- a/arch/sparc/kernel/process_32.c
++++ b/arch/sparc/kernel/process_32.c
+@@ -123,14 +123,14 @@ void show_regs(struct pt_regs *r)
+ 
+         printk("PSR: %08lx PC: %08lx NPC: %08lx Y: %08lx    %s\n",
+ 	       r->psr, r->pc, r->npc, r->y, print_tainted());
+-	printk("PC: <%pS>\n", (void *) r->pc);
++	printk("PC: <%pA>\n", (void *) r->pc);
+ 	printk("%%G: %08lx %08lx  %08lx %08lx  %08lx %08lx  %08lx %08lx\n",
+ 	       r->u_regs[0], r->u_regs[1], r->u_regs[2], r->u_regs[3],
+ 	       r->u_regs[4], r->u_regs[5], r->u_regs[6], r->u_regs[7]);
+ 	printk("%%O: %08lx %08lx  %08lx %08lx  %08lx %08lx  %08lx %08lx\n",
+ 	       r->u_regs[8], r->u_regs[9], r->u_regs[10], r->u_regs[11],
+ 	       r->u_regs[12], r->u_regs[13], r->u_regs[14], r->u_regs[15]);
+-	printk("RPC: <%pS>\n", (void *) r->u_regs[15]);
++	printk("RPC: <%pA>\n", (void *) r->u_regs[15]);
+ 
+ 	printk("%%L: %08lx %08lx  %08lx %08lx  %08lx %08lx  %08lx %08lx\n",
+ 	       rw->locals[0], rw->locals[1], rw->locals[2], rw->locals[3],
+@@ -167,7 +167,7 @@ void show_stack(struct task_struct *tsk, unsigned long *_ksp)
+ 		rw = (struct reg_window32 *) fp;
+ 		pc = rw->ins[7];
+ 		printk("[%08lx : ", pc);
+-		printk("%pS ] ", (void *) pc);
++		printk("%pA ] ", (void *) pc);
+ 		fp = rw->ins[6];
+ 	} while (++count < 16);
+ 	printk("\n");
+diff --git a/arch/sparc/kernel/process_64.c b/arch/sparc/kernel/process_64.c
+index 47ff5588e521..2333c8a4cbb5 100644
+--- a/arch/sparc/kernel/process_64.c
++++ b/arch/sparc/kernel/process_64.c
+@@ -161,7 +161,7 @@ static void show_regwindow(struct pt_regs *regs)
+ 	printk("i4: %016lx i5: %016lx i6: %016lx i7: %016lx\n",
+ 	       rwk->ins[4], rwk->ins[5], rwk->ins[6], rwk->ins[7]);
+ 	if (regs->tstate & TSTATE_PRIV)
+-		printk("I7: <%pS>\n", (void *) rwk->ins[7]);
++		printk("I7: <%pA>\n", (void *) rwk->ins[7]);
+ }
+ 
+ void show_regs(struct pt_regs *regs)
+@@ -170,7 +170,7 @@ void show_regs(struct pt_regs *regs)
+ 
+ 	printk("TSTATE: %016lx TPC: %016lx TNPC: %016lx Y: %08x    %s\n", regs->tstate,
+ 	       regs->tpc, regs->tnpc, regs->y, print_tainted());
+-	printk("TPC: <%pS>\n", (void *) regs->tpc);
++	printk("TPC: <%pA>\n", (void *) regs->tpc);
+ 	printk("g0: %016lx g1: %016lx g2: %016lx g3: %016lx\n",
+ 	       regs->u_regs[0], regs->u_regs[1], regs->u_regs[2],
+ 	       regs->u_regs[3]);
+@@ -183,7 +183,7 @@ void show_regs(struct pt_regs *regs)
+ 	printk("o4: %016lx o5: %016lx sp: %016lx ret_pc: %016lx\n",
+ 	       regs->u_regs[12], regs->u_regs[13], regs->u_regs[14],
+ 	       regs->u_regs[15]);
+-	printk("RPC: <%pS>\n", (void *) regs->u_regs[15]);
++	printk("RPC: <%pA>\n", (void *) regs->u_regs[15]);
+ 	show_regwindow(regs);
+ 	show_stack(current, (unsigned long *) regs->u_regs[UREG_FP]);
+ }
+@@ -278,7 +278,7 @@ void arch_trigger_cpumask_backtrace(const cpumask_t *mask, bool exclude_self)
+ 		       ((tp && tp->task) ? tp->task->pid : -1));
+ 
+ 		if (gp->tstate & TSTATE_PRIV) {
+-			printk("             TPC[%pS] O7[%pS] I7[%pS] RPC[%pS]\n",
++			printk("             TPC[%pA] O7[%pA] I7[%pA] RPC[%pA]\n",
+ 			       (void *) gp->tpc,
+ 			       (void *) gp->o7,
+ 			       (void *) gp->i7,
+diff --git a/arch/sparc/kernel/traps_32.c b/arch/sparc/kernel/traps_32.c
+index 4f21df7d4f13..0a374da5c397 100644
+--- a/arch/sparc/kernel/traps_32.c
++++ b/arch/sparc/kernel/traps_32.c
+@@ -76,7 +76,7 @@ void __noreturn die_if_kernel(char *str, struct pt_regs *regs)
+ 		      count++ < 30				&&
+                       (((unsigned long) rw) >= PAGE_OFFSET)	&&
+ 		      !(((unsigned long) rw) & 0x7)) {
+-			printk("Caller[%08lx]: %pS\n", rw->ins[7],
++			printk("Caller[%08lx]: %pA\n", rw->ins[7],
+ 			       (void *) rw->ins[7]);
+ 			rw = (struct reg_window32 *)rw->ins[6];
+ 		}
+diff --git a/arch/sparc/kernel/traps_64.c b/arch/sparc/kernel/traps_64.c
+index 7468c69e0e74..4a360da347af 100644
+--- a/arch/sparc/kernel/traps_64.c
++++ b/arch/sparc/kernel/traps_64.c
+@@ -79,7 +79,7 @@ static void dump_tl1_traplog(struct tl1_traplog *p)
+ 		       i + 1,
+ 		       p->trapstack[i].tstate, p->trapstack[i].tpc,
+ 		       p->trapstack[i].tnpc, p->trapstack[i].tt);
+-		printk("TRAPLOG: TPC<%pS>\n", (void *) p->trapstack[i].tpc);
++		printk("TRAPLOG: TPC<%pA>\n", (void *) p->trapstack[i].tpc);
+ 	}
+ }
+ 
+@@ -1162,7 +1162,7 @@ static void cheetah_log_errors(struct pt_regs *regs, struct cheetah_err_info *in
+ 	       regs->tpc, regs->tnpc, regs->u_regs[UREG_I7], regs->tstate);
+ 	printk("%s" "ERROR(%d): ",
+ 	       (recoverable ? KERN_WARNING : KERN_CRIT), smp_processor_id());
+-	printk("TPC<%pS>\n", (void *) regs->tpc);
++	printk("TPC<%pA>\n", (void *) regs->tpc);
+ 	printk("%s" "ERROR(%d): M_SYND(%lx),  E_SYND(%lx)%s%s\n",
+ 	       (recoverable ? KERN_WARNING : KERN_CRIT), smp_processor_id(),
+ 	       (afsr & CHAFSR_M_SYNDROME) >> CHAFSR_M_SYNDROME_SHIFT,
+@@ -1769,7 +1769,7 @@ void cheetah_plus_parity_error(int type, struct pt_regs *regs)
+ 		       smp_processor_id(),
+ 		       (type & 0x1) ? 'I' : 'D',
+ 		       regs->tpc);
+-		printk(KERN_EMERG "TPC<%pS>\n", (void *) regs->tpc);
++		printk(KERN_EMERG "TPC<%pA>\n", (void *) regs->tpc);
+ 		panic("Irrecoverable Cheetah+ parity error.");
+ 	}
+ 
+@@ -1777,7 +1777,7 @@ void cheetah_plus_parity_error(int type, struct pt_regs *regs)
+ 	       smp_processor_id(),
+ 	       (type & 0x1) ? 'I' : 'D',
+ 	       regs->tpc);
+-	printk(KERN_WARNING "TPC<%pS>\n", (void *) regs->tpc);
++	printk(KERN_WARNING "TPC<%pA>\n", (void *) regs->tpc);
+ }
+ 
+ struct sun4v_error_entry {
+@@ -2131,9 +2131,9 @@ void sun4v_itlb_error_report(struct pt_regs *regs, int tl)
+ 
+ 	printk(KERN_EMERG "SUN4V-ITLB: Error at TPC[%lx], tl %d\n",
+ 	       regs->tpc, tl);
+-	printk(KERN_EMERG "SUN4V-ITLB: TPC<%pS>\n", (void *) regs->tpc);
++	printk(KERN_EMERG "SUN4V-ITLB: TPC<%pA>\n", (void *) regs->tpc);
+ 	printk(KERN_EMERG "SUN4V-ITLB: O7[%lx]\n", regs->u_regs[UREG_I7]);
+-	printk(KERN_EMERG "SUN4V-ITLB: O7<%pS>\n",
++	printk(KERN_EMERG "SUN4V-ITLB: O7<%pA>\n",
+ 	       (void *) regs->u_regs[UREG_I7]);
+ 	printk(KERN_EMERG "SUN4V-ITLB: vaddr[%lx] ctx[%lx] "
+ 	       "pte[%lx] error[%lx]\n",
+@@ -2154,9 +2154,9 @@ void sun4v_dtlb_error_report(struct pt_regs *regs, int tl)
+ 
+ 	printk(KERN_EMERG "SUN4V-DTLB: Error at TPC[%lx], tl %d\n",
+ 	       regs->tpc, tl);
+-	printk(KERN_EMERG "SUN4V-DTLB: TPC<%pS>\n", (void *) regs->tpc);
++	printk(KERN_EMERG "SUN4V-DTLB: TPC<%pA>\n", (void *) regs->tpc);
+ 	printk(KERN_EMERG "SUN4V-DTLB: O7[%lx]\n", regs->u_regs[UREG_I7]);
+-	printk(KERN_EMERG "SUN4V-DTLB: O7<%pS>\n",
++	printk(KERN_EMERG "SUN4V-DTLB: O7<%pA>\n",
+ 	       (void *) regs->u_regs[UREG_I7]);
+ 	printk(KERN_EMERG "SUN4V-DTLB: vaddr[%lx] ctx[%lx] "
+ 	       "pte[%lx] error[%lx]\n",
+@@ -2373,13 +2373,13 @@ void show_stack(struct task_struct *tsk, unsigned long *_ksp)
+ 			fp = (unsigned long)sf->fp + STACK_BIAS;
+ 		}
+ 
+-		printk(" [%016lx] %pS\n", pc, (void *) pc);
++		printk(" [%016lx] %pA\n", pc, (void *) pc);
+ #ifdef CONFIG_FUNCTION_GRAPH_TRACER
+ 		if ((pc + 8UL) == (unsigned long) &return_to_handler) {
+ 			int index = tsk->curr_ret_stack;
+ 			if (tsk->ret_stack && index >= graph) {
+ 				pc = tsk->ret_stack[index - graph].ret;
+-				printk(" [%016lx] %pS\n", pc, (void *) pc);
++				printk(" [%016lx] %pA\n", pc, (void *) pc);
+ 				graph++;
+ 			}
+ 		}
+@@ -2425,7 +2427,7 @@ void __noreturn die_if_kernel(char *str, struct pt_regs *regs)
+ 		while (rw &&
+ 		       count++ < 30 &&
+ 		       kstack_valid(tp, (unsigned long) rw)) {
+-			printk("Caller[%016lx]: %pS\n", rw->ins[7],
++			printk("Caller[%016lx]: %pA\n", rw->ins[7],
+ 			       (void *) rw->ins[7]);
+ 
+ 			rw = kernel_stack_up(rw);
+diff --git a/arch/sparc/kernel/unaligned_64.c b/arch/sparc/kernel/unaligned_64.c
+index 52c00d90d4b4..6f8aa4e3a9e2 100644
+--- a/arch/sparc/kernel/unaligned_64.c
++++ b/arch/sparc/kernel/unaligned_64.c
+@@ -297,7 +297,7 @@ static void log_unaligned(struct pt_regs *regs)
+ 	static DEFINE_RATELIMIT_STATE(ratelimit, 5 * HZ, 5);
+ 
+ 	if (__ratelimit(&ratelimit)) {
+-		printk("Kernel unaligned access at TPC[%lx] %pS\n",
++		printk("Kernel unaligned access at TPC[%lx] %pA\n",
+ 		       regs->tpc, (void *) regs->tpc);
+ 	}
+ }
+diff --git a/arch/sparc/mm/fault_64.c b/arch/sparc/mm/fault_64.c
+index 58a1d4917785..845c1135150d 100644
+--- a/arch/sparc/mm/fault_64.c
++++ b/arch/sparc/mm/fault_64.c
+@@ -79,7 +79,7 @@ static void __kprobes bad_kernel_pc(struct pt_regs *regs, unsigned long vaddr)
+ 	printk(KERN_CRIT "OOPS: Bogus kernel PC [%016lx] in fault handler\n",
+ 	       regs->tpc);
+ 	printk(KERN_CRIT "OOPS: RPC [%016lx]\n", regs->u_regs[15]);
+-	printk("OOPS: RPC <%pS>\n", (void *) regs->u_regs[15]);
++	printk("OOPS: RPC <%pA>\n", (void *) regs->u_regs[15]);
+ 	printk(KERN_CRIT "OOPS: Fault was to vaddr[%lx]\n", vaddr);
+ 	dump_stack();
+ 	unhandled_fault(regs->tpc, current, regs);
+diff --git a/arch/x86/kernel/dumpstack.c b/arch/x86/kernel/dumpstack.c
+index 85f854b98a9d..78ddb7ecdaf5 100644
+--- a/arch/x86/kernel/dumpstack.c
++++ b/arch/x86/kernel/dumpstack.c
+@@ -53,7 +56,7 @@ static void printk_stack_address(unsigned long address, int reliable,
+ 
+ void printk_address(unsigned long address)
+ {
+-	pr_cont(" [<%p>] %pS\n", (void *)address, (void *)address);
++	pr_cont(" [<%p>] %pA\n", (void *)address, (void *)address);
+ }
+ 
+ void show_trace_log_lvl(struct task_struct *task, struct pt_regs *regs,
+diff --git a/drivers/usb/usbip/vhci_sysfs.c b/drivers/usb/usbip/vhci_sysfs.c
+index 1c7e51698840..7a4f9d4fdb07 100644
+--- a/drivers/usb/usbip/vhci_sysfs.c
++++ b/drivers/usb/usbip/vhci_sysfs.c
+@@ -68,7 +68,7 @@ static ssize_t status_show_vhci(int pdev_nr, char *out)
+ 		if (vdev->ud.status == VDEV_ST_USED) {
+ 			out += sprintf(out, "%03u %08x ",
+ 					    vdev->speed, vdev->devid);
+-			out += sprintf(out, "%16p %s",
++			out += sprintf(out, "%16pK %s",
+ 					    vdev->ud.tcp_socket,
+ 					    dev_name(&vdev->udev->dev));
+ 

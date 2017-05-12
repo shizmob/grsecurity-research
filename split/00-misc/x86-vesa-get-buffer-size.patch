@@ -1,0 +1,291 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/boot/video-vesa.c linux-4.9.24-pax/arch/x86/boot/video-vesa.c
+--- linux-4.9.24/arch/x86/boot/video-vesa.c	2015-03-18 15:21:50.224349253 +0100
++++ linux-4.9.24-pax/arch/x86/boot/video-vesa.c	2017-01-01 22:57:10.597520716 +0100
+@@ -201,6 +201,7 @@ static void vesa_store_pm_info(void)
+ 
+ 	boot_params.screen_info.vesapm_seg = oreg.es;
+ 	boot_params.screen_info.vesapm_off = oreg.di;
++	boot_params.screen_info.vesapm_size = oreg.cx;
+ }
+ 
+ /*
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/aes-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/aes-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/aes-x86_64-asm_64.S	2015-03-18 15:21:50.228349253 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/aes-x86_64-asm_64.S	2017-01-30 23:59:48.636810727 +0100
+@@ -8,6 +8,8 @@
+  * including this sentence is retained in full.
+  */
+ 
++#include <asm/alternative-asm.h>
++
+ .extern crypto_ft_tab
+ .extern crypto_it_tab
+ .extern crypto_fl_tab
+@@ -77,7 +79,7 @@
+ 	movl	r6 ## E,4(r9);		\
+ 	movl	r7 ## E,8(r9);		\
+ 	movl	r8 ## E,12(r9);		\
+-	ret;				\
++	pax_ret FUNC;			\
+ 	ENDPROC(FUNC);
+ 
+ #define round(TAB,OFFSET,r1,r2,r3,r4,r5,r6,r7,r8,ra,rb,rc,rd) \
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/blowfish-x86_64-asm_64.S linux-4.9.24-pax/arch/x86/crypto/blowfish-x86_64-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/blowfish-x86_64-asm_64.S	2015-03-18 15:21:50.228349253 +0100
++++ linux-4.9.24-pax/arch/x86/crypto/blowfish-x86_64-asm_64.S	2017-01-31 00:10:25.257979678 +0100
+@@ -21,6 +21,7 @@
+  */
+ 
+ #include <linux/linkage.h>
++#include <asm/alternative-asm.h>
+ 
+ .file "blowfish-x86_64-asm.S"
+ .text
+@@ -149,13 +150,13 @@ ENTRY(__blowfish_enc_blk)
+ 	jnz .L__enc_xor;
+ 
+ 	write_block();
+-	ret;
++	pax_ret __blowfish_enc_blk;
+ .L__enc_xor:
+ 	xor_block();
+-	ret;
++	pax_ret __blowfish_enc_blk;
+ ENDPROC(__blowfish_enc_blk)
+ 
+-ENTRY(blowfish_dec_blk)
++RAP_ENTRY(blowfish_dec_blk)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -183,7 +184,7 @@ ENTRY(blowfish_dec_blk)
+ 
+ 	movq %r11, %rbp;
+ 
+-	ret;
++	pax_ret blowfish_dec_blk;
+ ENDPROC(blowfish_dec_blk)
+ 
+ /**********************************************************************
+@@ -334,17 +335,17 @@ ENTRY(__blowfish_enc_blk_4way)
+ 
+ 	popq %rbx;
+ 	popq %rbp;
+-	ret;
++	pax_ret __blowfish_enc_blk_4way;
+ 
+ .L__enc_xor4:
+ 	xor_block4();
+ 
+ 	popq %rbx;
+ 	popq %rbp;
+-	ret;
++	pax_ret __blowfish_enc_blk_4way;
+ ENDPROC(__blowfish_enc_blk_4way)
+ 
+-ENTRY(blowfish_dec_blk_4way)
++RAP_ENTRY(blowfish_dec_blk_4way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst
+@@ -375,5 +376,5 @@ ENTRY(blowfish_dec_blk_4way)
+ 	popq %rbx;
+ 	popq %rbp;
+ 
+-	ret;
++	pax_ret blowfish_dec_blk_4way;
+ ENDPROC(blowfish_dec_blk_4way)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/crypto/camellia-aesni-avx2-asm_64.S linux-4.9.24-pax/arch/x86/crypto/camellia-aesni-avx2-asm_64.S
+--- linux-4.9.24/arch/x86/crypto/camellia-aesni-avx2-asm_64.S	2016-05-22 01:55:29.007565012 +0200
++++ linux-4.9.24-pax/arch/x86/crypto/camellia-aesni-avx2-asm_64.S	2017-02-10 05:39:19.070314079 +0100
+@@ -12,6 +12,7 @@
+ 
+ #include <linux/linkage.h>
+ #include <asm/frame.h>
++#include <asm/alternative-asm.h>
+ 
+ #define CAMELLIA_TABLE_BYTE_LEN 272
+ 
+@@ -231,7 +232,7 @@ roundsm32_x0_x1_x2_x3_x4_x5_x6_x7_y0_y1_
+ 	roundsm32(%ymm0, %ymm1, %ymm2, %ymm3, %ymm4, %ymm5, %ymm6, %ymm7,
+ 		  %ymm8, %ymm9, %ymm10, %ymm11, %ymm12, %ymm13, %ymm14, %ymm15,
+ 		  %rcx, (%r9));
+-	ret;
++	pax_ret roundsm32_x0_x1_x2_x3_x4_x5_x6_x7_y0_y1_y2_y3_y4_y5_y6_y7_cd;
+ ENDPROC(roundsm32_x0_x1_x2_x3_x4_x5_x6_x7_y0_y1_y2_y3_y4_y5_y6_y7_cd)
+ 
+ .align 8
+@@ -239,7 +240,7 @@ roundsm32_x4_x5_x6_x7_x0_x1_x2_x3_y4_y5_
+ 	roundsm32(%ymm4, %ymm5, %ymm6, %ymm7, %ymm0, %ymm1, %ymm2, %ymm3,
+ 		  %ymm12, %ymm13, %ymm14, %ymm15, %ymm8, %ymm9, %ymm10, %ymm11,
+ 		  %rax, (%r9));
+-	ret;
++	pax_ret roundsm32_x4_x5_x6_x7_x0_x1_x2_x3_y4_y5_y6_y7_y0_y1_y2_y3_ab;
+ ENDPROC(roundsm32_x4_x5_x6_x7_x0_x1_x2_x3_y4_y5_y6_y7_y0_y1_y2_y3_ab)
+ 
+ /*
+@@ -251,7 +252,7 @@ ENDPROC(roundsm32_x4_x5_x6_x7_x0_x1_x2_x
+ #define two_roundsm32(x0, x1, x2, x3, x4, x5, x6, x7, y0, y1, y2, y3, y4, y5, \
+ 		      y6, y7, mem_ab, mem_cd, i, dir, store_ab) \
+ 	leaq (key_table + (i) * 8)(CTX), %r9; \
+-	call roundsm32_x0_x1_x2_x3_x4_x5_x6_x7_y0_y1_y2_y3_y4_y5_y6_y7_cd; \
++	pax_direct_call roundsm32_x0_x1_x2_x3_x4_x5_x6_x7_y0_y1_y2_y3_y4_y5_y6_y7_cd; \
+ 	\
+ 	vmovdqu x0, 4 * 32(mem_cd); \
+ 	vmovdqu x1, 5 * 32(mem_cd); \
+@@ -263,7 +264,7 @@ ENDPROC(roundsm32_x4_x5_x6_x7_x0_x1_x2_x
+ 	vmovdqu x7, 3 * 32(mem_cd); \
+ 	\
+ 	leaq (key_table + ((i) + (dir)) * 8)(CTX), %r9; \
+-	call roundsm32_x4_x5_x6_x7_x0_x1_x2_x3_y4_y5_y6_y7_y0_y1_y2_y3_ab; \
++	pax_direct_call roundsm32_x4_x5_x6_x7_x0_x1_x2_x3_y4_y5_y6_y7_y0_y1_y2_y3_ab; \
+ 	\
+ 	store_ab(x0, x1, x2, x3, x4, x5, x6, x7, mem_ab);
+ 
+@@ -823,7 +824,7 @@ __camellia_enc_blk32:
+ 		    %ymm15, (key_table)(CTX, %r8, 8), (%rax), 1 * 32(%rax));
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret __camellia_enc_blk32;
+ 
+ .align 8
+ .Lenc_max32:
+@@ -910,7 +911,7 @@ __camellia_dec_blk32:
+ 		    %ymm15, (key_table)(CTX), (%rax), 1 * 32(%rax));
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret __camellia_dec_blk32;
+ 
+ .align 8
+ .Ldec_max32:
+@@ -929,7 +930,7 @@ __camellia_dec_blk32:
+ 	jmp .Ldec_max24;
+ ENDPROC(__camellia_dec_blk32)
+ 
+-ENTRY(camellia_ecb_enc_32way)
++RAP_ENTRY(camellia_ecb_enc_32way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (32 blocks)
+@@ -946,7 +947,7 @@ ENTRY(camellia_ecb_enc_32way)
+ 	/* now dst can be used as temporary buffer (even in src == dst case) */
+ 	movq	%rsi, %rax;
+ 
+-	call __camellia_enc_blk32;
++	pax_direct_call __camellia_enc_blk32;
+ 
+ 	write_output(%ymm7, %ymm6, %ymm5, %ymm4, %ymm3, %ymm2, %ymm1, %ymm0,
+ 		     %ymm15, %ymm14, %ymm13, %ymm12, %ymm11, %ymm10, %ymm9,
+@@ -955,10 +956,10 @@ ENTRY(camellia_ecb_enc_32way)
+ 	vzeroupper;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret camellia_ecb_enc_32way;
+ ENDPROC(camellia_ecb_enc_32way)
+ 
+-ENTRY(camellia_ecb_dec_32way)
++RAP_ENTRY(camellia_ecb_dec_32way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (32 blocks)
+@@ -980,7 +981,7 @@ ENTRY(camellia_ecb_dec_32way)
+ 	/* now dst can be used as temporary buffer (even in src == dst case) */
+ 	movq	%rsi, %rax;
+ 
+-	call __camellia_dec_blk32;
++	pax_direct_call __camellia_dec_blk32;
+ 
+ 	write_output(%ymm7, %ymm6, %ymm5, %ymm4, %ymm3, %ymm2, %ymm1, %ymm0,
+ 		     %ymm15, %ymm14, %ymm13, %ymm12, %ymm11, %ymm10, %ymm9,
+@@ -989,10 +990,10 @@ ENTRY(camellia_ecb_dec_32way)
+ 	vzeroupper;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret camellia_ecb_dec_32way;
+ ENDPROC(camellia_ecb_dec_32way)
+ 
+-ENTRY(camellia_cbc_dec_32way)
++RAP_ENTRY(camellia_cbc_dec_32way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (32 blocks)
+@@ -1028,7 +1029,7 @@ ENTRY(camellia_cbc_dec_32way)
+ 	movq %rsp, %rax;
+ 
+ .Lcbc_dec_continue:
+-	call __camellia_dec_blk32;
++	pax_direct_call __camellia_dec_blk32;
+ 
+ 	vmovdqu %ymm7, (%rax);
+ 	vpxor %ymm7, %ymm7, %ymm7;
+@@ -1057,7 +1058,7 @@ ENTRY(camellia_cbc_dec_32way)
+ 	vzeroupper;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret camellia_cbc_dec_32way;
+ ENDPROC(camellia_cbc_dec_32way)
+ 
+ #define inc_le128(x, minus_one, tmp) \
+@@ -1074,7 +1075,7 @@ ENDPROC(camellia_cbc_dec_32way)
+ 	vpslldq $8, tmp1, tmp1; \
+ 	vpsubq tmp1, x, x;
+ 
+-ENTRY(camellia_ctr_32way)
++RAP_ENTRY(camellia_ctr_32way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (32 blocks)
+@@ -1170,7 +1171,7 @@ ENTRY(camellia_ctr_32way)
+ 	vpxor 14 * 32(%rax), %ymm15, %ymm14;
+ 	vpxor 15 * 32(%rax), %ymm15, %ymm15;
+ 
+-	call __camellia_enc_blk32;
++	pax_direct_call __camellia_enc_blk32;
+ 
+ 	movq %r10, %rsp;
+ 
+@@ -1197,7 +1198,7 @@ ENTRY(camellia_ctr_32way)
+ 	vzeroupper;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret camellia_ctr_32way;
+ ENDPROC(camellia_ctr_32way)
+ 
+ #define gf128mul_x_ble(iv, mask, tmp) \
+@@ -1337,7 +1338,7 @@ camellia_xts_crypt_32way:
+ 	vpxor 14 * 32(%rax), %ymm15, %ymm14;
+ 	vpxor 15 * 32(%rax), %ymm15, %ymm15;
+ 
+-	call *%r9;
++	pax_indirect_call "%r9", __camellia_enc_blk32;
+ 
+ 	addq $(16 * 32), %rsp;
+ 
+@@ -1364,10 +1365,10 @@ camellia_xts_crypt_32way:
+ 	vzeroupper;
+ 
+ 	FRAME_END
+-	ret;
++	pax_ret camellia_xts_crypt_32way;
+ ENDPROC(camellia_xts_crypt_32way)
+ 
+-ENTRY(camellia_xts_enc_32way)
++RAP_ENTRY(camellia_xts_enc_32way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (32 blocks)
+@@ -1382,7 +1383,7 @@ ENTRY(camellia_xts_enc_32way)
+ 	jmp camellia_xts_crypt_32way;
+ ENDPROC(camellia_xts_enc_32way)
+ 
+-ENTRY(camellia_xts_dec_32way)
++RAP_ENTRY(camellia_xts_dec_32way)
+ 	/* input:
+ 	 *	%rdi: ctx, CTX
+ 	 *	%rsi: dst (32 blocks)

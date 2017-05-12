@@ -1,0 +1,1520 @@
+diff --git a/arch/x86/include/asm/floppy.h b/arch/x86/include/asm/floppy.h
+index 1c7eefe32502..d0e4702883b9 100644
+--- a/arch/x86/include/asm/floppy.h
++++ b/arch/x86/include/asm/floppy.h
+@@ -229,18 +229,18 @@ static struct fd_routine_l {
+ 	int (*_dma_setup)(char *addr, unsigned long size, int mode, int io);
+ } fd_routine[] = {
+ 	{
+-		request_dma,
+-		free_dma,
+-		get_dma_residue,
+-		dma_mem_alloc,
+-		hard_dma_setup
++		._request_dma = request_dma,
++		._free_dma = free_dma,
++		._get_dma_residue = get_dma_residue,
++		._dma_mem_alloc = dma_mem_alloc,
++		._dma_setup = hard_dma_setup
+ 	},
+ 	{
+-		vdma_request_dma,
+-		vdma_nop,
+-		vdma_get_dma_residue,
+-		vdma_mem_alloc,
+-		vdma_dma_setup
++		._request_dma = vdma_request_dma,
++		._free_dma = vdma_nop,
++		._get_dma_residue = vdma_get_dma_residue,
++		._dma_mem_alloc = vdma_mem_alloc,
++		._dma_setup = vdma_dma_setup
+ 	}
+ };
+ 
+diff --git a/drivers/acpi/acpica/hwxfsleep.c b/drivers/acpi/acpica/hwxfsleep.c
+index f76e0eab32b8..4b83315dd356 100644
+--- a/drivers/acpi/acpica/hwxfsleep.c
++++ b/drivers/acpi/acpica/hwxfsleep.c
+@@ -70,11 +70,12 @@ static acpi_status acpi_hw_sleep_dispatch(u8 sleep_state, u32 function_id);
+ /* Legacy functions are optional, based upon ACPI_REDUCED_HARDWARE */
+ 
+ static struct acpi_sleep_functions acpi_sleep_dispatch[] = {
+-	{ACPI_HW_OPTIONAL_FUNCTION(acpi_hw_legacy_sleep),
+-	 acpi_hw_extended_sleep},
+-	{ACPI_HW_OPTIONAL_FUNCTION(acpi_hw_legacy_wake_prep),
+-	 acpi_hw_extended_wake_prep},
+-	{ACPI_HW_OPTIONAL_FUNCTION(acpi_hw_legacy_wake), acpi_hw_extended_wake}
++	{.legacy_function = ACPI_HW_OPTIONAL_FUNCTION(acpi_hw_legacy_sleep),
++	 .extended_function = acpi_hw_extended_sleep},
++	{.legacy_function = ACPI_HW_OPTIONAL_FUNCTION(acpi_hw_legacy_wake_prep),
++	 .extended_function = acpi_hw_extended_wake_prep},
++	{.legacy_function = ACPI_HW_OPTIONAL_FUNCTION(acpi_hw_legacy_wake),
++	 .extended_function = acpi_hw_extended_wake}
+ };
+ 
+ /*
+diff --git a/drivers/block/cciss.h b/drivers/block/cciss.h
+index eb5dfe0b785f..2f279464f75d 100644
+--- a/drivers/block/cciss.h
++++ b/drivers/block/cciss.h
+@@ -402,27 +402,27 @@ static bool SA5_performant_intr_pending(ctlr_info_t *h)
+ }
+ 
+ static struct access_method SA5_access = {
+-	SA5_submit_command,
+-	SA5_intr_mask,
+-	SA5_fifo_full,
+-	SA5_intr_pending,
+-	SA5_completed,
++	.submit_command = SA5_submit_command,
++	.set_intr_mask = SA5_intr_mask,
++	.fifo_full = SA5_fifo_full,
++	.intr_pending = SA5_intr_pending,
++	.command_completed = SA5_completed,
+ };
+ 
+ static struct access_method SA5B_access = {
+-        SA5_submit_command,
+-        SA5B_intr_mask,
+-        SA5_fifo_full,
+-        SA5B_intr_pending,
+-        SA5_completed,
++	.submit_command = SA5_submit_command,
++	.set_intr_mask = SA5B_intr_mask,
++	.fifo_full = SA5_fifo_full,
++	.intr_pending = SA5B_intr_pending,
++	.command_completed = SA5_completed,
+ };
+ 
+ static struct access_method SA5_performant_access = {
+-	SA5_submit_command,
+-	SA5_performant_intr_mask,
+-	SA5_fifo_full,
+-	SA5_performant_intr_pending,
+-	SA5_performant_completed,
++	.submit_command = SA5_submit_command,
++	.set_intr_mask = SA5_performant_intr_mask,
++	.fifo_full = SA5_fifo_full,
++	.intr_pending = SA5_performant_intr_pending,
++	.command_completed = SA5_performant_completed,
+ };
+ 
+ struct board_type {
+diff --git a/drivers/block/smart1,2.h b/drivers/block/smart1,2.h
+index e5565fbaeb30..71be10b4492f 100644
+--- a/drivers/block/smart1,2.h
++++ b/drivers/block/smart1,2.h
+@@ -108,11 +108,11 @@ static unsigned long smart4_intr_pending(ctlr_info_t *h)
+ }
+ 
+ static struct access_method smart4_access = {
+-	smart4_submit_command,
+-	smart4_intr_mask,
+-	smart4_fifo_full,
+-	smart4_intr_pending,
+-	smart4_completed,
++	.submit_command = smart4_submit_command,
++	.set_intr_mask = smart4_intr_mask,
++	.fifo_full = smart4_fifo_full,
++	.intr_pending = smart4_intr_pending,
++	.command_completed = smart4_completed,
+ };
+ 
+ /*
+@@ -144,11 +144,11 @@ static unsigned long smart2_intr_pending(ctlr_info_t *h)
+ }
+ 
+ static struct access_method smart2_access = {
+-	smart2_submit_command,
+-	smart2_intr_mask,
+-	smart2_fifo_full,
+-	smart2_intr_pending,
+-	smart2_completed,
++	.submit_command = smart2_submit_command,
++	.set_intr_mask = smart2_intr_mask,
++	.fifo_full = smart2_fifo_full,
++	.intr_pending = smart2_intr_pending,
++	.command_completed = smart2_completed,
+ };
+ 
+ /*
+@@ -180,11 +180,11 @@ static unsigned long smart2e_intr_pending(ctlr_info_t *h)
+ }
+ 
+ static struct access_method smart2e_access = {
+-	smart2e_submit_command,
+-	smart2e_intr_mask,
+-	smart2e_fifo_full,
+-	smart2e_intr_pending,
+-	smart2e_completed,
++	.submit_command = smart2e_submit_command,
++	.set_intr_mask = smart2e_intr_mask,
++	.fifo_full = smart2e_fifo_full,
++	.intr_pending = smart2e_intr_pending,
++	.command_completed = smart2e_completed,
+ };
+ 
+ /*
+@@ -270,9 +270,9 @@ static unsigned long smart1_intr_pending(ctlr_info_t *h)
+ }
+ 
+ static struct access_method smart1_access = {
+-	smart1_submit_command,
+-	smart1_intr_mask,
+-	smart1_fifo_full,
+-	smart1_intr_pending,
+-	smart1_completed,
++	.submit_command = smart1_submit_command,
++	.set_intr_mask = smart1_intr_mask,
++	.fifo_full = smart1_fifo_full,
++	.intr_pending = smart1_intr_pending,
++	.command_completed = smart1_completed,
+ };
+diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_cgs.c b/drivers/gpu/drm/amd/amdgpu/amdgpu_cgs.c
+index 662976292535..f14b4fde9aca 100644
+--- a/drivers/gpu/drm/amd/amdgpu/amdgpu_cgs.c
++++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_cgs.c
+@@ -1175,50 +1175,50 @@ static int amdgpu_cgs_call_acpi_method(struct cgs_device *cgs_device,
+ }
+ 
+ static const struct cgs_ops amdgpu_cgs_ops = {
+-	amdgpu_cgs_gpu_mem_info,
+-	amdgpu_cgs_gmap_kmem,
+-	amdgpu_cgs_gunmap_kmem,
+-	amdgpu_cgs_alloc_gpu_mem,
+-	amdgpu_cgs_free_gpu_mem,
+-	amdgpu_cgs_gmap_gpu_mem,
+-	amdgpu_cgs_gunmap_gpu_mem,
+-	amdgpu_cgs_kmap_gpu_mem,
+-	amdgpu_cgs_kunmap_gpu_mem,
+-	amdgpu_cgs_read_register,
+-	amdgpu_cgs_write_register,
+-	amdgpu_cgs_read_ind_register,
+-	amdgpu_cgs_write_ind_register,
+-	amdgpu_cgs_read_pci_config_byte,
+-	amdgpu_cgs_read_pci_config_word,
+-	amdgpu_cgs_read_pci_config_dword,
+-	amdgpu_cgs_write_pci_config_byte,
+-	amdgpu_cgs_write_pci_config_word,
+-	amdgpu_cgs_write_pci_config_dword,
+-	amdgpu_cgs_get_pci_resource,
+-	amdgpu_cgs_atom_get_data_table,
+-	amdgpu_cgs_atom_get_cmd_table_revs,
+-	amdgpu_cgs_atom_exec_cmd_table,
+-	amdgpu_cgs_create_pm_request,
+-	amdgpu_cgs_destroy_pm_request,
+-	amdgpu_cgs_set_pm_request,
+-	amdgpu_cgs_pm_request_clock,
+-	amdgpu_cgs_pm_request_engine,
+-	amdgpu_cgs_pm_query_clock_limits,
+-	amdgpu_cgs_set_camera_voltages,
+-	amdgpu_cgs_get_firmware_info,
+-	amdgpu_cgs_rel_firmware,
+-	amdgpu_cgs_set_powergating_state,
+-	amdgpu_cgs_set_clockgating_state,
+-	amdgpu_cgs_get_active_displays_info,
+-	amdgpu_cgs_notify_dpm_enabled,
+-	amdgpu_cgs_call_acpi_method,
+-	amdgpu_cgs_query_system_info,
++	.gpu_mem_info = amdgpu_cgs_gpu_mem_info,
++	.gmap_kmem = amdgpu_cgs_gmap_kmem,
++	.gunmap_kmem = amdgpu_cgs_gunmap_kmem,
++	.alloc_gpu_mem = amdgpu_cgs_alloc_gpu_mem,
++	.free_gpu_mem = amdgpu_cgs_free_gpu_mem,
++	.gmap_gpu_mem = amdgpu_cgs_gmap_gpu_mem,
++	.gunmap_gpu_mem = amdgpu_cgs_gunmap_gpu_mem,
++	.kmap_gpu_mem = amdgpu_cgs_kmap_gpu_mem,
++	.kunmap_gpu_mem = amdgpu_cgs_kunmap_gpu_mem,
++	.read_register = amdgpu_cgs_read_register,
++	.write_register = amdgpu_cgs_write_register,
++	.read_ind_register = amdgpu_cgs_read_ind_register,
++	.write_ind_register = amdgpu_cgs_write_ind_register,
++	.read_pci_config_byte = amdgpu_cgs_read_pci_config_byte,
++	.read_pci_config_word = amdgpu_cgs_read_pci_config_word,
++	.read_pci_config_dword = amdgpu_cgs_read_pci_config_dword,
++	.write_pci_config_byte = amdgpu_cgs_write_pci_config_byte,
++	.write_pci_config_word = amdgpu_cgs_write_pci_config_word,
++	.write_pci_config_dword = amdgpu_cgs_write_pci_config_dword,
++	.get_pci_resource = amdgpu_cgs_get_pci_resource,
++	.atom_get_data_table = amdgpu_cgs_atom_get_data_table,
++	.atom_get_cmd_table_revs = amdgpu_cgs_atom_get_cmd_table_revs,
++	.atom_exec_cmd_table = amdgpu_cgs_atom_exec_cmd_table,
++	.create_pm_request = amdgpu_cgs_create_pm_request,
++	.destroy_pm_request = amdgpu_cgs_destroy_pm_request,
++	.set_pm_request = amdgpu_cgs_set_pm_request,
++	.pm_request_clock = amdgpu_cgs_pm_request_clock,
++	.pm_request_engine = amdgpu_cgs_pm_request_engine,
++	.pm_query_clock_limits = amdgpu_cgs_pm_query_clock_limits,
++	.set_camera_voltages = amdgpu_cgs_set_camera_voltages,
++	.get_firmware_info = amdgpu_cgs_get_firmware_info,
++	.rel_firmware = amdgpu_cgs_rel_firmware,
++	.set_powergating_state = amdgpu_cgs_set_powergating_state,
++	.set_clockgating_state = amdgpu_cgs_set_clockgating_state,
++	.get_active_displays_info = amdgpu_cgs_get_active_displays_info,
++	.notify_dpm_enabled = amdgpu_cgs_notify_dpm_enabled,
++	.call_acpi_method = amdgpu_cgs_call_acpi_method,
++	.query_system_info = amdgpu_cgs_query_system_info
+ };
+ 
+ static const struct cgs_os_ops amdgpu_cgs_os_ops = {
+-	amdgpu_cgs_add_irq_source,
+-	amdgpu_cgs_irq_get,
+-	amdgpu_cgs_irq_put
++	.add_irq_source = amdgpu_cgs_add_irq_source,
++	.irq_get = amdgpu_cgs_irq_get,
++	.irq_put = amdgpu_cgs_irq_put
+ };
+ 
+ struct cgs_device *amdgpu_cgs_create_device(struct amdgpu_device *adev)
+diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_gtt_mgr.c b/drivers/gpu/drm/amd/amdgpu/amdgpu_gtt_mgr.c
+index f86c84427778..7fe4fde9e788 100644
+--- a/drivers/gpu/drm/amd/amdgpu/amdgpu_gtt_mgr.c
++++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_gtt_mgr.c
+@@ -231,9 +231,9 @@ static void amdgpu_gtt_mgr_debug(struct ttm_mem_type_manager *man,
+ }
+ 
+ const struct ttm_mem_type_manager_func amdgpu_gtt_mgr_func = {
+-	amdgpu_gtt_mgr_init,
+-	amdgpu_gtt_mgr_fini,
+-	amdgpu_gtt_mgr_new,
+-	amdgpu_gtt_mgr_del,
+-	amdgpu_gtt_mgr_debug
++	.init = amdgpu_gtt_mgr_init,
++	.takedown = amdgpu_gtt_mgr_fini,
++	.get_node = amdgpu_gtt_mgr_new,
++	.put_node = amdgpu_gtt_mgr_del,
++	.debug = amdgpu_gtt_mgr_debug
+ };
+diff --git a/drivers/gpu/drm/amd/powerplay/hwmgr/cz_clockpowergating.c b/drivers/gpu/drm/amd/powerplay/hwmgr/cz_clockpowergating.c
+index 2028980f1ed4..484984bfd60d 100644
+--- a/drivers/gpu/drm/amd/powerplay/hwmgr/cz_clockpowergating.c
++++ b/drivers/gpu/drm/amd/powerplay/hwmgr/cz_clockpowergating.c
+@@ -240,10 +240,16 @@ int cz_dpm_powergate_vce(struct pp_hwmgr *hwmgr, bool bgate)
+ 
+ static const struct phm_master_table_item cz_enable_clock_power_gatings_list[] = {
+ 	/*we don't need an exit table here, because there is only D3 cold on Kv*/
+-	{ phm_cf_want_uvd_power_gating, cz_tf_uvd_power_gating_initialize },
+-	{ phm_cf_want_vce_power_gating, cz_tf_vce_power_gating_initialize },
++	{
++	  .isFunctionNeededInRuntimeTable = phm_cf_want_uvd_power_gating,
++	  .tableFunction = cz_tf_uvd_power_gating_initialize
++	},
++	{
++	  .isFunctionNeededInRuntimeTable = phm_cf_want_vce_power_gating,
++	  .tableFunction = cz_tf_vce_power_gating_initialize
++	},
+ 	/* to do { NULL, cz_tf_xdma_power_gating_enable }, */
+-	{ NULL, NULL }
++	{ }
+ };
+ 
+ const struct phm_master_table_header cz_phm_enable_clock_power_gatings_master = {
+diff --git a/drivers/gpu/drm/amd/powerplay/hwmgr/cz_hwmgr.c b/drivers/gpu/drm/amd/powerplay/hwmgr/cz_hwmgr.c
+index 960424913496..751e84f7460d 100644
+--- a/drivers/gpu/drm/amd/powerplay/hwmgr/cz_hwmgr.c
++++ b/drivers/gpu/drm/amd/powerplay/hwmgr/cz_hwmgr.c
+@@ -888,13 +888,13 @@ static int cz_tf_update_low_mem_pstate(struct pp_hwmgr *hwmgr,
+ }
+ 
+ static const struct phm_master_table_item cz_set_power_state_list[] = {
+-	{NULL, cz_tf_update_sclk_limit},
+-	{NULL, cz_tf_set_deep_sleep_sclk_threshold},
+-	{NULL, cz_tf_set_watermark_threshold},
+-	{NULL, cz_tf_set_enabled_levels},
+-	{NULL, cz_tf_enable_nb_dpm},
+-	{NULL, cz_tf_update_low_mem_pstate},
+-	{NULL, NULL}
++	{ .tableFunction = cz_tf_update_sclk_limit },
++	{ .tableFunction = cz_tf_set_deep_sleep_sclk_threshold },
++	{ .tableFunction = cz_tf_set_watermark_threshold },
++	{ .tableFunction = cz_tf_set_enabled_levels },
++	{ .tableFunction = cz_tf_enable_nb_dpm },
++	{ .tableFunction = cz_tf_update_low_mem_pstate },
++	{ }
+ };
+ 
+ static const struct phm_master_table_header cz_set_power_state_master = {
+@@ -904,15 +904,15 @@ static const struct phm_master_table_header cz_set_power_state_master = {
+ };
+ 
+ static const struct phm_master_table_item cz_setup_asic_list[] = {
+-	{NULL, cz_tf_reset_active_process_mask},
+-	{NULL, cz_tf_upload_pptable_to_smu},
+-	{NULL, cz_tf_init_sclk_limit},
+-	{NULL, cz_tf_init_uvd_limit},
+-	{NULL, cz_tf_init_vce_limit},
+-	{NULL, cz_tf_init_acp_limit},
+-	{NULL, cz_tf_init_power_gate_state},
+-	{NULL, cz_tf_init_sclk_threshold},
+-	{NULL, NULL}
++	{ .tableFunction = cz_tf_reset_active_process_mask },
++	{ .tableFunction = cz_tf_upload_pptable_to_smu },
++	{ .tableFunction = cz_tf_init_sclk_limit },
++	{ .tableFunction = cz_tf_init_uvd_limit },
++	{ .tableFunction = cz_tf_init_vce_limit },
++	{ .tableFunction = cz_tf_init_acp_limit },
++	{ .tableFunction = cz_tf_init_power_gate_state },
++	{ .tableFunction = cz_tf_init_sclk_threshold },
++	{ }
+ };
+ 
+ static const struct phm_master_table_header cz_setup_asic_master = {
+@@ -957,10 +957,10 @@ static int cz_tf_reset_cc6_data(struct pp_hwmgr *hwmgr,
+ }
+ 
+ static const struct phm_master_table_item cz_power_down_asic_list[] = {
+-	{NULL, cz_tf_power_up_display_clock_sys_pll},
+-	{NULL, cz_tf_clear_nb_dpm_flag},
+-	{NULL, cz_tf_reset_cc6_data},
+-	{NULL, NULL}
++	{ .tableFunction = cz_tf_power_up_display_clock_sys_pll },
++	{ .tableFunction = cz_tf_clear_nb_dpm_flag },
++	{ .tableFunction = cz_tf_reset_cc6_data },
++	{ }
+ };
+ 
+ static const struct phm_master_table_header cz_power_down_asic_master = {
+@@ -1068,8 +1068,8 @@ static int cz_tf_check_for_dpm_enabled(struct pp_hwmgr *hwmgr,
+ }
+ 
+ static const struct phm_master_table_item cz_disable_dpm_list[] = {
+-	{ NULL, cz_tf_check_for_dpm_enabled},
+-	{NULL, NULL},
++	{ .tableFunction = cz_tf_check_for_dpm_enabled },
++	{ },
+ };
+ 
+ 
+@@ -1080,13 +1080,13 @@ static const struct phm_master_table_header cz_disable_dpm_master = {
+ };
+ 
+ static const struct phm_master_table_item cz_enable_dpm_list[] = {
+-	{ NULL, cz_tf_check_for_dpm_disabled },
+-	{ NULL, cz_tf_program_voting_clients },
+-	{ NULL, cz_tf_start_dpm},
+-	{ NULL, cz_tf_program_bootup_state},
+-	{ NULL, cz_tf_enable_didt },
+-	{ NULL, cz_tf_reset_acp_boot_level },
+-	{NULL, NULL},
++	{ .tableFunction = cz_tf_check_for_dpm_disabled },
++	{ .tableFunction = cz_tf_program_voting_clients },
++	{ .tableFunction = cz_tf_start_dpm },
++	{ .tableFunction = cz_tf_program_bootup_state },
++	{ .tableFunction = cz_tf_enable_didt },
++	{ .tableFunction = cz_tf_reset_acp_boot_level },
++	{ },
+ };
+ 
+ static const struct phm_master_table_header cz_enable_dpm_master = {
+diff --git a/drivers/gpu/drm/amd/powerplay/hwmgr/smu7_thermal.c b/drivers/gpu/drm/amd/powerplay/hwmgr/smu7_thermal.c
+index 29d0319b22e6..ac1e41d23b42 100644
+--- a/drivers/gpu/drm/amd/powerplay/hwmgr/smu7_thermal.c
++++ b/drivers/gpu/drm/amd/powerplay/hwmgr/smu7_thermal.c
+@@ -506,18 +506,18 @@ static int tf_smu7_thermal_disable_alert(struct pp_hwmgr *hwmgr,
+ 
+ static const struct phm_master_table_item
+ phm_thermal_start_thermal_controller_master_list[] = {
+-	{NULL, tf_smu7_thermal_initialize},
+-	{NULL, tf_smu7_thermal_set_temperature_range},
+-	{NULL, tf_smu7_thermal_enable_alert},
+-	{NULL, smum_thermal_avfs_enable},
++	{ .tableFunction = tf_smu7_thermal_initialize},
++	{ .tableFunction = tf_smu7_thermal_set_temperature_range},
++	{ .tableFunction = tf_smu7_thermal_enable_alert},
++	{ .tableFunction = smum_thermal_avfs_enable},
+ /* We should restrict performance levels to low before we halt the SMC.
+  * On the other hand we are still in boot state when we do this
+  * so it would be pointless.
+  * If this assumption changes we have to revisit this table.
+  */
+-	{NULL, smum_thermal_setup_fan_table},
+-	{NULL, tf_smu7_thermal_start_smc_fan_control},
+-	{NULL, NULL}
++	{ .tableFunction = smum_thermal_setup_fan_table},
++	{ .tableFunction = tf_smu7_thermal_start_smc_fan_control},
++	{ }
+ };
+ 
+ static const struct phm_master_table_header
+@@ -529,10 +529,10 @@ phm_thermal_start_thermal_controller_master = {
+ 
+ static const struct phm_master_table_item
+ phm_thermal_set_temperature_range_master_list[] = {
+-	{NULL, tf_smu7_thermal_disable_alert},
+-	{NULL, tf_smu7_thermal_set_temperature_range},
+-	{NULL, tf_smu7_thermal_enable_alert},
+-	{NULL, NULL}
++	{ .tableFunction = tf_smu7_thermal_disable_alert},
++	{ .tableFunction = tf_smu7_thermal_set_temperature_range},
++	{ .tableFunction = tf_smu7_thermal_enable_alert},
++	{ }
+ };
+ 
+ static const struct phm_master_table_header
+diff --git a/drivers/gpu/drm/nouveau/nouveau_ttm.c b/drivers/gpu/drm/nouveau/nouveau_ttm.c
+index a6dbe8258040..ec4668a41e01 100644
+--- a/drivers/gpu/drm/nouveau/nouveau_ttm.c
++++ b/drivers/gpu/drm/nouveau/nouveau_ttm.c
+@@ -107,10 +107,10 @@ nouveau_vram_manager_new(struct ttm_mem_type_manager *man,
+ }
+ 
+ const struct ttm_mem_type_manager_func nouveau_vram_manager = {
+-	nouveau_vram_manager_init,
+-	nouveau_vram_manager_fini,
+-	nouveau_vram_manager_new,
+-	nouveau_vram_manager_del,
++	.init = nouveau_vram_manager_init,
++	.takedown = nouveau_vram_manager_fini,
++	.get_node = nouveau_vram_manager_new,
++	.put_node = nouveau_vram_manager_del,
+ };
+ 
+ static int
+@@ -184,11 +184,11 @@ nouveau_gart_manager_debug(struct ttm_mem_type_manager *man, const char *prefix)
+ }
+ 
+ const struct ttm_mem_type_manager_func nouveau_gart_manager = {
+-	nouveau_gart_manager_init,
+-	nouveau_gart_manager_fini,
+-	nouveau_gart_manager_new,
+-	nouveau_gart_manager_del,
+-	nouveau_gart_manager_debug
++	.init = nouveau_gart_manager_init,
++	.takedown = nouveau_gart_manager_fini,
++	.get_node = nouveau_gart_manager_new,
++	.put_node = nouveau_gart_manager_del,
++	.debug = nouveau_gart_manager_debug
+ };
+ 
+ /*XXX*/
+@@ -257,11 +257,11 @@ nv04_gart_manager_debug(struct ttm_mem_type_manager *man, const char *prefix)
+ }
+ 
+ const struct ttm_mem_type_manager_func nv04_gart_manager = {
+-	nv04_gart_manager_init,
+-	nv04_gart_manager_fini,
+-	nv04_gart_manager_new,
+-	nv04_gart_manager_del,
+-	nv04_gart_manager_debug
++	.init = nv04_gart_manager_init,
++	.takedown = nv04_gart_manager_fini,
++	.get_node = nv04_gart_manager_new,
++	.put_node = nv04_gart_manager_del,
++	.debug = nv04_gart_manager_debug
+ };
+ 
+ int
+diff --git a/drivers/gpu/drm/ttm/ttm_bo_manager.c b/drivers/gpu/drm/ttm/ttm_bo_manager.c
+index aa0bd054d3e9..aea6a01500e1 100644
+--- a/drivers/gpu/drm/ttm/ttm_bo_manager.c
++++ b/drivers/gpu/drm/ttm/ttm_bo_manager.c
+@@ -148,10 +148,10 @@ static void ttm_bo_man_debug(struct ttm_mem_type_manager *man,
+ }
+ 
+ const struct ttm_mem_type_manager_func ttm_bo_manager_func = {
+-	ttm_bo_man_init,
+-	ttm_bo_man_takedown,
+-	ttm_bo_man_get_node,
+-	ttm_bo_man_put_node,
+-	ttm_bo_man_debug
++	.init = ttm_bo_man_init,
++	.takedown = ttm_bo_man_takedown,
++	.get_node = ttm_bo_man_get_node,
++	.put_node = ttm_bo_man_put_node,
++	.debug = ttm_bo_man_debug
+ };
+ EXPORT_SYMBOL(ttm_bo_manager_func);
+diff --git a/drivers/gpu/drm/virtio/virtgpu_ttm.c b/drivers/gpu/drm/virtio/virtgpu_ttm.c
+index 80482ac5f95d..bf693e517f9d 100644
+--- a/drivers/gpu/drm/virtio/virtgpu_ttm.c
++++ b/drivers/gpu/drm/virtio/virtgpu_ttm.c
+@@ -198,11 +198,11 @@ static void ttm_bo_man_debug(struct ttm_mem_type_manager *man,
+ }
+ 
+ static const struct ttm_mem_type_manager_func virtio_gpu_bo_manager_func = {
+-	ttm_bo_man_init,
+-	ttm_bo_man_takedown,
+-	ttm_bo_man_get_node,
+-	ttm_bo_man_put_node,
+-	ttm_bo_man_debug
++	.init = &ttm_bo_man_init,
++	.takedown = &ttm_bo_man_takedown,
++	.get_node = &ttm_bo_man_get_node,
++	.put_node = &ttm_bo_man_put_node,
++	.debug = &ttm_bo_man_debug
+ };
+ 
+ static int virtio_gpu_init_mem_type(struct ttm_bo_device *bdev, uint32_t type,
+diff --git a/drivers/gpu/drm/vmwgfx/vmwgfx_gmrid_manager.c b/drivers/gpu/drm/vmwgfx/vmwgfx_gmrid_manager.c
+index 170b61be1e4e..fec7348cea2c 100644
+--- a/drivers/gpu/drm/vmwgfx/vmwgfx_gmrid_manager.c
++++ b/drivers/gpu/drm/vmwgfx/vmwgfx_gmrid_manager.c
+@@ -164,9 +164,9 @@ static void vmw_gmrid_man_debug(struct ttm_mem_type_manager *man,
+ }
+ 
+ const struct ttm_mem_type_manager_func vmw_gmrid_manager_func = {
+-	vmw_gmrid_man_init,
+-	vmw_gmrid_man_takedown,
+-	vmw_gmrid_man_get_node,
+-	vmw_gmrid_man_put_node,
+-	vmw_gmrid_man_debug
++	.init = vmw_gmrid_man_init,
++	.takedown = vmw_gmrid_man_takedown,
++	.get_node = vmw_gmrid_man_get_node,
++	.put_node = vmw_gmrid_man_put_node,
++	.debug = vmw_gmrid_man_debug
+ };
+diff --git a/drivers/infiniband/hw/i40iw/i40iw_ctrl.c b/drivers/infiniband/hw/i40iw/i40iw_ctrl.c
+index 2c4b4d072d6a..b45e806b3726 100644
+--- a/drivers/infiniband/hw/i40iw/i40iw_ctrl.c
++++ b/drivers/infiniband/hw/i40iw/i40iw_ctrl.c
+@@ -4604,46 +4604,46 @@ static void i40iw_hw_stat_refresh_all(struct i40iw_dev_pestat *devstat)
+ }
+ 
+ static struct i40iw_cqp_ops iw_cqp_ops = {
+-	i40iw_sc_cqp_init,
+-	i40iw_sc_cqp_create,
+-	i40iw_sc_cqp_post_sq,
+-	i40iw_sc_cqp_get_next_send_wqe,
+-	i40iw_sc_cqp_destroy,
+-	i40iw_sc_poll_for_cqp_op_done
++	.cqp_init = i40iw_sc_cqp_init,
++	.cqp_create = i40iw_sc_cqp_create,
++	.cqp_post_sq = i40iw_sc_cqp_post_sq,
++	.cqp_get_next_send_wqe = i40iw_sc_cqp_get_next_send_wqe,
++	.cqp_destroy = i40iw_sc_cqp_destroy,
++	.poll_for_cqp_op_done = i40iw_sc_poll_for_cqp_op_done
+ };
+ 
+ static struct i40iw_ccq_ops iw_ccq_ops = {
+-	i40iw_sc_ccq_init,
+-	i40iw_sc_ccq_create,
+-	i40iw_sc_ccq_destroy,
+-	i40iw_sc_ccq_create_done,
+-	i40iw_sc_ccq_get_cqe_info,
+-	i40iw_sc_ccq_arm
++	.ccq_init = i40iw_sc_ccq_init,
++	.ccq_create = i40iw_sc_ccq_create,
++	.ccq_destroy = i40iw_sc_ccq_destroy,
++	.ccq_create_done = i40iw_sc_ccq_create_done,
++	.ccq_get_cqe_info = i40iw_sc_ccq_get_cqe_info,
++	.ccq_arm = i40iw_sc_ccq_arm
+ };
+ 
+ static struct i40iw_ceq_ops iw_ceq_ops = {
+-	i40iw_sc_ceq_init,
+-	i40iw_sc_ceq_create,
+-	i40iw_sc_cceq_create_done,
+-	i40iw_sc_cceq_destroy_done,
+-	i40iw_sc_cceq_create,
+-	i40iw_sc_ceq_destroy,
+-	i40iw_sc_process_ceq
++	.ceq_init = i40iw_sc_ceq_init,
++	.ceq_create = i40iw_sc_ceq_create,
++	.cceq_create_done = i40iw_sc_cceq_create_done,
++	.cceq_destroy_done = i40iw_sc_cceq_destroy_done,
++	.cceq_create = i40iw_sc_cceq_create,
++	.ceq_destroy = i40iw_sc_ceq_destroy,
++	.process_ceq = i40iw_sc_process_ceq
+ };
+ 
+ static struct i40iw_aeq_ops iw_aeq_ops = {
+-	i40iw_sc_aeq_init,
+-	i40iw_sc_aeq_create,
+-	i40iw_sc_aeq_destroy,
+-	i40iw_sc_get_next_aeqe,
+-	i40iw_sc_repost_aeq_entries,
+-	i40iw_sc_aeq_create_done,
+-	i40iw_sc_aeq_destroy_done
++	.aeq_init = i40iw_sc_aeq_init,
++	.aeq_create = i40iw_sc_aeq_create,
++	.aeq_destroy = i40iw_sc_aeq_destroy,
++	.get_next_aeqe = i40iw_sc_get_next_aeqe,
++	.repost_aeq_entries = i40iw_sc_repost_aeq_entries,
++	.aeq_create_done = i40iw_sc_aeq_create_done,
++	.aeq_destroy_done = i40iw_sc_aeq_destroy_done
+ };
+ 
+ /* iwarp pd ops */
+ static struct i40iw_pd_ops iw_pd_ops = {
+-	i40iw_sc_pd_init,
++	.pd_init = i40iw_sc_pd_init,
+ };
+ 
+ static struct i40iw_priv_qp_ops iw_priv_qp_ops = {
+@@ -4662,61 +4662,59 @@ static struct i40iw_priv_qp_ops iw_priv_qp_ops = {
+ };
+ 
+ static struct i40iw_priv_cq_ops iw_priv_cq_ops = {
+-	i40iw_sc_cq_init,
+-	i40iw_sc_cq_create,
+-	i40iw_sc_cq_destroy,
+-	i40iw_sc_cq_modify,
++	.cq_init = i40iw_sc_cq_init,
++	.cq_create = i40iw_sc_cq_create,
++	.cq_destroy = i40iw_sc_cq_destroy,
++	.cq_modify = i40iw_sc_cq_modify,
+ };
+ 
+ static struct i40iw_mr_ops iw_mr_ops = {
+-	i40iw_sc_alloc_stag,
+-	i40iw_sc_mr_reg_non_shared,
+-	i40iw_sc_mr_reg_shared,
+-	i40iw_sc_dealloc_stag,
+-	i40iw_sc_query_stag,
+-	i40iw_sc_mw_alloc
++	.alloc_stag = i40iw_sc_alloc_stag,
++	.mr_reg_non_shared = i40iw_sc_mr_reg_non_shared,
++	.mr_reg_shared = i40iw_sc_mr_reg_shared,
++	.dealloc_stag = i40iw_sc_dealloc_stag,
++	.query_stag = i40iw_sc_query_stag,
++	.mw_alloc = i40iw_sc_mw_alloc
+ };
+ 
+ static struct i40iw_cqp_misc_ops iw_cqp_misc_ops = {
+-	i40iw_sc_manage_push_page,
+-	i40iw_sc_manage_hmc_pm_func_table,
+-	i40iw_sc_set_hmc_resource_profile,
+-	i40iw_sc_commit_fpm_values,
+-	i40iw_sc_query_fpm_values,
+-	i40iw_sc_static_hmc_pages_allocated,
+-	i40iw_sc_add_arp_cache_entry,
+-	i40iw_sc_del_arp_cache_entry,
+-	i40iw_sc_query_arp_cache_entry,
+-	i40iw_sc_manage_apbvt_entry,
+-	i40iw_sc_manage_qhash_table_entry,
+-	i40iw_sc_alloc_local_mac_ipaddr_entry,
+-	i40iw_sc_add_local_mac_ipaddr_entry,
+-	i40iw_sc_del_local_mac_ipaddr_entry,
+-	i40iw_sc_cqp_nop,
+-	i40iw_sc_commit_fpm_values_done,
+-	i40iw_sc_query_fpm_values_done,
+-	i40iw_sc_manage_hmc_pm_func_table_done,
+-	i40iw_sc_suspend_qp,
+-	i40iw_sc_resume_qp
++	.manage_push_page = i40iw_sc_manage_push_page,
++	.manage_hmc_pm_func_table = i40iw_sc_manage_hmc_pm_func_table,
++	.set_hmc_resource_profile = i40iw_sc_set_hmc_resource_profile,
++	.commit_fpm_values = i40iw_sc_commit_fpm_values,
++	.query_fpm_values = i40iw_sc_query_fpm_values,
++	.static_hmc_pages_allocated = i40iw_sc_static_hmc_pages_allocated,
++	.add_arp_cache_entry = i40iw_sc_add_arp_cache_entry,
++	.del_arp_cache_entry = i40iw_sc_del_arp_cache_entry,
++	.query_arp_cache_entry = i40iw_sc_query_arp_cache_entry,
++	.manage_apbvt_entry = i40iw_sc_manage_apbvt_entry,
++	.manage_qhash_table_entry = i40iw_sc_manage_qhash_table_entry,
++	.alloc_local_mac_ipaddr_table_entry = i40iw_sc_alloc_local_mac_ipaddr_entry,
++	.add_local_mac_ipaddr_entry = i40iw_sc_add_local_mac_ipaddr_entry,
++	.del_local_mac_ipaddr_entry = i40iw_sc_del_local_mac_ipaddr_entry,
++	.cqp_nop = i40iw_sc_cqp_nop,
++	.commit_fpm_values_done = i40iw_sc_commit_fpm_values_done,
++	.query_fpm_values_done = i40iw_sc_query_fpm_values_done,
++	.manage_hmc_pm_func_table_done = i40iw_sc_manage_hmc_pm_func_table_done,
++	.update_suspend_qp = i40iw_sc_suspend_qp,
++	.update_resume_qp = i40iw_sc_resume_qp
+ };
+ 
+ static struct i40iw_hmc_ops iw_hmc_ops = {
+-	i40iw_sc_init_iw_hmc,
+-	i40iw_sc_parse_fpm_query_buf,
+-	i40iw_sc_configure_iw_fpm,
+-	i40iw_sc_parse_fpm_commit_buf,
+-	i40iw_sc_create_hmc_obj,
+-	i40iw_sc_del_hmc_obj,
+-	NULL,
+-	NULL
++	.init_iw_hmc = i40iw_sc_init_iw_hmc,
++	.parse_fpm_query_buf = i40iw_sc_parse_fpm_query_buf,
++	.configure_iw_fpm = i40iw_sc_configure_iw_fpm,
++	.parse_fpm_commit_buf = i40iw_sc_parse_fpm_commit_buf,
++	.create_hmc_object = i40iw_sc_create_hmc_obj,
++	.del_hmc_object = i40iw_sc_del_hmc_obj
+ };
+ 
+ static const struct i40iw_device_pestat_ops iw_device_pestat_ops = {
+-	i40iw_hw_stat_init,
+-	i40iw_hw_stat_read_32,
+-	i40iw_hw_stat_read_64,
+-	i40iw_hw_stat_read_all,
+-	i40iw_hw_stat_refresh_all
++	.iw_hw_stat_init = i40iw_hw_stat_init,
++	.iw_hw_stat_read_32 = i40iw_hw_stat_read_32,
++	.iw_hw_stat_read_64 = i40iw_hw_stat_read_64,
++	.iw_hw_stat_read_all = i40iw_hw_stat_read_all,
++	.iw_hw_stat_refresh_all = i40iw_hw_stat_refresh_all
+ };
+ 
+ /**
+diff --git a/drivers/infiniband/hw/i40iw/i40iw_uk.c b/drivers/infiniband/hw/i40iw/i40iw_uk.c
+index 4d28c3cb03cc..ec6b0b77f586 100644
+--- a/drivers/infiniband/hw/i40iw/i40iw_uk.c
++++ b/drivers/infiniband/hw/i40iw/i40iw_uk.c
+@@ -919,29 +919,29 @@ enum i40iw_status_code i40iw_get_wqe_shift(u32 wqdepth, u32 sge, u32 inline_data
+ }
+ 
+ static struct i40iw_qp_uk_ops iw_qp_uk_ops = {
+-	i40iw_qp_post_wr,
+-	i40iw_qp_ring_push_db,
+-	i40iw_rdma_write,
+-	i40iw_rdma_read,
+-	i40iw_send,
+-	i40iw_inline_rdma_write,
+-	i40iw_inline_send,
+-	i40iw_stag_local_invalidate,
+-	i40iw_mw_bind,
+-	i40iw_post_receive,
+-	i40iw_nop
++	.iw_qp_post_wr = i40iw_qp_post_wr,
++	.iw_qp_ring_push_db = i40iw_qp_ring_push_db,
++	.iw_rdma_write = i40iw_rdma_write,
++	.iw_rdma_read = i40iw_rdma_read,
++	.iw_send = i40iw_send,
++	.iw_inline_rdma_write = i40iw_inline_rdma_write,
++	.iw_inline_send = i40iw_inline_send,
++	.iw_stag_local_invalidate = i40iw_stag_local_invalidate,
++	.iw_mw_bind = i40iw_mw_bind,
++	.iw_post_receive = i40iw_post_receive,
++	.iw_post_nop = i40iw_nop
+ };
+ 
+ static struct i40iw_cq_ops iw_cq_ops = {
+-	i40iw_cq_request_notification,
+-	i40iw_cq_poll_completion,
+-	i40iw_cq_post_entries,
+-	i40iw_clean_cq
++	.iw_cq_request_notification = i40iw_cq_request_notification,
++	.iw_cq_poll_completion = i40iw_cq_poll_completion,
++	.iw_cq_post_entries = i40iw_cq_post_entries,
++	.iw_cq_clean = i40iw_clean_cq
+ };
+ 
+ static struct i40iw_device_uk_ops iw_device_uk_ops = {
+-	i40iw_cq_uk_init,
+-	i40iw_qp_uk_init,
++	.iwarp_cq_uk_init = i40iw_cq_uk_init,
++	.iwarp_qp_uk_init = i40iw_qp_uk_init,
+ };
+ 
+ /**
+diff --git a/drivers/infiniband/hw/nes/nes_cm.c b/drivers/infiniband/hw/nes/nes_cm.c
+index bea82a1d2523..adfe4b10a589 100644
+--- a/drivers/infiniband/hw/nes/nes_cm.c
++++ b/drivers/infiniband/hw/nes/nes_cm.c
+@@ -135,17 +135,17 @@ static void record_ird_ord(struct nes_cm_node *, u16, u16);
+ /* instance of function pointers for client API */
+ /* set address of this instance to cm_core->cm_ops at cm_core alloc */
+ static const struct nes_cm_ops nes_cm_api = {
+-	mini_cm_accelerated,
+-	mini_cm_listen,
+-	mini_cm_del_listen,
+-	mini_cm_connect,
+-	mini_cm_close,
+-	mini_cm_accept,
+-	mini_cm_reject,
+-	mini_cm_recv_pkt,
+-	mini_cm_dealloc_core,
+-	mini_cm_get,
+-	mini_cm_set
++	.accelerated = mini_cm_accelerated,
++	.listen = mini_cm_listen,
++	.stop_listener = mini_cm_del_listen,
++	.connect = mini_cm_connect,
++	.close = mini_cm_close,
++	.accept = mini_cm_accept,
++	.reject = mini_cm_reject,
++	.recv_pkt = mini_cm_recv_pkt,
++	.destroy_cm_core = mini_cm_dealloc_core,
++	.get = mini_cm_get,
++	.set = mini_cm_set
+ };
+ 
+ static struct nes_cm_core *g_cm_core;
+diff --git a/drivers/isdn/gigaset/bas-gigaset.c b/drivers/isdn/gigaset/bas-gigaset.c
+index 7f1c625b08ec..2da3ff650e1d 100644
+--- a/drivers/isdn/gigaset/bas-gigaset.c
++++ b/drivers/isdn/gigaset/bas-gigaset.c
+@@ -2568,22 +2568,22 @@ static int gigaset_post_reset(struct usb_interface *intf)
+ 
+ 
+ static const struct gigaset_ops gigops = {
+-	gigaset_write_cmd,
+-	gigaset_write_room,
+-	gigaset_chars_in_buffer,
+-	gigaset_brkchars,
+-	gigaset_init_bchannel,
+-	gigaset_close_bchannel,
+-	gigaset_initbcshw,
+-	gigaset_freebcshw,
+-	gigaset_reinitbcshw,
+-	gigaset_initcshw,
+-	gigaset_freecshw,
+-	gigaset_set_modem_ctrl,
+-	gigaset_baud_rate,
+-	gigaset_set_line_ctrl,
+-	gigaset_isoc_send_skb,
+-	gigaset_isoc_input,
++	.write_cmd = gigaset_write_cmd,
++	.write_room = gigaset_write_room,
++	.chars_in_buffer = gigaset_chars_in_buffer,
++	.brkchars = gigaset_brkchars,
++	.init_bchannel = gigaset_init_bchannel,
++	.close_bchannel = gigaset_close_bchannel,
++	.initbcshw = gigaset_initbcshw,
++	.freebcshw = gigaset_freebcshw,
++	.reinitbcshw = gigaset_reinitbcshw,
++	.initcshw = gigaset_initcshw,
++	.freecshw = gigaset_freecshw,
++	.set_modem_ctrl = gigaset_set_modem_ctrl,
++	.baud_rate = gigaset_baud_rate,
++	.set_line_ctrl = gigaset_set_line_ctrl,
++	.send_skb = gigaset_isoc_send_skb,
++	.handle_input = gigaset_isoc_input,
+ };
+ 
+ /* bas_gigaset_init
+diff --git a/drivers/isdn/gigaset/ser-gigaset.c b/drivers/isdn/gigaset/ser-gigaset.c
+index b90776ef56ec..ab0b63a4d045 100644
+--- a/drivers/isdn/gigaset/ser-gigaset.c
++++ b/drivers/isdn/gigaset/ser-gigaset.c
+@@ -445,22 +445,22 @@ static int gigaset_set_line_ctrl(struct cardstate *cs, unsigned cflag)
+ }
+ 
+ static const struct gigaset_ops ops = {
+-	gigaset_write_cmd,
+-	gigaset_write_room,
+-	gigaset_chars_in_buffer,
+-	gigaset_brkchars,
+-	gigaset_init_bchannel,
+-	gigaset_close_bchannel,
+-	gigaset_initbcshw,
+-	gigaset_freebcshw,
+-	gigaset_reinitbcshw,
+-	gigaset_initcshw,
+-	gigaset_freecshw,
+-	gigaset_set_modem_ctrl,
+-	gigaset_baud_rate,
+-	gigaset_set_line_ctrl,
+-	gigaset_m10x_send_skb,	/* asyncdata.c */
+-	gigaset_m10x_input,	/* asyncdata.c */
++	.write_cmd = gigaset_write_cmd,
++	.write_room = gigaset_write_room,
++	.chars_in_buffer = gigaset_chars_in_buffer,
++	.brkchars = gigaset_brkchars,
++	.init_bchannel = gigaset_init_bchannel,
++	.close_bchannel = gigaset_close_bchannel,
++	.initbcshw = gigaset_initbcshw,
++	.freebcshw = gigaset_freebcshw,
++	.reinitbcshw = gigaset_reinitbcshw,
++	.initcshw = gigaset_initcshw,
++	.freecshw = gigaset_freecshw,
++	.set_modem_ctrl = gigaset_set_modem_ctrl,
++	.baud_rate = gigaset_baud_rate,
++	.set_line_ctrl = gigaset_set_line_ctrl,
++	.send_skb = gigaset_m10x_send_skb,	/* asyncdata.c */
++	.handle_input = gigaset_m10x_input,	/* asyncdata.c */
+ };
+ 
+ 
+diff --git a/drivers/isdn/gigaset/usb-gigaset.c b/drivers/isdn/gigaset/usb-gigaset.c
+index 6acc7bbc81f1..ff14829c2e6c 100644
+--- a/drivers/isdn/gigaset/usb-gigaset.c
++++ b/drivers/isdn/gigaset/usb-gigaset.c
+@@ -862,22 +862,22 @@ static int gigaset_pre_reset(struct usb_interface *intf)
+ }
+ 
+ static const struct gigaset_ops ops = {
+-	gigaset_write_cmd,
+-	gigaset_write_room,
+-	gigaset_chars_in_buffer,
+-	gigaset_brkchars,
+-	gigaset_init_bchannel,
+-	gigaset_close_bchannel,
+-	gigaset_initbcshw,
+-	gigaset_freebcshw,
+-	gigaset_reinitbcshw,
+-	gigaset_initcshw,
+-	gigaset_freecshw,
+-	gigaset_set_modem_ctrl,
+-	gigaset_baud_rate,
+-	gigaset_set_line_ctrl,
+-	gigaset_m10x_send_skb,
+-	gigaset_m10x_input,
++	.write_cmd = gigaset_write_cmd,
++	.write_room = gigaset_write_room,
++	.chars_in_buffer = gigaset_chars_in_buffer,
++	.brkchars = gigaset_brkchars,
++	.init_bchannel = gigaset_init_bchannel,
++	.close_bchannel = gigaset_close_bchannel,
++	.initbcshw = gigaset_initbcshw,
++	.freebcshw = gigaset_freebcshw,
++	.reinitbcshw = gigaset_reinitbcshw,
++	.initcshw = gigaset_initcshw,
++	.freecshw = gigaset_freecshw,
++	.set_modem_ctrl = gigaset_set_modem_ctrl,
++	.baud_rate = gigaset_baud_rate,
++	.set_line_ctrl = gigaset_set_line_ctrl,
++	.send_skb = gigaset_m10x_send_skb,
++	.handle_input = gigaset_m10x_input,
+ };
+ 
+ /*
+diff --git a/drivers/isdn/i4l/isdn_concap.c b/drivers/isdn/i4l/isdn_concap.c
+index 91d57304d4d3..336523ec077c 100644
+--- a/drivers/isdn/i4l/isdn_concap.c
++++ b/drivers/isdn/i4l/isdn_concap.c
+@@ -80,9 +80,9 @@ static int isdn_concap_dl_disconn_req(struct concap_proto *concap)
+ }
+ 
+ struct concap_device_ops isdn_concap_reliable_dl_dops = {
+-	&isdn_concap_dl_data_req,
+-	&isdn_concap_dl_connect_req,
+-	&isdn_concap_dl_disconn_req
++	.data_req = &isdn_concap_dl_data_req,
++	.connect_req = &isdn_concap_dl_connect_req,
++	.disconn_req = &isdn_concap_dl_disconn_req
+ };
+ 
+ /* The following should better go into a dedicated source file such that
+diff --git a/drivers/isdn/i4l/isdn_x25iface.c b/drivers/isdn/i4l/isdn_x25iface.c
+index 0c5d8de41b23..ba60076e0b95 100644
+--- a/drivers/isdn/i4l/isdn_x25iface.c
++++ b/drivers/isdn/i4l/isdn_x25iface.c
+@@ -53,14 +53,14 @@ static int isdn_x25iface_disconn_ind(struct concap_proto *);
+ 
+ 
+ static struct concap_proto_ops ix25_pops = {
+-	&isdn_x25iface_proto_new,
+-	&isdn_x25iface_proto_del,
+-	&isdn_x25iface_proto_restart,
+-	&isdn_x25iface_proto_close,
+-	&isdn_x25iface_xmit,
+-	&isdn_x25iface_receive,
+-	&isdn_x25iface_connect_ind,
+-	&isdn_x25iface_disconn_ind
++	.proto_new = &isdn_x25iface_proto_new,
++	.proto_del = &isdn_x25iface_proto_del,
++	.restart = &isdn_x25iface_proto_restart,
++	.close = &isdn_x25iface_proto_close,
++	.encap_and_xmit = &isdn_x25iface_xmit,
++	.data_ind = &isdn_x25iface_receive,
++	.connect_ind = &isdn_x25iface_connect_ind,
++	.disconn_ind = &isdn_x25iface_disconn_ind
+ };
+ 
+ /* error message helper function */
+diff --git a/drivers/media/pci/solo6x10/solo6x10-g723.c b/drivers/media/pci/solo6x10/solo6x10-g723.c
+index 6a35107aca25..36e93540bb49 100644
+--- a/drivers/media/pci/solo6x10/solo6x10-g723.c
++++ b/drivers/media/pci/solo6x10/solo6x10-g723.c
+@@ -350,7 +350,7 @@ static int solo_snd_pcm_init(struct solo_dev *solo_dev)
+ 
+ int solo_g723_init(struct solo_dev *solo_dev)
+ {
+-	static struct snd_device_ops ops = { NULL };
++	static struct snd_device_ops ops = { };
+ 	struct snd_card *card;
+ 	struct snd_kcontrol_new kctl;
+ 	char name[32];
+diff --git a/drivers/media/platform/mtk-vcodec/venc/venc_h264_if.c b/drivers/media/platform/mtk-vcodec/venc/venc_h264_if.c
+index b76c80bdf30b..4eb3be37ba14 100644
+--- a/drivers/media/platform/mtk-vcodec/venc/venc_h264_if.c
++++ b/drivers/media/platform/mtk-vcodec/venc/venc_h264_if.c
+@@ -665,10 +665,10 @@ static int h264_enc_deinit(unsigned long handle)
+ }
+ 
+ static const struct venc_common_if venc_h264_if = {
+-	h264_enc_init,
+-	h264_enc_encode,
+-	h264_enc_set_param,
+-	h264_enc_deinit,
++	.init = h264_enc_init,
++	.encode = h264_enc_encode,
++	.set_param = h264_enc_set_param,
++	.deinit = h264_enc_deinit,
+ };
+ 
+ const struct venc_common_if *get_h264_enc_comm_if(void);
+diff --git a/drivers/media/platform/mtk-vcodec/venc/venc_vp8_if.c b/drivers/media/platform/mtk-vcodec/venc/venc_vp8_if.c
+index 544f57186243..a6fa145f2c54 100644
+--- a/drivers/media/platform/mtk-vcodec/venc/venc_vp8_if.c
++++ b/drivers/media/platform/mtk-vcodec/venc/venc_vp8_if.c
+@@ -470,10 +470,10 @@ static int vp8_enc_deinit(unsigned long handle)
+ }
+ 
+ static const struct venc_common_if venc_vp8_if = {
+-	vp8_enc_init,
+-	vp8_enc_encode,
+-	vp8_enc_set_param,
+-	vp8_enc_deinit,
++	.init = vp8_enc_init,
++	.encode = vp8_enc_encode,
++	.set_param = vp8_enc_set_param,
++	.deinit = vp8_enc_deinit,
+ };
+ 
+ const struct venc_common_if *get_vp8_enc_comm_if(void);
+diff --git a/drivers/misc/sgi-xp/xp_main.c b/drivers/misc/sgi-xp/xp_main.c
+index 78825234fdb7..4a305b4dedc6 100644
+--- a/drivers/misc/sgi-xp/xp_main.c
++++ b/drivers/misc/sgi-xp/xp_main.c
+@@ -101,13 +101,13 @@ static enum xp_retval xpc_notloaded_partid_to_nasids(short partid, void *nasid_m
+ }
+ 
+ struct xpc_interface xpc_interface = {
+-	(void (*)(int))xpc_notloaded,
+-	(void (*)(int))xpc_notloaded,
+-	(enum xp_retval(*)(short, int, u32, void *, u16))xpc_notloaded,
+-	(enum xp_retval(*)(short, int, u32, void *, u16, xpc_notify_func,
+-			   void *))xpc_notloaded,
+-	(void (*)(short, int, void *))xpc_notloaded,
+-	(enum xp_retval(*)(short, void *))xpc_notloaded
++	.connect = (void (*)(int))xpc_notloaded,
++	.disconnect = (void (*)(int))xpc_notloaded,
++	.send = (enum xp_retval(*)(short, int, u32, void *, u16))xpc_notloaded,
++	.send_notify = (enum xp_retval(*)(short, int, u32, void *, u16, xpc_notify_func,
++                                         void *))xpc_notloaded,
++	.received = (void (*)(short, int, void *))xpc_notloaded,
++	.partid_to_nasids = (enum xp_retval(*)(short, void *))xpc_notloaded
+ };
+ EXPORT_SYMBOL_GPL(xpc_interface);
+ 
+diff --git a/drivers/net/ethernet/brocade/bna/bna_enet.c b/drivers/net/ethernet/brocade/bna/bna_enet.c
+index 443f76a23f21..0791dab5bd20 100644
+--- a/drivers/net/ethernet/brocade/bna/bna_enet.c
++++ b/drivers/net/ethernet/brocade/bna/bna_enet.c
+@@ -1676,10 +1676,10 @@ bna_cb_ioceth_reset(void *arg)
+ }
+ 
+ static struct bfa_ioc_cbfn bna_ioceth_cbfn = {
+-	bna_cb_ioceth_enable,
+-	bna_cb_ioceth_disable,
+-	bna_cb_ioceth_hbfail,
+-	bna_cb_ioceth_reset
++	.enable_cbfn = bna_cb_ioceth_enable,
++	.disable_cbfn = bna_cb_ioceth_disable,
++	.hbfail_cbfn = bna_cb_ioceth_hbfail,
++	.reset_cbfn = bna_cb_ioceth_reset
+ };
+ 
+ static void bna_attr_init(struct bna_ioceth *ioceth)
+diff --git a/drivers/net/wan/lmc/lmc_media.c b/drivers/net/wan/lmc/lmc_media.c
+index 5920c996fcdf..ff2e4a5654c7 100644
+--- a/drivers/net/wan/lmc/lmc_media.c
++++ b/drivers/net/wan/lmc/lmc_media.c
+@@ -95,62 +95,63 @@ static inline void write_av9110_bit (lmc_softc_t *, int);
+ static void write_av9110(lmc_softc_t *, u32, u32, u32, u32, u32);
+ 
+ lmc_media_t lmc_ds3_media = {
+-  lmc_ds3_init,			/* special media init stuff */
+-  lmc_ds3_default,		/* reset to default state */
+-  lmc_ds3_set_status,		/* reset status to state provided */
+-  lmc_dummy_set_1,		/* set clock source */
+-  lmc_dummy_set2_1,		/* set line speed */
+-  lmc_ds3_set_100ft,		/* set cable length */
+-  lmc_ds3_set_scram,		/* set scrambler */
+-  lmc_ds3_get_link_status,	/* get link status */
+-  lmc_dummy_set_1,		/* set link status */
+-  lmc_ds3_set_crc_length,	/* set CRC length */
+-  lmc_dummy_set_1,		/* set T1 or E1 circuit type */
+-  lmc_ds3_watchdog
++  .init = lmc_ds3_init,				/* special media init stuff */
++  .defaults = lmc_ds3_default,			/* reset to default state */
++  .set_status = lmc_ds3_set_status,		/* reset status to state provided */
++  .set_clock_source = lmc_dummy_set_1,		/* set clock source */
++  .set_speed = lmc_dummy_set2_1,		/* set line speed */
++  .set_cable_length = lmc_ds3_set_100ft,	/* set cable length */
++  .set_scrambler = lmc_ds3_set_scram,		/* set scrambler */
++  .get_link_status = lmc_ds3_get_link_status,	/* get link status */
++  .set_link_status = lmc_dummy_set_1,		/* set link status */
++  .set_crc_length = lmc_ds3_set_crc_length,	/* set CRC length */
++  .set_circuit_type = lmc_dummy_set_1,		/* set T1 or E1 circuit type */
++  .watchdog = lmc_ds3_watchdog
+ };
+ 
+ lmc_media_t lmc_hssi_media = {
+-  lmc_hssi_init,		/* special media init stuff */
+-  lmc_hssi_default,		/* reset to default state */
+-  lmc_hssi_set_status,		/* reset status to state provided */
+-  lmc_hssi_set_clock,		/* set clock source */
+-  lmc_dummy_set2_1,		/* set line speed */
+-  lmc_dummy_set_1,		/* set cable length */
+-  lmc_dummy_set_1,		/* set scrambler */
+-  lmc_hssi_get_link_status,	/* get link status */
+-  lmc_hssi_set_link_status,	/* set link status */
+-  lmc_hssi_set_crc_length,	/* set CRC length */
+-  lmc_dummy_set_1,		/* set T1 or E1 circuit type */
+-  lmc_hssi_watchdog
++  .init = lmc_hssi_init,			/* special media init stuff */
++  .defaults = lmc_hssi_default,			/* reset to default state */
++  .set_status = lmc_hssi_set_status,		/* reset status to state provided */
++  .set_clock_source = lmc_hssi_set_clock,	/* set clock source */
++  .set_speed = lmc_dummy_set2_1,		/* set line speed */
++  .set_cable_length = lmc_dummy_set_1,		/* set cable length */
++  .set_scrambler = lmc_dummy_set_1,		/* set scrambler */
++  .get_link_status = lmc_hssi_get_link_status,	/* get link status */
++  .set_link_status = lmc_hssi_set_link_status,	/* set link status */
++  .set_crc_length = lmc_hssi_set_crc_length,	/* set CRC length */
++  .set_circuit_type = lmc_dummy_set_1,		/* set T1 or E1 circuit type */
++  .watchdog = lmc_hssi_watchdog
+ };
+ 
+-lmc_media_t lmc_ssi_media = { lmc_ssi_init,	/* special media init stuff */
+-  lmc_ssi_default,		/* reset to default state */
+-  lmc_ssi_set_status,		/* reset status to state provided */
+-  lmc_ssi_set_clock,		/* set clock source */
+-  lmc_ssi_set_speed,		/* set line speed */
+-  lmc_dummy_set_1,		/* set cable length */
+-  lmc_dummy_set_1,		/* set scrambler */
+-  lmc_ssi_get_link_status,	/* get link status */
+-  lmc_ssi_set_link_status,	/* set link status */
+-  lmc_ssi_set_crc_length,	/* set CRC length */
+-  lmc_dummy_set_1,		/* set T1 or E1 circuit type */
+-  lmc_ssi_watchdog
++lmc_media_t lmc_ssi_media = {
++  .init = lmc_ssi_init,				/* special media init stuff */
++  .defaults = lmc_ssi_default,			/* reset to default state */
++  .set_status = lmc_ssi_set_status,		/* reset status to state provided */
++  .set_clock_source = lmc_ssi_set_clock,	/* set clock source */
++  .set_speed = lmc_ssi_set_speed,		/* set line speed */
++  .set_cable_length = lmc_dummy_set_1,		/* set cable length */
++  .set_scrambler = lmc_dummy_set_1,		/* set scrambler */
++  .get_link_status = lmc_ssi_get_link_status,	/* get link status */
++  .set_link_status = lmc_ssi_set_link_status,	/* set link status */
++  .set_crc_length = lmc_ssi_set_crc_length,	/* set CRC length */
++  .set_circuit_type = lmc_dummy_set_1,		/* set T1 or E1 circuit type */
++  .watchdog = lmc_ssi_watchdog
+ };
+ 
+ lmc_media_t lmc_t1_media = {
+-  lmc_t1_init,			/* special media init stuff */
+-  lmc_t1_default,		/* reset to default state */
+-  lmc_t1_set_status,		/* reset status to state provided */
+-  lmc_t1_set_clock,		/* set clock source */
+-  lmc_dummy_set2_1,		/* set line speed */
+-  lmc_dummy_set_1,		/* set cable length */
+-  lmc_dummy_set_1,		/* set scrambler */
+-  lmc_t1_get_link_status,	/* get link status */
+-  lmc_dummy_set_1,		/* set link status */
+-  lmc_t1_set_crc_length,	/* set CRC length */
+-  lmc_t1_set_circuit_type,	/* set T1 or E1 circuit type */
+-  lmc_t1_watchdog
++  .init = lmc_t1_init,				/* special media init stuff */
++  .defaults = lmc_t1_default,			/* reset to default state */
++  .set_status = lmc_t1_set_status,		/* reset status to state provided */
++  .set_clock_source = lmc_t1_set_clock,		/* set clock source */
++  .set_speed = lmc_dummy_set2_1,		/* set line speed */
++  .set_cable_length = lmc_dummy_set_1,		/* set cable length */
++  .set_scrambler = lmc_dummy_set_1,		/* set scrambler */
++  .get_link_status = lmc_t1_get_link_status,	/* get link status */
++  .set_link_status = lmc_dummy_set_1,		/* set link status */
++  .set_crc_length = lmc_t1_set_crc_length,	/* set CRC length */
++  .set_circuit_type = lmc_t1_set_circuit_type,	/* set T1 or E1 circuit type */
++  .watchdog = lmc_t1_watchdog
+ };
+ 
+ static void
+diff --git a/drivers/net/wan/z85230.c b/drivers/net/wan/z85230.c
+index 2f0bd6955f33..e46ed7bba641 100644
+--- a/drivers/net/wan/z85230.c
++++ b/drivers/net/wan/z85230.c
+@@ -485,9 +485,9 @@ static void z8530_status(struct z8530_channel *chan)
+ 
+ struct z8530_irqhandler z8530_sync =
+ {
+-	z8530_rx,
+-	z8530_tx,
+-	z8530_status
++	.rx = z8530_rx,
++	.tx = z8530_tx,
++	.status = z8530_status
+ };
+ 
+ EXPORT_SYMBOL(z8530_sync);
+@@ -605,15 +605,15 @@ static void z8530_dma_status(struct z8530_channel *chan)
+ }
+ 
+ static struct z8530_irqhandler z8530_dma_sync = {
+-	z8530_dma_rx,
+-	z8530_dma_tx,
+-	z8530_dma_status
++	.rx = z8530_dma_rx,
++	.tx = z8530_dma_tx,
++	.status = z8530_dma_status
+ };
+ 
+ static struct z8530_irqhandler z8530_txdma_sync = {
+-	z8530_rx,
+-	z8530_dma_tx,
+-	z8530_dma_status
++	.rx = z8530_rx,
++	.tx = z8530_dma_tx,
++	.status = z8530_dma_status
+ };
+ 
+ /**
+@@ -680,9 +680,9 @@ static void z8530_status_clear(struct z8530_channel *chan)
+ 
+ struct z8530_irqhandler z8530_nop=
+ {
+-	z8530_rx_clear,
+-	z8530_tx_clear,
+-	z8530_status_clear
++	.rx = z8530_rx_clear,
++	.tx = z8530_tx_clear,
++	.status = z8530_status_clear
+ };
+ 
+ 
+diff --git a/drivers/scsi/bfa/bfa_fcs.c b/drivers/scsi/bfa/bfa_fcs.c
+index 1e7e139d71ea..c2031dd6ab67 100644
+--- a/drivers/scsi/bfa/bfa_fcs.c
++++ b/drivers/scsi/bfa/bfa_fcs.c
+@@ -39,10 +39,21 @@ struct bfa_fcs_mod_s {
+ #define BFA_FCS_MODULE(_mod) { _mod ## _modinit, _mod ## _modexit }
+ 
+ static struct bfa_fcs_mod_s fcs_modules[] = {
+-	{ bfa_fcs_port_attach, NULL, NULL },
+-	{ bfa_fcs_uf_attach, NULL, NULL },
+-	{ bfa_fcs_fabric_attach, bfa_fcs_fabric_modinit,
+-	  bfa_fcs_fabric_modexit },
++	{
++		.attach = bfa_fcs_port_attach,
++		.modinit = NULL,
++		.modexit = NULL
++	},
++	{
++		.attach = bfa_fcs_uf_attach,
++		.modinit = NULL,
++		.modexit = NULL
++	},
++	{
++		.attach = bfa_fcs_fabric_attach,
++		.modinit = bfa_fcs_fabric_modinit,
++		.modexit = bfa_fcs_fabric_modexit
++	},
+ };
+ 
+ /*
+diff --git a/drivers/scsi/bfa/bfa_fcs_lport.c b/drivers/scsi/bfa/bfa_fcs_lport.c
+index 8e9281422c47..ccf40a3c7a56 100644
+--- a/drivers/scsi/bfa/bfa_fcs_lport.c
++++ b/drivers/scsi/bfa/bfa_fcs_lport.c
+@@ -90,15 +90,26 @@ static struct {
+ 	void		(*offline) (struct bfa_fcs_lport_s *port);
+ } __port_action[] = {
+ 	{
+-	bfa_fcs_lport_unknown_init, bfa_fcs_lport_unknown_online,
+-			bfa_fcs_lport_unknown_offline}, {
+-	bfa_fcs_lport_fab_init, bfa_fcs_lport_fab_online,
+-			bfa_fcs_lport_fab_offline}, {
+-	bfa_fcs_lport_n2n_init, bfa_fcs_lport_n2n_online,
+-			bfa_fcs_lport_n2n_offline}, {
+-	bfa_fcs_lport_loop_init, bfa_fcs_lport_loop_online,
+-			bfa_fcs_lport_loop_offline},
+-	};
++		.init = bfa_fcs_lport_unknown_init,
++		.online = bfa_fcs_lport_unknown_online,
++		.offline = bfa_fcs_lport_unknown_offline
++	},
++	{
++		.init = bfa_fcs_lport_fab_init,
++		.online = bfa_fcs_lport_fab_online,
++		.offline = bfa_fcs_lport_fab_offline
++	},
++	{
++		.init = bfa_fcs_lport_n2n_init,
++		.online = bfa_fcs_lport_n2n_online,
++		.offline = bfa_fcs_lport_n2n_offline
++	},
++	{
++		.init = bfa_fcs_lport_loop_init,
++		.online = bfa_fcs_lport_loop_online,
++		.offline = bfa_fcs_lport_loop_offline
++	},
++};
+ 
+ /*
+  *  fcs_port_sm FCS logical port state machine
+diff --git a/drivers/scsi/bfa/bfa_modules.h b/drivers/scsi/bfa/bfa_modules.h
+index 53135f21fa0e..640621b4c3da 100644
+--- a/drivers/scsi/bfa/bfa_modules.h
++++ b/drivers/scsi/bfa/bfa_modules.h
+@@ -79,12 +79,12 @@ enum {
+ 									\
+ 	extern struct bfa_module_s hal_mod_ ## __mod;			\
+ 	struct bfa_module_s hal_mod_ ## __mod = {			\
+-		bfa_ ## __mod ## _meminfo,				\
+-		bfa_ ## __mod ## _attach,				\
+-		bfa_ ## __mod ## _detach,				\
+-		bfa_ ## __mod ## _start,				\
+-		bfa_ ## __mod ## _stop,					\
+-		bfa_ ## __mod ## _iocdisable,				\
++		.meminfo = bfa_ ## __mod ## _meminfo,			\
++		.attach = bfa_ ## __mod ## _attach,			\
++		.detach = bfa_ ## __mod ## _detach,			\
++		.start = bfa_ ## __mod ## _start,			\
++		.stop = bfa_ ## __mod ## _stop,				\
++		.iocdisable = bfa_ ## __mod ## _iocdisable,		\
+ 	}
+ 
+ #define BFA_CACHELINE_SZ	(256)
+diff --git a/drivers/scsi/hpsa.h b/drivers/scsi/hpsa.h
+index 37d93fa19e31..40c2e1bda7f1 100644
+--- a/drivers/scsi/hpsa.h
++++ b/drivers/scsi/hpsa.h
+@@ -580,38 +580,38 @@ static unsigned long SA5_ioaccel_mode1_completed(struct ctlr_info *h, u8 q)
+ }
+ 
+ static struct access_method SA5_access = {
+-	SA5_submit_command,
+-	SA5_intr_mask,
+-	SA5_intr_pending,
+-	SA5_completed,
++	.submit_command = SA5_submit_command,
++	.set_intr_mask = SA5_intr_mask,
++	.intr_pending = SA5_intr_pending,
++	.command_completed = SA5_completed,
+ };
+ 
+ static struct access_method SA5_ioaccel_mode1_access = {
+-	SA5_submit_command,
+-	SA5_performant_intr_mask,
+-	SA5_ioaccel_mode1_intr_pending,
+-	SA5_ioaccel_mode1_completed,
++	.submit_command = SA5_submit_command,
++	.set_intr_mask = SA5_performant_intr_mask,
++	.intr_pending = SA5_ioaccel_mode1_intr_pending,
++	.command_completed = SA5_ioaccel_mode1_completed,
+ };
+ 
+ static struct access_method SA5_ioaccel_mode2_access = {
+-	SA5_submit_command_ioaccel2,
+-	SA5_performant_intr_mask,
+-	SA5_performant_intr_pending,
+-	SA5_performant_completed,
++	.submit_command = SA5_submit_command_ioaccel2,
++	.set_intr_mask = SA5_performant_intr_mask,
++	.intr_pending = SA5_performant_intr_pending,
++	.command_completed = SA5_performant_completed,
+ };
+ 
+ static struct access_method SA5_performant_access = {
+-	SA5_submit_command,
+-	SA5_performant_intr_mask,
+-	SA5_performant_intr_pending,
+-	SA5_performant_completed,
++	.submit_command = SA5_submit_command,
++	.set_intr_mask = SA5_performant_intr_mask,
++	.intr_pending = SA5_performant_intr_pending,
++	.command_completed = SA5_performant_completed,
+ };
+ 
+ static struct access_method SA5_performant_access_no_read = {
+-	SA5_submit_command_no_read,
+-	SA5_performant_intr_mask,
+-	SA5_performant_intr_pending,
+-	SA5_performant_completed,
++	.submit_command = SA5_submit_command_no_read,
++	.set_intr_mask = SA5_performant_intr_mask,
++	.intr_pending = SA5_performant_intr_pending,
++	.command_completed = SA5_performant_completed,
+ };
+ 
+ struct board_type {
+diff --git a/drivers/staging/lustre/lustre/ldlm/ldlm_flock.c b/drivers/staging/lustre/lustre/ldlm/ldlm_flock.c
+index 861f36f039b5..69d22b9c6197 100644
+--- a/drivers/staging/lustre/lustre/ldlm/ldlm_flock.c
++++ b/drivers/staging/lustre/lustre/ldlm/ldlm_flock.c
+@@ -143,7 +143,7 @@ static int ldlm_process_flock_lock(struct ldlm_lock *req, __u64 *flags,
+ 	int added = (mode == LCK_NL);
+ 	int overlaps = 0;
+ 	int splitted = 0;
+-	const struct ldlm_callback_suite null_cbs = { NULL };
++	const struct ldlm_callback_suite null_cbs = { };
+ 
+ 	CDEBUG(D_DLMTRACE,
+ 	       "flags %#llx owner %llu pid %u mode %u start %llu end %llu\n",
+diff --git a/drivers/video/fbdev/matrox/matroxfb_DAC1064.c b/drivers/video/fbdev/matrox/matroxfb_DAC1064.c
+index a01147fdf270..5d896f879ff9 100644
+--- a/drivers/video/fbdev/matrox/matroxfb_DAC1064.c
++++ b/drivers/video/fbdev/matrox/matroxfb_DAC1064.c
+@@ -1088,14 +1088,20 @@ static void MGAG100_restore(struct matrox_fb_info *minfo)
+ 
+ #ifdef CONFIG_FB_MATROX_MYSTIQUE
+ struct matrox_switch matrox_mystique = {
+-	MGA1064_preinit, MGA1064_reset, MGA1064_init, MGA1064_restore,
++	.preinit = MGA1064_preinit,
++	.reset = MGA1064_reset,
++	.init = MGA1064_init,
++	.restore = MGA1064_restore,
+ };
+ EXPORT_SYMBOL(matrox_mystique);
+ #endif
+ 
+ #ifdef CONFIG_FB_MATROX_G
+ struct matrox_switch matrox_G100 = {
+-	MGAG100_preinit, MGAG100_reset, MGAG100_init, MGAG100_restore,
++	.preinit = MGAG100_preinit,
++	.reset = MGAG100_reset,
++	.init = MGAG100_init,
++	.restore = MGAG100_restore,
+ };
+ EXPORT_SYMBOL(matrox_G100);
+ #endif
+diff --git a/drivers/video/fbdev/matrox/matroxfb_Ti3026.c b/drivers/video/fbdev/matrox/matroxfb_Ti3026.c
+index 68fa037d8cbc..0273351b2342 100644
+--- a/drivers/video/fbdev/matrox/matroxfb_Ti3026.c
++++ b/drivers/video/fbdev/matrox/matroxfb_Ti3026.c
+@@ -738,7 +738,10 @@ static int Ti3026_preinit(struct matrox_fb_info *minfo)
+ }
+ 
+ struct matrox_switch matrox_millennium = {
+-	Ti3026_preinit, Ti3026_reset, Ti3026_init, Ti3026_restore
++	.preinit = Ti3026_preinit,
++	.reset = Ti3026_reset,
++	.init = Ti3026_init,
++	.restore = Ti3026_restore
+ };
+ EXPORT_SYMBOL(matrox_millennium);
+ #endif
+diff --git a/drivers/video/fbdev/sh_mobile_lcdcfb.c b/drivers/video/fbdev/sh_mobile_lcdcfb.c
+index 82c0a8caa9b8..42499a1afa07 100644
+--- a/drivers/video/fbdev/sh_mobile_lcdcfb.c
++++ b/drivers/video/fbdev/sh_mobile_lcdcfb.c
+@@ -439,9 +439,9 @@ static unsigned long lcdc_sys_read_data(void *handle)
+ }
+ 
+ static struct sh_mobile_lcdc_sys_bus_ops sh_mobile_lcdc_sys_bus_ops = {
+-	lcdc_sys_write_index,
+-	lcdc_sys_write_data,
+-	lcdc_sys_read_data,
++	.write_index = lcdc_sys_write_index,
++	.write_data = lcdc_sys_write_data,
++	.read_data = lcdc_sys_read_data,
+ };
+ 
+ static int sh_mobile_lcdc_sginit(struct fb_info *info,
+diff --git a/fs/overlayfs/super.c b/fs/overlayfs/super.c
+index 6c4e9d5edd8f..3eb64b289c51 100644
+--- a/fs/overlayfs/super.c
++++ b/fs/overlayfs/super.c
+@@ -182,7 +182,7 @@ void ovl_path_lower(struct dentry *dentry, struct path *path)
+ {
+ 	struct ovl_entry *oe = dentry->d_fsdata;
+ 
+-	*path = oe->numlower ? oe->lowerstack[0] : (struct path) { NULL, NULL };
++	*path = oe->numlower ? oe->lowerstack[0] : (struct path) { .dentry = NULL, .mnt = NULL };
+ }
+ 
+ int ovl_want_write(struct dentry *dentry)
+@@ -1133,8 +1133,8 @@ static const struct xattr_handler *ovl_xattr_handlers[] = {
+ 
+ static int ovl_fill_super(struct super_block *sb, void *data, int silent)
+ {
+-	struct path upperpath = { NULL, NULL };
+-	struct path workpath = { NULL, NULL };
++	struct path upperpath = { .dentry = NULL, .mnt = NULL };
++	struct path workpath = { .dentry = NULL, .mnt = NULL };
+ 	struct dentry *root_dentry;
+ 	struct inode *realinode;
+ 	struct ovl_entry *oe;

@@ -1,0 +1,12 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/kernel/ptrace.c linux-4.9.24-pax/arch/powerpc/kernel/ptrace.c
+--- linux-4.9.24/arch/powerpc/kernel/ptrace.c	2017-01-28 00:00:41.694939249 +0100
++++ linux-4.9.24-pax/arch/powerpc/kernel/ptrace.c	2017-01-28 00:00:55.054993019 +0100
+@@ -3151,7 +3151,7 @@ static int do_seccomp(struct pt_regs *re
+ 	 * have already loaded -ENOSYS into r3, or seccomp has put
+ 	 * something else in r3 (via SECCOMP_RET_ERRNO/TRACE).
+ 	 */
+-	if (__secure_computing(NULL))
++	if (secure_computing(NULL))
+ 		return -1;
+ 
+ 	/*

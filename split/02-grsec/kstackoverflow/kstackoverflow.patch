@@ -1,0 +1,152 @@
+diff --git a/arch/Kconfig b/arch/Kconfig
+index 6918a376a9e6..41791813059c 100644
+--- a/arch/Kconfig
++++ b/arch/Kconfig
+@@ -759,7 +759,8 @@ config HAVE_ARCH_VMAP_STACK
+ config VMAP_STACK
+ 	default y
+ 	bool "Use a virtually-mapped stack"
+-	depends on HAVE_ARCH_VMAP_STACK && !KASAN && BROKEN_SECURITY
++	depends on HAVE_ARCH_VMAP_STACK && !KASAN
++	depends on !GRKERNSEC_KSTACKOVERFLOW
+ 	---help---
+ 	  Enable this if you want the use virtually-mapped kernel stacks
+ 	  with guard pages.  This causes kernel stack overflows to be
+diff --git a/arch/x86/include/asm/page.h b/arch/x86/include/asm/page.h
+index 68efb7f87bf9..bbcf5e67ed4f 100644
+--- a/arch/x86/include/asm/page.h
++++ b/arch/x86/include/asm/page.h
+@@ -67,11 +67,21 @@ static inline void copy_user_page(void *to, void *from, unsigned long vaddr,
+  * virt_to_page(kaddr) returns a valid pointer if and only if
+  * virt_addr_valid(kaddr) returns true.
+  */
+-#define virt_to_page(kaddr)	pfn_to_page(__pa(kaddr) >> PAGE_SHIFT)
+ #define pfn_to_kaddr(pfn)      __va((pfn) << PAGE_SHIFT)
+ extern bool __virt_addr_valid(unsigned long kaddr);
+ #define virt_addr_valid(kaddr)	__virt_addr_valid((unsigned long) (kaddr))
+ 
++#ifdef CONFIG_GRKERNSEC_KSTACKOVERFLOW
++#define virt_to_page(kaddr)	\
++	({ \
++		const void *__kaddr = (const void *)(kaddr); \
++		BUG_ON(!virt_addr_valid(__kaddr)); \
++		pfn_to_page(__pa(__kaddr) >> PAGE_SHIFT); \
++	})
++#else
++#define virt_to_page(kaddr)	pfn_to_page(__pa(kaddr) >> PAGE_SHIFT)
++#endif
++
+ #endif	/* __ASSEMBLY__ */
+ 
+ #include <asm-generic/memory_model.h>
+diff --git a/arch/x86/include/asm/traps.h b/arch/x86/include/asm/traps.h
+index 895d81288050..0ad067b4531d 100644
+--- a/arch/x86/include/asm/traps.h
++++ b/arch/x86/include/asm/traps.h
+@@ -129,7 +129,7 @@ extern void ist_exit(struct pt_regs *regs);
+ extern void ist_begin_non_atomic(struct pt_regs *regs);
+ extern void ist_end_non_atomic(void);
+ 
+-#ifdef CONFIG_VMAP_STACK
++#if defined(CONFIG_VMAP_STACK) || defined(CONFIG_GRKERNSEC_KSTACKOVERFLOW)
+ void __noreturn handle_stack_overflow(const char *message,
+ 				      struct pt_regs *regs,
+ 				      unsigned long fault_address);
+diff --git a/arch/x86/kernel/traps.c b/arch/x86/kernel/traps.c
+index 42b2d99c6dd6..4cff0f14720b 100644
+--- a/arch/x86/kernel/traps.c
++++ b/arch/x86/kernel/traps.c
+@@ -314,7 +314,7 @@ DO_ERROR(X86_TRAP_NP,     SIGBUS,  "segment not present",	segment_not_present)
+ DO_ERROR(X86_TRAP_SS,     SIGBUS,  "stack segment",		stack_segment)
+ DO_ERROR(X86_TRAP_AC,     SIGBUS,  "alignment check",		alignment_check)
+ 
+-#ifdef CONFIG_VMAP_STACK
++#if defined(CONFIG_VMAP_STACK) || defined(CONFIG_GRKERNSEC_KSTACKOVERFLOW)
+ __visible void __noreturn handle_stack_overflow(const char *message,
+ 						struct pt_regs *regs,
+ 						unsigned long fault_address)
+@@ -371,7 +371,7 @@ dotraplinkage void do_double_fault(struct pt_regs *regs, long error_code)
+ {
+ 	static const char str[] = "double fault";
+ 	struct task_struct *tsk = current;
+-#ifdef CONFIG_VMAP_STACK
++#if defined(CONFIG_VMAP_STACK) || defined(CONFIG_GRKERNSEC_KSTACKOVERFLOW)
+ 	unsigned long cr2;
+ #endif
+ 
+@@ -408,7 +408,7 @@ dotraplinkage void do_double_fault(struct pt_regs *regs, long error_code)
+ 	tsk->thread.error_code = error_code;
+ 	tsk->thread.trap_nr = X86_TRAP_DF;
+ 
+-#ifdef CONFIG_VMAP_STACK
++#if defined(CONFIG_VMAP_STACK) || defined(CONFIG_GRKERNSEC_KSTACKOVERFLOW)
+ 	/*
+ 	 * If we overflow the stack into a guard page, the CPU will fail
+ 	 * to deliver #PF and will send #DF instead.  Similarly, if we
+@@ -448,8 +448,12 @@ dotraplinkage void do_double_fault(struct pt_regs *regs, long error_code)
+ 	 */
+ 	cr2 = read_cr2();
+ 	if ((unsigned long)task_stack_page(tsk) - 1 - cr2 < PAGE_SIZE)
++#ifdef CONFIG_GRKERNSEC_KSTACKOVERFLOW
++		handle_stack_overflow("grsec: kernel stack overflow detected", regs, cr2);
++#else
+ 		handle_stack_overflow("kernel stack overflow (double-fault)", regs, cr2);
+ #endif
++#endif
+ 
+ #ifdef CONFIG_DOUBLEFAULT
+ 	df_debug(regs, error_code);
+diff --git a/crypto/scatterwalk.c b/crypto/scatterwalk.c
+index c16c94f88733..8ab5bf8ba00f 100644
+--- a/crypto/scatterwalk.c
++++ b/crypto/scatterwalk.c
+@@ -62,14 +62,20 @@ void scatterwalk_map_and_copy(void *buf, struct scatterlist *sg,
+ {
+ 	struct scatter_walk walk;
+ 	struct scatterlist tmp[2];
++	void *realbuf = buf;
+ 
+ 	if (!nbytes)
+ 		return;
+ 
+ 	sg = scatterwalk_ffwd(tmp, sg, start);
+ 
++#ifdef CONFIG_GRKERNSEC_KSTACKOVERFLOW
++	if (object_starts_on_stack(buf))
++		realbuf = buf - current->stack + current->lowmem_stack;
++#endif
++
+ 	scatterwalk_start(&walk, sg);
+-	scatterwalk_copychunks(buf, &walk, nbytes, out);
++	scatterwalk_copychunks(realbuf, &walk, nbytes, out);
+ 	scatterwalk_done(&walk, out, 0);
+ }
+ EXPORT_SYMBOL_GPL(scatterwalk_map_and_copy);
+diff --git a/drivers/iommu/amd_iommu.c b/drivers/iommu/amd_iommu.c
+index 11a13b5be73a..f1e5481e1828 100644
+--- a/drivers/iommu/amd_iommu.c
++++ b/drivers/iommu/amd_iommu.c
+@@ -859,11 +859,21 @@ static void copy_cmd_to_buffer(struct amd_iommu *iommu,
+ 
+ static void build_completion_wait(struct iommu_cmd *cmd, u64 address)
+ {
++	phys_addr_t physaddr;
+ 	WARN_ON(address & 0x7ULL);
+ 
+ 	memset(cmd, 0, sizeof(*cmd));
+-	cmd->data[0] = lower_32_bits(__pa(address)) | CMD_COMPL_WAIT_STORE_MASK;
+-	cmd->data[1] = upper_32_bits(__pa(address));
++
++#ifdef CONFIG_GRKERNSEC_KSTACKOVERFLOW
++	if (object_starts_on_stack((void *)address)) {
++		void *adjbuf = (void *)address - current->stack + current->lowmem_stack;
++		physaddr = __pa((u64)adjbuf);
++	} else
++#endif
++	physaddr = __pa(address);
++
++	cmd->data[0] = lower_32_bits(physaddr) | CMD_COMPL_WAIT_STORE_MASK;
++	cmd->data[1] = upper_32_bits(physaddr);
+ 	cmd->data[2] = 1;
+ 	CMD_SET_TYPE(cmd, CMD_COMPL_WAIT);
+ }

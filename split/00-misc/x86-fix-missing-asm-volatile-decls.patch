@@ -1,0 +1,77 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/boot/bitops.h linux-4.9.24-pax/arch/x86/boot/bitops.h
+--- linux-4.9.24/arch/x86/boot/bitops.h	2016-10-03 11:27:30.015049921 +0200
++++ linux-4.9.24-pax/arch/x86/boot/bitops.h	2017-01-01 22:57:10.593520706 +0100
+@@ -28,7 +28,7 @@ static inline bool variable_test_bit(int
+ 	bool v;
+ 	const u32 *p = (const u32 *)addr;
+ 
+-	asm("btl %2,%1; setc %0" : "=qm" (v) : "m" (*p), "Ir" (nr));
++	asm volatile("btl %2,%1; setc %0" : "=qm" (v) : "m" (*p), "Ir" (nr));
+ 	return v;
+ }
+ 
+@@ -39,7 +39,7 @@ static inline bool variable_test_bit(int
+ 
+ static inline void set_bit(int nr, void *addr)
+ {
+-	asm("btsl %1,%0" : "+m" (*(u32 *)addr) : "Ir" (nr));
++	asm volatile("btsl %1,%0" : "+m" (*(u32 *)addr) : "Ir" (nr));
+ }
+ 
+ #endif /* BOOT_BITOPS_H */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/boot/boot.h linux-4.9.24-pax/arch/x86/boot/boot.h
+--- linux-4.9.24/arch/x86/boot/boot.h	2016-10-03 11:27:30.027058364 +0200
++++ linux-4.9.24-pax/arch/x86/boot/boot.h	2017-01-01 22:57:10.593520706 +0100
+@@ -84,7 +84,7 @@ static inline void io_delay(void)
+ static inline u16 ds(void)
+ {
+ 	u16 seg;
+-	asm("movw %%ds,%0" : "=rm" (seg));
++	asm volatile("movw %%ds,%0" : "=rm" (seg));
+ 	return seg;
+ }
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/boot/cpucheck.c linux-4.9.24-pax/arch/x86/boot/cpucheck.c
+--- linux-4.9.24/arch/x86/boot/cpucheck.c	2016-10-03 11:27:30.063083987 +0200
++++ linux-4.9.24-pax/arch/x86/boot/cpucheck.c	2017-01-01 22:57:10.597520716 +0100
+@@ -126,9 +126,9 @@ int check_cpu(int *cpu_level_ptr, int *r
+ 		u32 ecx = MSR_K7_HWCR;
+ 		u32 eax, edx;
+ 
+-		asm("rdmsr" : "=a" (eax), "=d" (edx) : "c" (ecx));
++		asm volatile("rdmsr" : "=a" (eax), "=d" (edx) : "c" (ecx));
+ 		eax &= ~(1 << 15);
+-		asm("wrmsr" : : "a" (eax), "d" (edx), "c" (ecx));
++		asm volatile("wrmsr" : : "a" (eax), "d" (edx), "c" (ecx));
+ 
+ 		get_cpuflags();	/* Make sure it really did something */
+ 		err = check_cpuflags();
+@@ -141,9 +141,9 @@ int check_cpu(int *cpu_level_ptr, int *r
+ 		u32 ecx = MSR_VIA_FCR;
+ 		u32 eax, edx;
+ 
+-		asm("rdmsr" : "=a" (eax), "=d" (edx) : "c" (ecx));
++		asm volatile("rdmsr" : "=a" (eax), "=d" (edx) : "c" (ecx));
+ 		eax |= (1<<1)|(1<<7);
+-		asm("wrmsr" : : "a" (eax), "d" (edx), "c" (ecx));
++		asm volatile("wrmsr" : : "a" (eax), "d" (edx), "c" (ecx));
+ 
+ 		set_bit(X86_FEATURE_CX8, cpu.flags);
+ 		err = check_cpuflags();
+@@ -154,12 +154,12 @@ int check_cpu(int *cpu_level_ptr, int *r
+ 		u32 eax, edx;
+ 		u32 level = 1;
+ 
+-		asm("rdmsr" : "=a" (eax), "=d" (edx) : "c" (ecx));
+-		asm("wrmsr" : : "a" (~0), "d" (edx), "c" (ecx));
+-		asm("cpuid"
++		asm volatile("rdmsr" : "=a" (eax), "=d" (edx) : "c" (ecx));
++		asm volatile("wrmsr" : : "a" (~0), "d" (edx), "c" (ecx));
++		asm volatile("cpuid"
+ 		    : "+a" (level), "=d" (cpu.flags[0])
+ 		    : : "ecx", "ebx");
+-		asm("wrmsr" : : "a" (eax), "d" (edx), "c" (ecx));
++		asm volatile("wrmsr" : : "a" (eax), "d" (edx), "c" (ecx));
+ 
+ 		err = check_cpuflags();
+ 	} else if (err == 0x01 &&

@@ -1,0 +1,11 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/timex.h linux-4.9.24-pax/arch/arm/include/asm/timex.h
+--- linux-4.9.24/arch/arm/include/asm/timex.h	2014-06-09 12:45:01.937124876 +0200
++++ linux-4.9.24-pax/arch/arm/include/asm/timex.h	2017-01-01 22:57:10.529520549 +0100
+@@ -13,6 +13,7 @@
+ #define _ASMARM_TIMEX_H
+ 
+ typedef unsigned long cycles_t;
++extern int read_current_timer(unsigned long *timer_val);
+ #define get_cycles()	({ cycles_t c; read_current_timer(&c) ? 0 : c; })
+ 
+ #endif

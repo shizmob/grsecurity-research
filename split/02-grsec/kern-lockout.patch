@@ -1,0 +1,202 @@
+diff --git a/arch/arm/kernel/traps.c b/arch/arm/kernel/traps.c
+index 9688ec0c6ef4..dd072c025e66 100644
+--- a/arch/arm/kernel/traps.c
++++ b/arch/arm/kernel/traps.c
+@@ -287,6 +287,8 @@ static arch_spinlock_t die_lock = __ARCH_SPIN_LOCK_UNLOCKED;
+ static int die_owner = -1;
+ static unsigned int die_nest_count;
+ 
++extern void gr_handle_kernel_exploit(void);
++
+ static unsigned long oops_begin(void)
+ {
+ 	int cpu;
+@@ -329,6 +331,9 @@ static void oops_end(unsigned long flags, struct pt_regs *regs, int signr)
+ 		panic("Fatal exception in interrupt");
+ 	if (panic_on_oops)
+ 		panic("Fatal exception");
++
++	gr_handle_kernel_exploit();
++
+ 	if (signr)
+ 		do_exit(signr);
+ }
+diff --git a/arch/mips/kernel/irq.c b/arch/mips/kernel/irq.c
+index 2a030afa2d9c..1e272b77ba63 100644
+--- a/arch/mips/kernel/irq.c
++++ b/arch/mips/kernel/irq.c
+@@ -72,6 +72,8 @@ void __init init_IRQ(void)
+ }
+ 
+ #ifdef CONFIG_DEBUG_STACKOVERFLOW
++
++extern void gr_handle_kernel_exploit(void);
+ static inline void check_stack_overflow(void)
+ {
+ 	unsigned long sp;
+@@ -87,6 +89,7 @@ static inline void check_stack_overflow(void)
+ 		printk("do_IRQ: stack overflow: %ld\n",
+ 		       sp - sizeof(struct thread_info));
+ 		dump_stack();
++		gr_handle_kernel_exploit();
+ 	}
+ }
+ #else
+diff --git a/arch/powerpc/kernel/irq.c b/arch/powerpc/kernel/irq.c
+index 3c05c311e35e..a8e68883349a 100644
+--- a/arch/powerpc/kernel/irq.c
++++ b/arch/powerpc/kernel/irq.c
+@@ -482,6 +482,8 @@ void migrate_irqs(void)
+ }
+ #endif
+ 
++extern void gr_handle_kernel_exploit(void);
++
+ static inline void check_stack_overflow(void)
+ {
+ #ifdef CONFIG_DEBUG_STACKOVERFLOW
+@@ -494,6 +496,7 @@ static inline void check_stack_overflow(void)
+ 		pr_err("do_IRQ: stack overflow: %ld\n",
+ 			sp - sizeof(struct thread_info));
+ 		dump_stack();
++		gr_handle_kernel_exploit();
+ 	}
+ #endif
+ }
+diff --git a/arch/powerpc/kernel/traps.c b/arch/powerpc/kernel/traps.c
+index 5ec2f86c2b4a..9d940854d60f 100644
+--- a/arch/powerpc/kernel/traps.c
++++ b/arch/powerpc/kernel/traps.c
+@@ -147,6 +147,8 @@ static unsigned long oops_begin(struct pt_regs *regs)
+ }
+ NOKPROBE_SYMBOL(oops_begin);
+ 
++extern void gr_handle_kernel_exploit(void);
++
+ static void oops_end(unsigned long flags, struct pt_regs *regs,
+ 			       int signr)
+ {
+@@ -196,6 +198,9 @@ static void oops_end(unsigned long flags, struct pt_regs *regs,
+ 		panic("Fatal exception in interrupt");
+ 	if (panic_on_oops)
+ 		panic("Fatal exception");
++
++	gr_handle_kernel_exploit();
++
+ 	do_exit(signr);
+ }
+ NOKPROBE_SYMBOL(oops_end);
+diff --git a/arch/sparc/kernel/traps_32.c b/arch/sparc/kernel/traps_32.c
+index 4f21df7d4f13..0a374da5c397 100644
+--- a/arch/sparc/kernel/traps_32.c
++++ b/arch/sparc/kernel/traps_32.c
+@@ -44,6 +44,8 @@ static void instruction_dump(unsigned long *pc)
+ #define __SAVE __asm__ __volatile__("save %sp, -0x40, %sp\n\t")
+ #define __RESTORE __asm__ __volatile__("restore %g0, %g0, %g0\n\t")
+ 
++extern void gr_handle_kernel_exploit(void);
++
+ void __noreturn die_if_kernel(char *str, struct pt_regs *regs)
+ {
+ 	static int die_counter;
+@@ -83,8 +85,10 @@ void __noreturn die_if_kernel(char *str, struct pt_regs *regs)
+ 	}
+ 	printk("Instruction DUMP:");
+ 	instruction_dump ((unsigned long *) regs->pc);
+-	if(regs->psr & PSR_PS)
++	if(regs->psr & PSR_PS) {
++		gr_handle_kernel_exploit();
+ 		do_exit(SIGKILL);
++	}
+ 	do_exit(SIGSEGV);
+ }
+ 
+diff --git a/arch/sparc/kernel/traps_64.c b/arch/sparc/kernel/traps_64.c
+index 7468c69e0e74..4a360da347af 100644
+--- a/arch/sparc/kernel/traps_64.c
++++ b/arch/sparc/kernel/traps_64.c
+@@ -2397,6 +2397,8 @@ static inline struct reg_window *kernel_stack_up(struct reg_window *rw)
+ 	return (struct reg_window *) (fp + STACK_BIAS);
+ }
+ 
++extern void gr_handle_kernel_exploit(void);
++
+ void __noreturn die_if_kernel(char *str, struct pt_regs *regs)
+ {
+ 	static int die_counter;
+@@ -2440,8 +2442,10 @@ void __noreturn die_if_kernel(char *str, struct pt_regs *regs)
+ 	}
+ 	if (panic_on_oops)
+ 		panic("Fatal exception");
+-	if (regs->tstate & TSTATE_PRIV)
++	if (regs->tstate & TSTATE_PRIV) {
++		gr_handle_kernel_exploit();
+ 		do_exit(SIGKILL);
++	}
+ 	do_exit(SIGSEGV);
+ }
+ EXPORT_SYMBOL(die_if_kernel);
+diff --git a/arch/x86/kernel/dumpstack.c b/arch/x86/kernel/dumpstack.c
+index 85f854b98a9d..78ddb7ecdaf5 100644
+--- a/arch/x86/kernel/dumpstack.c
++++ b/arch/x86/kernel/dumpstack.c
+@@ -202,6 +205,7 @@ EXPORT_SYMBOL_GPL(oops_begin);
+ NOKPROBE_SYMBOL(oops_begin);
+ 
+ void __noreturn rewind_stack_do_exit(int signr);
++extern void gr_handle_kernel_exploit(void);
+ 
+ void oops_end(unsigned long flags, struct pt_regs *regs, int signr)
+ {
+@@ -225,6 +229,8 @@ void oops_end(unsigned long flags, struct pt_regs *regs, int signr)
+ 	if (panic_on_oops)
+ 		panic("Fatal exception");
+ 
++	gr_handle_kernel_exploit();
++
+ 	/*
+ 	 * We're not going to return, but we might be on an IST stack or
+ 	 * have very little stack space left.  Rewind the stack and kill
+diff --git a/arch/x86/kernel/irq_32.c b/arch/x86/kernel/irq_32.c
+index 2c8d0c12f292..65b5e986fe7b 100644
+--- a/arch/x86/kernel/irq_32.c
++++ b/arch/x86/kernel/irq_32.c
+@@ -22,6 +22,8 @@
+ 
+ #ifdef CONFIG_DEBUG_STACKOVERFLOW
+ 
++extern void gr_handle_kernel_exploit(void);
++
+ int sysctl_panic_on_stackoverflow __read_mostly;
+ 
+ /* Debugging check for stack overflow: is there less than 1KB free? */
+@@ -39,6 +41,7 @@ static asmlinkage void print_stack_overflow(void)
+ {
+ 	printk(KERN_WARNING "low stack detected by irq handler\n");
+ 	dump_stack();
++	gr_handle_kernel_exploit();
+ 	if (sysctl_panic_on_stackoverflow)
+ 		panic("low stack detected by irq handler - check messages\n");
+ }
+diff --git a/arch/x86/kernel/irq_64.c b/arch/x86/kernel/irq_64.c
+index 9ebd0b0e73d9..685de4ae632c 100644
+--- a/arch/x86/kernel/irq_64.c
++++ b/arch/x86/kernel/irq_64.c
+@@ -19,6 +19,8 @@
+ #include <asm/idle.h>
+ #include <asm/apic.h>
+ 
++extern void gr_handle_kernel_exploit(void);
++
+ int sysctl_panic_on_stackoverflow;
+ 
+ /*
+@@ -61,6 +62,8 @@ static inline void stack_overflow_check(struct pt_regs *regs)
+ 		irq_stack_top, irq_stack_bottom,
+ 		estack_top, estack_bottom);
+ 
++	gr_handle_kernel_exploit();
++
+ 	if (sysctl_panic_on_stackoverflow)
+ 		panic("low stack detected by irq handler - check messages\n");
+ #endif

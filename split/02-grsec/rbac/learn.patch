@@ -1,0 +1,120 @@
+diff --git a/fs/attr.c b/fs/attr.c
+index c902b3d53508..d3cd5569a038 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -115,6 +115,10 @@ int inode_newsize_ok(const struct inode *inode, loff_t offset)
+ 		unsigned long limit;
+ 
+ 		limit = rlimit(RLIMIT_FSIZE);
++		if (offset > ULONG_MAX)
++			gr_learn_resource(current, RLIMIT_FSIZE, ULONG_MAX, 1);
++		else if (offset > 0)
++			gr_learn_resource(current, RLIMIT_FSIZE, (unsigned long)offset, 1);
+ 		if (limit != RLIM_INFINITY && offset > limit)
+ 			goto out_sig;
+ 		if (offset > inode->i_sb->s_maxbytes)
+diff --git a/fs/binfmt_aout.c b/fs/binfmt_aout.c
+index a6b038f337a6..15cfacf11ef5 100644
+--- a/fs/binfmt_aout.c
++++ b/fs/binfmt_aout.c
+@@ -16,6 +16,7 @@
+ #include <linux/string.h>
+ #include <linux/fs.h>
+ #include <linux/file.h>
++#include <linux/security.h>
+ #include <linux/stat.h>
+ #include <linux/fcntl.h>
+ #include <linux/ptrace.h>
+@@ -68,10 +71,12 @@ static int aout_core_dump(struct coredump_params *cprm)
+ 
+ /* If the size of the dump file exceeds the rlimit, then see what would happen
+    if we wrote the stack, but not the data area.  */
++	gr_learn_resource(current, RLIMIT_CORE, (dump.u_dsize + dump.u_ssize+1) * PAGE_SIZE, 1);
+ 	if ((dump.u_dsize + dump.u_ssize+1) * PAGE_SIZE > cprm->limit)
+ 		dump.u_dsize = 0;
+ 
+ /* Make sure we have enough room to write the stack and data areas. */
++	gr_learn_resource(current, RLIMIT_CORE, (dump.u_ssize + 1) * PAGE_SIZE, 1);
+ 	if ((dump.u_ssize + 1) * PAGE_SIZE > cprm->limit)
+ 		dump.u_ssize = 0;
+ 
+@@ -228,6 +233,8 @@ static int load_aout_binary(struct linux_binprm * bprm)
+ 	rlim = rlimit(RLIMIT_DATA);
+ 	if (rlim >= RLIM_INFINITY)
+ 		rlim = ~0;
++
++	gr_learn_resource(current, RLIMIT_DATA, ex.a_data + ex.a_bss, 1);
+ 	if (ex.a_data + ex.a_bss > rlim)
+ 		return -ENOMEM;
+ 
+diff --git a/fs/coredump.c b/fs/coredump.c
+index 05ee68d8c9c7..235adec11a4c 100644
+--- a/fs/coredump.c
++++ b/fs/coredump.c
+@@ -660,6 +664,8 @@ void do_coredump(const siginfo_t *siginfo)
+ 		int open_flags = O_CREAT | O_RDWR | O_NOFOLLOW |
+ 				 O_LARGEFILE | O_EXCL;
+ 
++		gr_learn_resource(current, RLIMIT_CORE, binfmt->min_coredump, 1);
++
+ 		if (cprm.limit < binfmt->min_coredump)
+ 			goto fail_unlock;
+ 
+@@ -787,6 +796,8 @@ int dump_emit(struct coredump_params *cprm, const void *addr, int nr)
+ 	struct file *file = cprm->file;
+ 	loff_t pos = file->f_pos;
+ 	ssize_t n;
++
++	gr_learn_resource(current, RLIMIT_CORE, cprm->written + nr, 1);
+ 	if (cprm->written + nr > cprm->limit)
+ 		return 0;
+ 	while (nr) {
+diff --git a/fs/exec.c b/fs/exec.c
+index 12169f1226f8..4368e21d4d9d 100644
+--- a/fs/exec.c
++++ b/fs/exec.c
+@@ -1730,6 +1788,8 @@ static int do_execveat_common(int fd, struct filename *filename,
+ 	if (IS_ERR(filename))
+ 		return PTR_ERR(filename);
+ 
++	gr_learn_resource(current, RLIMIT_NPROC, atomic_read(&current_user()->processes), 1);
++
+ 	/*
+ 	 * We move the actual failure in case of RLIMIT_NPROC excess from
+ 	 * set*uid() to execve() because too many poorly written programs
+diff --git a/fs/file.c b/fs/file.c
+index a21396816254..1898dd8d2e4d 100644
+--- a/fs/file.c
++++ b/fs/file.c
+@@ -16,6 +16,7 @@
+ #include <linux/slab.h>
+ #include <linux/vmalloc.h>
+ #include <linux/file.h>
++#include <linux/security.h>
+ #include <linux/fdtable.h>
+ #include <linux/bitops.h>
+ #include <linux/interrupt.h>
+@@ -876,6 +877,7 @@ int replace_fd(unsigned fd, struct file *file, unsigned flags)
+ 	if (!file)
+ 		return __close_fd(files, fd);
+ 
++	gr_learn_resource(current, RLIMIT_NOFILE, fd, 0);
+ 	if (fd >= rlimit(RLIMIT_NOFILE))
+ 		return -EBADF;
+ 
+@@ -902,6 +904,7 @@ SYSCALL_DEFINE3(dup3, unsigned int, oldfd, unsigned int, newfd, int, flags)
+ 	if (unlikely(oldfd == newfd))
+ 		return -EINVAL;
+ 
++	gr_learn_resource(current, RLIMIT_NOFILE, newfd, 0);
+ 	if (newfd >= rlimit(RLIMIT_NOFILE))
+ 		return -EBADF;
+ 
+@@ -957,6 +960,7 @@ SYSCALL_DEFINE1(dup, unsigned int, fildes)
+ int f_dupfd(unsigned int from, struct file *file, unsigned flags)
+ {
+ 	int err;
++	gr_learn_resource(current, RLIMIT_NOFILE, from, 0);
+ 	if (from >= rlimit(RLIMIT_NOFILE))
+ 		return -EINVAL;
+ 	err = alloc_fd(from, flags);

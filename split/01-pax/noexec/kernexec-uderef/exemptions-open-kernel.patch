@@ -1,0 +1,224 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/fncpy.h linux-4.9.24-pax/arch/arm/include/asm/fncpy.h
+--- linux-4.9.24/arch/arm/include/asm/fncpy.h	2015-03-18 15:21:50.168349252 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/fncpy.h	2017-01-01 22:57:10.521520529 +0100
+@@ -81,7 +81,9 @@
+ 	BUG_ON((uintptr_t)(dest_buf) & (FNCPY_ALIGN - 1) ||		\
+ 		(__funcp_address & ~(uintptr_t)1 & (FNCPY_ALIGN - 1)));	\
+ 									\
++	pax_open_kernel();						\
+ 	memcpy(dest_buf, (void const *)(__funcp_address & ~1), size);	\
++	pax_close_kernel();						\
+ 	flush_icache_range((unsigned long)(dest_buf),			\
+ 		(unsigned long)(dest_buf) + (size));			\
+ 									\
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/asm/tls.h linux-4.9.24-pax/arch/arm/include/asm/tls.h
+--- linux-4.9.24/arch/arm/include/asm/tls.h	2015-03-18 15:21:50.172349252 +0100
++++ linux-4.9.24-pax/arch/arm/include/asm/tls.h	2017-01-01 22:57:10.529520549 +0100
+@@ -3,6 +3,7 @@
+ 
+ #include <linux/compiler.h>
+ #include <asm/thread_info.h>
++#include <asm/pgtable.h>
+ 
+ #ifdef __ASSEMBLY__
+ #include <asm/asm-offsets.h>
+@@ -89,7 +90,9 @@ static inline void set_tls(unsigned long
+ 			 * at 0xffff0fe0 must be used instead.  (see
+ 			 * entry-armv.S for details)
+ 			 */
++			pax_open_kernel();
+ 			*((unsigned int *)0xffff0ff0) = val;
++			pax_close_kernel();
+ #endif
+ 		}
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/kernel/fiq.c linux-4.9.24-pax/arch/arm/kernel/fiq.c
+--- linux-4.9.24/arch/arm/kernel/fiq.c	2015-03-18 15:21:50.172349252 +0100
++++ linux-4.9.24-pax/arch/arm/kernel/fiq.c	2017-01-01 22:57:10.533520559 +0100
+@@ -95,7 +95,10 @@ void set_fiq_handler(void *start, unsign
+ 	void *base = vectors_page;
+ 	unsigned offset = FIQ_OFFSET;
+ 
++	pax_open_kernel();
+ 	memcpy(base + offset, start, length);
++	pax_close_kernel();
++
+ 	if (!cache_is_vipt_nonaliasing())
+ 		flush_icache_range((unsigned long)base + offset, offset +
+ 				   length);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/kernel/patch.c linux-4.9.24-pax/arch/arm/kernel/patch.c
+--- linux-4.9.24/arch/arm/kernel/patch.c	2015-04-13 11:20:50.570618063 +0200
++++ linux-4.9.24-pax/arch/arm/kernel/patch.c	2017-01-01 22:57:10.533520559 +0100
+@@ -66,6 +66,7 @@ void __kprobes __patch_text_real(void *a
+ 	else
+ 		__acquire(&patch_lock);
+ 
++	pax_open_kernel();
+ 	if (thumb2 && __opcode_is_thumb16(insn)) {
+ 		*(u16 *)waddr = __opcode_to_mem_thumb16(insn);
+ 		size = sizeof(u16);
+@@ -97,6 +98,7 @@ void __kprobes __patch_text_real(void *a
+ 		*(u32 *)waddr = insn;
+ 		size = sizeof(u32);
+ 	}
++	pax_close_kernel();
+ 
+ 	if (waddr != addr) {
+ 		flush_kernel_vmap_range(waddr, twopage ? size / 2 : size);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/kernel/tcm.c linux-4.9.24-pax/arch/arm/kernel/tcm.c
+--- linux-4.9.24/arch/arm/kernel/tcm.c	2015-09-09 11:16:55.315258198 +0200
++++ linux-4.9.24-pax/arch/arm/kernel/tcm.c	2017-01-01 22:57:10.533520559 +0100
+@@ -362,7 +362,9 @@ no_dtcm:
+ 		start = &__sitcm_text;
+ 		end   = &__eitcm_text;
+ 		ram   = &__itcm_start;
++		pax_open_kernel();
+ 		memcpy(start, ram, itcm_code_sz);
++		pax_close_kernel();
+ 		pr_debug("CPU ITCM: copied code from %p - %p\n",
+ 			 start, end);
+ 		itcm_present = true;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-exynos/suspend.c linux-4.9.24-pax/arch/arm/mach-exynos/suspend.c
+--- linux-4.9.24/arch/arm/mach-exynos/suspend.c	2016-10-03 11:27:16.680113028 +0200
++++ linux-4.9.24-pax/arch/arm/mach-exynos/suspend.c	2017-01-01 22:57:10.537520569 +0100
+@@ -724,8 +724,10 @@ void __init exynos_pm_init(void)
+ 	tmp |= pm_data->wake_disable_mask;
+ 	pmu_raw_writel(tmp, S5P_WAKEUP_MASK);
+ 
+-	exynos_pm_syscore_ops.suspend	= pm_data->pm_suspend;
+-	exynos_pm_syscore_ops.resume	= pm_data->pm_resume;
++	pax_open_kernel();
++	const_cast(exynos_pm_syscore_ops.suspend)	= pm_data->pm_suspend;
++	const_cast(exynos_pm_syscore_ops.resume)	= pm_data->pm_resume;
++	pax_close_kernel();
+ 
+ 	register_syscore_ops(&exynos_pm_syscore_ops);
+ 	suspend_set_ops(&exynos_suspend_ops);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-mmp/mmp2.c linux-4.9.24-pax/arch/arm/mach-mmp/mmp2.c
+--- linux-4.9.24/arch/arm/mach-mmp/mmp2.c	2016-03-14 11:51:26.232911996 +0100
++++ linux-4.9.24-pax/arch/arm/mach-mmp/mmp2.c	2017-01-01 22:57:10.537520569 +0100
+@@ -98,7 +98,9 @@ void __init mmp2_init_irq(void)
+ {
+ 	mmp2_init_icu();
+ #ifdef CONFIG_PM
+-	icu_irq_chip.irq_set_wake = mmp2_set_wake;
++	pax_open_kernel();
++	const_cast(icu_irq_chip.irq_set_wake) = mmp2_set_wake;
++	pax_close_kernel();
+ #endif
+ }
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-mmp/pxa910.c linux-4.9.24-pax/arch/arm/mach-mmp/pxa910.c
+--- linux-4.9.24/arch/arm/mach-mmp/pxa910.c	2016-03-14 11:51:26.244939149 +0100
++++ linux-4.9.24-pax/arch/arm/mach-mmp/pxa910.c	2017-01-01 22:57:10.537520569 +0100
+@@ -84,7 +84,9 @@ void __init pxa910_init_irq(void)
+ {
+ 	icu_init_irq();
+ #ifdef CONFIG_PM
+-	icu_irq_chip.irq_set_wake = pxa910_set_wake;
++	pax_open_kernel();
++	const_cast(icu_irq_chip.irq_set_wake) = pxa910_set_wake;
++	pax_close_kernel();
+ #endif
+ }
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-omap2/powerdomains43xx_data.c linux-4.9.24-pax/arch/arm/mach-omap2/powerdomains43xx_data.c
+--- linux-4.9.24/arch/arm/mach-omap2/powerdomains43xx_data.c	2015-03-18 15:21:50.180349252 +0100
++++ linux-4.9.24-pax/arch/arm/mach-omap2/powerdomains43xx_data.c	2017-01-01 22:57:10.541520578 +0100
+@@ -10,6 +10,7 @@
+ 
+ #include <linux/kernel.h>
+ #include <linux/init.h>
++#include <asm/pgtable.h>
+ 
+ #include "powerdomain.h"
+ 
+@@ -129,7 +130,9 @@ static int am43xx_check_vcvp(void)
+ 
+ void __init am43xx_powerdomains_init(void)
+ {
+-	omap4_pwrdm_operations.pwrdm_has_voltdm = am43xx_check_vcvp;
++	pax_open_kernel();
++	const_cast(omap4_pwrdm_operations.pwrdm_has_voltdm) = am43xx_check_vcvp;
++	pax_close_kernel();
+ 	pwrdm_register_platform_funcs(&omap4_pwrdm_operations);
+ 	pwrdm_register_pwrdms(powerdomains_am43xx);
+ 	pwrdm_complete_init();
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-shmobile/platsmp-apmu.c linux-4.9.24-pax/arch/arm/mach-shmobile/platsmp-apmu.c
+--- linux-4.9.24/arch/arm/mach-shmobile/platsmp-apmu.c	2016-10-03 11:27:17.922263598 +0200
++++ linux-4.9.24-pax/arch/arm/mach-shmobile/platsmp-apmu.c	2017-01-01 22:57:10.545520588 +0100
+@@ -22,6 +22,7 @@
+ #include <asm/proc-fns.h>
+ #include <asm/smp_plat.h>
+ #include <asm/suspend.h>
++#include <asm/pgtable.h>
+ #include "common.h"
+ #include "platsmp-apmu.h"
+ #include "rcar-gen2.h"
+@@ -316,6 +317,8 @@ static int shmobile_smp_apmu_enter_suspe
+ 
+ void __init shmobile_smp_apmu_suspend_init(void)
+ {
+-	shmobile_suspend_ops.enter = shmobile_smp_apmu_enter_suspend;
++	pax_open_kernel();
++	const_cast(shmobile_suspend_ops.enter) = shmobile_smp_apmu_enter_suspend;
++	pax_close_kernel();
+ }
+ #endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/net/bpf_jit_32.c linux-4.9.24-pax/arch/arm/net/bpf_jit_32.c
+--- linux-4.9.24/arch/arm/net/bpf_jit_32.c	2016-01-11 01:27:24.139084817 +0100
++++ linux-4.9.24-pax/arch/arm/net/bpf_jit_32.c	2017-01-01 22:57:10.549520598 +0100
+@@ -20,6 +20,7 @@
+ #include <asm/cacheflush.h>
+ #include <asm/hwcap.h>
+ #include <asm/opcodes.h>
++#include <asm/pgtable.h>
+ 
+ #include "bpf_jit_32.h"
+ 
+@@ -191,8 +192,10 @@ static void jit_fill_hole(void *area, un
+ {
+ 	u32 *ptr;
+ 	/* We are guaranteed to have aligned memory. */
++	pax_open_kernel();
+ 	for (ptr = area; size >= sizeof(u32); size -= sizeof(u32))
+ 		*ptr++ = __opcode_to_mem_arm(ARM_INST_UDF);
++	pax_close_kernel();
+ }
+ 
+ static void build_prologue(struct jit_ctx *ctx)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/plat-omap/sram.c linux-4.9.24-pax/arch/arm/plat-omap/sram.c
+--- linux-4.9.24/arch/arm/plat-omap/sram.c	2015-03-18 15:21:50.184349252 +0100
++++ linux-4.9.24-pax/arch/arm/plat-omap/sram.c	2017-01-01 22:57:10.549520598 +0100
+@@ -93,6 +93,8 @@ void __init omap_map_sram(unsigned long
+ 	 * Looks like we need to preserve some bootloader code at the
+ 	 * beginning of SRAM for jumping to flash for reboot to work...
+ 	 */
++	pax_open_kernel();
+ 	memset_io(omap_sram_base + omap_sram_skip, 0,
+ 		  omap_sram_size - omap_sram_skip);
++	pax_close_kernel();
+ }
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/kernel/alternative.c linux-4.9.24-pax/arch/x86/kernel/alternative.c
+--- linux-4.9.24/arch/x86/kernel/alternative.c	2016-07-25 02:13:19.135839649 +0200
++++ linux-4.9.24-pax/arch/x86/kernel/alternative.c	2017-01-30 00:37:12.088733010 +0100
+@@ -262,7 +263,9 @@ static void __init_or_module add_nops(vo
+ 		unsigned int noplen = len;
+ 		if (noplen > ASM_NOP_MAX)
+ 			noplen = ASM_NOP_MAX;
++		pax_open_kernel();
+ 		memcpy(insns, ideal_nops[noplen], noplen);
++		pax_close_kernel();
+ 		insns += noplen;
+ 		len -= noplen;
+ 	}
+@@ -545,7 +603,9 @@ void alternatives_enable_smp(void)
+ 	if (uniproc_patched) {
+ 		pr_info("switching to SMP code\n");
+ 		BUG_ON(num_online_cpus() != 1);
++		pax_open_kernel();
+ 		clear_cpu_cap(&boot_cpu_data, X86_FEATURE_UP);
++		pax_close_kernel();
+ 		clear_cpu_cap(&cpu_data(0), X86_FEATURE_UP);
+ 		list_for_each_entry(mod, &smp_alt_modules, next)
+ 			alternatives_smp_lock(mod->locks, mod->locks_end,

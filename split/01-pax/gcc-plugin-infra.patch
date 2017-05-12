@@ -1,0 +1,127 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/boot/compressed/Makefile linux-4.9.24-pax/arch/arm/boot/compressed/Makefile
+--- linux-4.9.24/arch/arm/boot/compressed/Makefile	2016-05-22 01:55:26.963586845 +0200
++++ linux-4.9.24-pax/arch/arm/boot/compressed/Makefile	2017-01-22 03:21:49.177166447 +0100
+@@ -24,6 +24,8 @@ endif
+ 
+ GCOV_PROFILE		:= n
+ 
++GCC_PLUGINS		:= n
++
+ #
+ # Architecture dependencies
+ #
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/ia64/Makefile linux-4.9.24-pax/arch/ia64/Makefile
+--- linux-4.9.24/arch/ia64/Makefile	2016-07-25 02:13:14.339995486 +0200
++++ linux-4.9.24-pax/arch/ia64/Makefile	2017-01-22 03:21:49.177166447 +0100
+@@ -98,5 +98,6 @@ endef
+ archprepare: make_nr_irqs_h
+ PHONY += make_nr_irqs_h
+ 
++GCC_PLUGINS_make_nr_irqs_h := n
+ make_nr_irqs_h:
+ 	$(Q)$(MAKE) $(build)=arch/ia64/kernel include/generated/nr-irqs.h
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/Kconfig linux-4.9.24-pax/arch/Kconfig
+--- linux-4.9.24/arch/Kconfig	2016-12-13 12:08:13.078283493 +0100
++++ linux-4.9.24-pax/arch/Kconfig	2017-01-22 03:21:49.181199069 +0100
+@@ -355,7 +356,7 @@ config HAVE_GCC_PLUGINS
+ menuconfig GCC_PLUGINS
+ 	bool "GCC plugins"
+ 	depends on HAVE_GCC_PLUGINS
+-	depends on !COMPILE_TEST
++	default y
+ 	help
+ 	  GCC plugins are loadable modules that provide extra features to the
+ 	  compiler. They are useful for runtime instrumentation and static analysis.
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/Kconfig linux-4.9.24-pax/arch/mips/Kconfig
+--- linux-4.9.24/arch/mips/Kconfig	2017-04-19 22:09:36.642318022 +0200
++++ linux-4.9.24-pax/arch/mips/Kconfig	2017-04-19 22:12:02.838426364 +0200
+@@ -50,6 +50,7 @@ config MIPS
+ 	select HAVE_MOD_ARCH_SPECIFIC
+ 	select HAVE_NMI
+ 	select VIRT_TO_BUS
++	select HAVE_GCC_PLUGINS
+ 	select MODULES_USE_ELF_REL if MODULES
+ 	select MODULES_USE_ELF_RELA if MODULES && 64BIT
+ 	select CLONE_BACKWARDS
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/Kconfig linux-4.9.24-pax/arch/powerpc/Kconfig
+--- linux-4.9.24/arch/powerpc/Kconfig	2016-12-13 12:08:23.530354501 +0100
++++ linux-4.9.24-pax/arch/powerpc/Kconfig	2017-01-01 22:57:10.577520667 +0100
+@@ -140,6 +140,7 @@ config PPC
+ 	select ARCH_USE_BUILTIN_BSWAP
+ 	select OLD_SIGSUSPEND
+ 	select OLD_SIGACTION if PPC32
++	select HAVE_GCC_PLUGINS
+ 	select HAVE_DEBUG_STACKOVERFLOW
+ 	select HAVE_IRQ_EXIT_ON_IRQ_STACK
+ 	select ARCH_USE_CMPXCHG_LOCKREF if PPC64
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/Kconfig linux-4.9.24-pax/arch/sparc/Kconfig
+--- linux-4.9.24/arch/sparc/Kconfig	2016-12-13 12:08:25.678369120 +0100
++++ linux-4.9.24-pax/arch/sparc/Kconfig	2017-01-01 22:57:10.589520696 +0100
+@@ -38,6 +38,7 @@ config SPARC
+ 	select GENERIC_STRNCPY_FROM_USER
+ 	select GENERIC_STRNLEN_USER
+ 	select MODULES_USE_ELF_RELA
++	select HAVE_GCC_PLUGINS
+ 	select ODD_RT_SIGACTION
+ 	select OLD_SIGSUSPEND
+ 	select ARCH_HAS_SG_CHAIN
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/um/Makefile linux-4.9.24-pax/arch/um/Makefile
+--- linux-4.9.24/arch/um/Makefile	2016-10-03 11:27:29.762863481 +0200
++++ linux-4.9.24-pax/arch/um/Makefile	2017-01-01 22:57:10.593520706 +0100
+@@ -73,6 +73,8 @@ USER_CFLAGS = $(patsubst $(KERNEL_DEFINE
+ 		-D_FILE_OFFSET_BITS=64 -idirafter $(srctree)/include \
+ 		-idirafter $(obj)/include -D__KERNEL__ -D__UM_HOST__
+ 
++USER_CFLAGS	:= $(filter-out $(GCC_PLUGINS_CFLAGS),$(USER_CFLAGS))
++
+ #This will adjust *FLAGS accordingly to the platform.
+ include $(ARCH_DIR)/Makefile-os-$(OS)
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/boot/compressed/Makefile linux-4.9.24-pax/arch/x86/boot/compressed/Makefile
+--- linux-4.9.24/arch/x86/boot/compressed/Makefile	2016-12-13 12:08:26.238372932 +0100
++++ linux-4.9.24-pax/arch/x86/boot/compressed/Makefile	2017-01-22 03:21:49.181199069 +0100
+@@ -18,6 +18,7 @@
+ 
+ KASAN_SANITIZE			:= n
+ OBJECT_FILES_NON_STANDARD	:= y
++GCC_PLUGINS			:= n
+ 
+ # Prevents link failures: __sanitizer_cov_trace_pc() is not linked in.
+ KCOV_INSTRUMENT		:= n
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/x86/boot/Makefile linux-4.9.24-pax/arch/x86/boot/Makefile
+--- linux-4.9.24/arch/x86/boot/Makefile	2016-10-03 11:27:29.979023284 +0200
++++ linux-4.9.24-pax/arch/x86/boot/Makefile	2017-01-22 03:21:49.185231691 +0100
+@@ -11,6 +11,7 @@
+ 
+ KASAN_SANITIZE			:= n
+ OBJECT_FILES_NON_STANDARD	:= y
++GCC_PLUGINS			:= n
+ 
+ # Kernel does not boot with kcov instrumentation here.
+ # One of the problems observed was insertion of __sanitizer_cov_trace_pc()
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/scripts/Makefile.lib linux-4.9.24-pax/scripts/Makefile.lib
+--- linux-4.9.24/scripts/Makefile.lib	2016-10-03 11:28:40.330811125 +0200
++++ linux-4.9.24-pax/scripts/Makefile.lib	2017-01-22 03:21:49.233623156 +0100
+@@ -142,6 +142,22 @@ _c_flags += $(if $(patsubst n%,, \
+ 	$(CFLAGS_KCOV))
+ endif
+ 
++#
++# Enable gcc plugins for the kernel unless disabled for a file or the entire directory
++# GCC_PLUGINS_file.o:=n will disable gcc plugins for file.o and its suffixed variants (.i, .s, etc)
++# GCC_PLUGINS_file:=n   will disable gcc plugins for file only (when the target itself isn't compiler generated or a file at all)
++# GCC_PLUGINS:=n        will disable gcc plugins for the entire directory
++#
++ifeq ($(CONFIG_GCC_PLUGINS),y)
++_c_flags += $(if $(patsubst n%,, \
++	$(GCC_PLUGINS_$(basetarget).o)$(GCC_PLUGINS_$(basetarget))$(GCC_PLUGINS)y), \
++	$(value GCC_PLUGINS_CFLAGS))
++_c_flags += $(GCC_PLUGINS_CFLAGS_$(basetarget).o)
++_a_flags += $(if $(patsubst n%,, \
++	$(GCC_PLUGINS_$(basetarget).o)$(GCC_PLUGINS_$(basetarget))$(GCC_PLUGINS)y), \
++	$(GCC_PLUGINS_AFLAGS))
++endif
++
+ # If building the kernel in a separate objtree expand all occurrences
+ # of -Idir to -I$(srctree)/dir except for absolute paths (starting with '/').
+ 

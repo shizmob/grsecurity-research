@@ -1,0 +1,114 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/alpha/include/asm/atomic.h linux-4.9.24-pax/arch/alpha/include/asm/atomic.h
+--- linux-4.9.24/arch/alpha/include/asm/atomic.h	2016-10-03 11:27:13.200508425 +0200
++++ linux-4.9.24-pax/arch/alpha/include/asm/atomic.h	2017-01-01 22:57:10.509520500 +0100
+@@ -308,4 +308,14 @@ static inline long atomic64_dec_if_posit
+ #define atomic_dec(v) atomic_sub(1,(v))
+ #define atomic64_dec(v) atomic64_sub(1,(v))
+ 
++#define atomic64_read_unchecked(v)		atomic64_read(v)
++#define atomic64_set_unchecked(v, i)		atomic64_set((v), (i))
++#define atomic64_add_unchecked(a, v)		atomic64_add((a), (v))
++#define atomic64_add_return_unchecked(a, v)	atomic64_add_return((a), (v))
++#define atomic64_sub_unchecked(a, v)		atomic64_sub((a), (v))
++#define atomic64_inc_unchecked(v)		atomic64_inc(v)
++#define atomic64_inc_return_unchecked(v)	atomic64_inc_return(v)
++#define atomic64_dec_unchecked(v)		atomic64_dec(v)
++#define atomic64_cmpxchg_unchecked(v, o, n)	atomic64_cmpxchg((v), (o), (n))
++
+ #endif /* _ALPHA_ATOMIC_H */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/frv/include/asm/atomic.h linux-4.9.24-pax/arch/frv/include/asm/atomic.h
+--- linux-4.9.24/arch/frv/include/asm/atomic.h	2016-10-03 11:27:19.428537971 +0200
++++ linux-4.9.24-pax/arch/frv/include/asm/atomic.h	2017-01-01 22:57:10.553520608 +0100
+@@ -146,6 +146,16 @@ static inline void atomic64_dec(atomic64
+ #define atomic64_cmpxchg(v, old, new)	(__cmpxchg_64(old, new, &(v)->counter))
+ #define atomic64_xchg(v, new)		(__xchg_64(new, &(v)->counter))
+ 
++#define atomic64_read_unchecked(v)		atomic64_read(v)
++#define atomic64_set_unchecked(v, i)		atomic64_set((v), (i))
++#define atomic64_add_unchecked(a, v)		atomic64_add((a), (v))
++#define atomic64_add_return_unchecked(a, v)	atomic64_add_return((a), (v))
++#define atomic64_sub_unchecked(a, v)		atomic64_sub((a), (v))
++#define atomic64_inc_unchecked(v)		atomic64_inc(v)
++#define atomic64_inc_return_unchecked(v)	atomic64_inc_return(v)
++#define atomic64_dec_unchecked(v)		atomic64_dec(v)
++#define atomic64_cmpxchg_unchecked(v, o, n)	atomic64_cmpxchg((v), (o), (n))
++
+ static __inline__ int __atomic_add_unless(atomic_t *v, int a, int u)
+ {
+ 	int c, old;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/ia64/include/asm/atomic.h linux-4.9.24-pax/arch/ia64/include/asm/atomic.h
+--- linux-4.9.24/arch/ia64/include/asm/atomic.h	2016-12-13 12:08:21.110338042 +0100
++++ linux-4.9.24-pax/arch/ia64/include/asm/atomic.h	2017-01-01 22:57:10.557520617 +0100
+@@ -323,4 +323,14 @@ atomic64_add_negative (__s64 i, atomic64
+ #define atomic64_inc(v)			atomic64_add(1, (v))
+ #define atomic64_dec(v)			atomic64_sub(1, (v))
+ 
++#define atomic64_read_unchecked(v)		atomic64_read(v)
++#define atomic64_set_unchecked(v, i)		atomic64_set((v), (i))
++#define atomic64_add_unchecked(a, v)		atomic64_add((a), (v))
++#define atomic64_add_return_unchecked(a, v)	atomic64_add_return((a), (v))
++#define atomic64_sub_unchecked(a, v)		atomic64_sub((a), (v))
++#define atomic64_inc_unchecked(v)		atomic64_inc(v)
++#define atomic64_inc_return_unchecked(v)	atomic64_inc_return(v)
++#define atomic64_dec_unchecked(v)		atomic64_dec(v)
++#define atomic64_cmpxchg_unchecked(v, o, n)	atomic64_cmpxchg((v), (o), (n))
++
+ #endif /* _ASM_IA64_ATOMIC_H */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/parisc/include/asm/atomic.h linux-4.9.24-pax/arch/parisc/include/asm/atomic.h
+--- linux-4.9.24/arch/parisc/include/asm/atomic.h	2016-10-03 11:27:23.637604735 +0200
++++ linux-4.9.24-pax/arch/parisc/include/asm/atomic.h	2017-01-01 22:57:10.569520647 +0100
+@@ -327,6 +327,16 @@ static inline long atomic64_dec_if_posit
+ 	return dec;
+ }
+ 
++#define atomic64_read_unchecked(v)		atomic64_read(v)
++#define atomic64_set_unchecked(v, i)		atomic64_set((v), (i))
++#define atomic64_add_unchecked(a, v)		atomic64_add((a), (v))
++#define atomic64_add_return_unchecked(a, v)	atomic64_add_return((a), (v))
++#define atomic64_sub_unchecked(a, v)		atomic64_sub((a), (v))
++#define atomic64_inc_unchecked(v)		atomic64_inc(v)
++#define atomic64_inc_return_unchecked(v)	atomic64_inc_return(v)
++#define atomic64_dec_unchecked(v)		atomic64_dec(v)
++#define atomic64_cmpxchg_unchecked(v, o, n)	atomic64_cmpxchg((v), (o), (n))
++
+ #endif /* !CONFIG_64BIT */
+ 
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/s390/include/asm/atomic.h linux-4.9.24-pax/arch/s390/include/asm/atomic.h
+--- linux-4.9.24/arch/s390/include/asm/atomic.h	2016-10-03 11:27:28.101604509 +0200
++++ linux-4.9.24-pax/arch/s390/include/asm/atomic.h	2017-01-01 22:57:10.581520676 +0100
+@@ -342,4 +342,14 @@ static inline long long atomic64_dec_if_
+ #define atomic64_dec_and_test(_v)	(atomic64_sub_return(1, _v) == 0)
+ #define atomic64_inc_not_zero(v)	atomic64_add_unless((v), 1, 0)
+ 
++#define atomic64_read_unchecked(v)		atomic64_read(v)
++#define atomic64_set_unchecked(v, i)		atomic64_set((v), (i))
++#define atomic64_add_unchecked(a, v)		atomic64_add((a), (v))
++#define atomic64_add_return_unchecked(a, v)	atomic64_add_return((a), (v))
++#define atomic64_sub_unchecked(a, v)		atomic64_sub((a), (v))
++#define atomic64_inc_unchecked(v)		atomic64_inc(v)
++#define atomic64_inc_return_unchecked(v)	atomic64_inc_return(v)
++#define atomic64_dec_unchecked(v)		atomic64_dec(v)
++#define atomic64_cmpxchg_unchecked(v, o, n)	atomic64_cmpxchg((v), (o), (n))
++
+ #endif /* __ARCH_S390_ATOMIC__  */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/tile/include/asm/atomic_64.h linux-4.9.24-pax/arch/tile/include/asm/atomic_64.h
+--- linux-4.9.24/arch/tile/include/asm/atomic_64.h	2016-10-03 11:27:29.518682963 +0200
++++ linux-4.9.24-pax/arch/tile/include/asm/atomic_64.h	2017-01-01 22:57:10.593520706 +0100
+@@ -195,6 +195,16 @@ static inline long atomic64_add_unless(a
+ 
+ #define atomic64_inc_not_zero(v)	atomic64_add_unless((v), 1, 0)
+ 
++#define atomic64_read_unchecked(v)		atomic64_read(v)
++#define atomic64_set_unchecked(v, i)		atomic64_set((v), (i))
++#define atomic64_add_unchecked(a, v)		atomic64_add((a), (v))
++#define atomic64_add_return_unchecked(a, v)	atomic64_add_return((a), (v))
++#define atomic64_sub_unchecked(a, v)		atomic64_sub((a), (v))
++#define atomic64_inc_unchecked(v)		atomic64_inc(v)
++#define atomic64_inc_return_unchecked(v)	atomic64_inc_return(v)
++#define atomic64_dec_unchecked(v)		atomic64_dec(v)
++#define atomic64_cmpxchg_unchecked(v, o, n)	atomic64_cmpxchg((v), (o), (n))
++
+ #endif /* !__ASSEMBLY__ */
+ 
+ #endif /* _ASM_TILE_ATOMIC_64_H */

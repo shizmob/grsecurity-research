@@ -1,0 +1,36 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/kernel/exceptions-64e.S linux-4.9.24-pax/arch/powerpc/kernel/exceptions-64e.S
+--- linux-4.9.24/arch/powerpc/kernel/exceptions-64e.S	2016-10-03 11:27:25.747625964 +0200
++++ linux-4.9.24-pax/arch/powerpc/kernel/exceptions-64e.S	2017-01-01 22:57:10.577520667 +0100
+@@ -1010,6 +1010,7 @@ storage_fault_common:
+ 	std	r14,_DAR(r1)
+ 	std	r15,_DSISR(r1)
+ 	addi	r3,r1,STACK_FRAME_OVERHEAD
++	bl	save_nvgprs
+ 	mr	r4,r14
+ 	mr	r5,r15
+ 	ld	r14,PACA_EXGEN+EX_R14(r13)
+@@ -1018,8 +1019,7 @@ storage_fault_common:
+ 	cmpdi	r3,0
+ 	bne-	1f
+ 	b	ret_from_except_lite
+-1:	bl	save_nvgprs
+-	mr	r5,r3
++1:	mr	r5,r3
+ 	addi	r3,r1,STACK_FRAME_OVERHEAD
+ 	ld	r4,_DAR(r1)
+ 	bl	bad_page_fault
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/kernel/exceptions-64s.S linux-4.9.24-pax/arch/powerpc/kernel/exceptions-64s.S
+--- linux-4.9.24/arch/powerpc/kernel/exceptions-64s.S	2016-12-13 12:08:23.954357387 +0100
++++ linux-4.9.24-pax/arch/powerpc/kernel/exceptions-64s.S	2017-01-01 22:57:10.577520667 +0100
+@@ -1445,10 +1445,10 @@ handle_page_fault:
+ 11:	ld	r4,_DAR(r1)
+ 	ld	r5,_DSISR(r1)
+ 	addi	r3,r1,STACK_FRAME_OVERHEAD
++	bl	save_nvgprs
+ 	bl	do_page_fault
+ 	cmpdi	r3,0
+ 	beq+	12f
+-	bl	save_nvgprs
+ 	mr	r5,r3
+ 	addi	r3,r1,STACK_FRAME_OVERHEAD
+ 	lwz	r4,_DAR(r1)

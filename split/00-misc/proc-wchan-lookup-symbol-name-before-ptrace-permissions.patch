@@ -1,0 +1,15 @@
+diff --git a/fs/proc/base.c b/fs/proc/base.c
+index 4fb5a1bc4831..a4332371b62e 100644
+--- a/fs/proc/base.c
++++ b/fs/proc/base.c
+@@ -413,8 +432,8 @@ static int proc_pid_wchan(struct seq_file *m, struct pid_namespace *ns,
+ 
+ 	wchan = get_wchan(task);
+ 
+-	if (wchan && ptrace_may_access(task, PTRACE_MODE_READ_FSCREDS)
+-			&& !lookup_symbol_name(wchan, symname))
++	if (wchan && !lookup_symbol_name(wchan, symname)
++	    		&& ptrace_may_access(task, PTRACE_MODE_READ_FSCREDS))
+ 		seq_printf(m, "%s", symname);
+ 	else
+ 		seq_putc(m, '0');

@@ -1,0 +1,36 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-omap2/board-n8x0.c linux-4.9.24-pax/arch/arm/mach-omap2/board-n8x0.c
+--- linux-4.9.24/arch/arm/mach-omap2/board-n8x0.c	2016-12-13 12:08:18.754322030 +0100
++++ linux-4.9.24-pax/arch/arm/mach-omap2/board-n8x0.c	2017-01-01 22:57:10.541520578 +0100
+@@ -568,7 +568,7 @@ static int n8x0_menelaus_late_init(struc
+ }
+ #endif
+ 
+-struct menelaus_platform_data n8x0_menelaus_platform_data __initdata = {
++struct menelaus_platform_data n8x0_menelaus_platform_data __initconst = {
+ 	.late_init = n8x0_menelaus_late_init,
+ };
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-s3c64xx/mach-smdk6410.c linux-4.9.24-pax/arch/arm/mach-s3c64xx/mach-smdk6410.c
+--- linux-4.9.24/arch/arm/mach-s3c64xx/mach-smdk6410.c	2016-05-22 01:55:28.231573293 +0200
++++ linux-4.9.24-pax/arch/arm/mach-s3c64xx/mach-smdk6410.c	2017-01-01 22:57:10.541520578 +0100
+@@ -240,7 +240,7 @@ static struct platform_device smdk6410_b
+ };
+ #endif
+ 
+-static struct s3c_ide_platdata smdk6410_ide_pdata __initdata = {
++static const struct s3c_ide_platdata smdk6410_ide_pdata __initconst = {
+ 	.setup_gpio	= s3c64xx_ide_setup_gpio,
+ };
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/kernel/prom_common.c linux-4.9.24-pax/arch/sparc/kernel/prom_common.c
+--- linux-4.9.24/arch/sparc/kernel/prom_common.c	2015-03-18 15:21:50.216349253 +0100
++++ linux-4.9.24-pax/arch/sparc/kernel/prom_common.c	2017-01-01 22:57:10.589520696 +0100
+@@ -144,7 +144,7 @@ static int __init prom_common_nextprop(p
+ 
+ unsigned int prom_early_allocated __initdata;
+ 
+-static struct of_pdt_ops prom_sparc_ops __initdata = {
++static const struct of_pdt_ops prom_sparc_ops __initconst = {
+ 	.nextprop = prom_common_nextprop,
+ 	.getproplen = prom_getproplen,
+ 	.getproperty = prom_getproperty,

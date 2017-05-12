@@ -1,0 +1,304 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arc/kernel/kprobes.c linux-4.9.24-pax/arch/arc/kernel/kprobes.c
+--- linux-4.9.24/arch/arc/kernel/kprobes.c	2014-01-20 12:35:52.881001035 +0100
++++ linux-4.9.24-pax/arch/arc/kernel/kprobes.c	2017-01-22 03:21:49.173133825 +0100
+@@ -424,6 +424,7 @@ static void __used kretprobe_trampoline_
+ 			     "kretprobe_trampoline:\n" "nop\n");
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ void __kprobes arch_prepare_kretprobe(struct kretprobe_instance *ri,
+ 				      struct pt_regs *regs)
+ {
+@@ -433,6 +434,7 @@ void __kprobes arch_prepare_kretprobe(st
+ 	/* Replace the return addr with trampoline addr */
+ 	regs->blink = (unsigned long)&kretprobe_trampoline;
+ }
++#endif
+ 
+ static int __kprobes trampoline_probe_handler(struct kprobe *p,
+ 					      struct pt_regs *regs)
+@@ -509,6 +511,7 @@ int __init arch_init_kprobes(void)
+ 	return register_kprobe(&trampoline_p);
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ int __kprobes arch_trampoline_kprobe(struct kprobe *p)
+ {
+ 	if (p->addr == (kprobe_opcode_t *) &kretprobe_trampoline)
+@@ -516,6 +519,7 @@ int __kprobes arch_trampoline_kprobe(str
+ 
+ 	return 0;
+ }
++#endif
+ 
+ void trap_is_kprobe(unsigned long address, struct pt_regs *regs)
+ {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/probes/kprobes/core.c linux-4.9.24-pax/arch/arm/probes/kprobes/core.c
+--- linux-4.9.24/arch/arm/probes/kprobes/core.c	2015-04-13 11:20:52.438617964 +0200
++++ linux-4.9.24-pax/arch/arm/probes/kprobes/core.c	2017-01-22 03:21:49.177166447 +0100
+@@ -485,6 +485,7 @@ static __used __kprobes void *trampoline
+ 	return (void *)orig_ret_address;
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ void __kprobes arch_prepare_kretprobe(struct kretprobe_instance *ri,
+ 				      struct pt_regs *regs)
+ {
+@@ -493,6 +494,7 @@ void __kprobes arch_prepare_kretprobe(st
+ 	/* Replace the return addr with trampoline addr. */
+ 	regs->ARM_lr = (unsigned long)&kretprobe_trampoline;
+ }
++#endif
+ 
+ int __kprobes setjmp_pre_handler(struct kprobe *p, struct pt_regs *regs)
+ {
+@@ -605,10 +607,12 @@ int __kprobes longjmp_break_handler(stru
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ int __kprobes arch_trampoline_kprobe(struct kprobe *p)
+ {
+ 	return 0;
+ }
++#endif
+ 
+ #ifdef CONFIG_THUMB2_KERNEL
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm64/kernel/probes/kprobes.c linux-4.9.24-pax/arch/arm64/kernel/probes/kprobes.c
+--- linux-4.9.24/arch/arm64/kernel/probes/kprobes.c	2016-12-13 12:08:20.546334208 +0100
++++ linux-4.9.24-pax/arch/arm64/kernel/probes/kprobes.c	2017-01-22 03:21:49.177166447 +0100
+@@ -639,6 +639,7 @@ void __kprobes __used *trampoline_probe_
+ 	return (void *)orig_ret_address;
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ void __kprobes arch_prepare_kretprobe(struct kretprobe_instance *ri,
+ 				      struct pt_regs *regs)
+ {
+@@ -652,6 +653,7 @@ int __kprobes arch_trampoline_kprobe(str
+ {
+ 	return 0;
+ }
++#endif
+ 
+ int __init arch_init_kprobes(void)
+ {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/ia64/kernel/kprobes.c linux-4.9.24-pax/arch/ia64/kernel/kprobes.c
+--- linux-4.9.24/arch/ia64/kernel/kprobes.c	2014-12-08 21:49:15.416780639 +0100
++++ linux-4.9.24-pax/arch/ia64/kernel/kprobes.c	2017-01-22 03:21:49.177166447 +0100
+@@ -499,6 +499,7 @@ int __kprobes trampoline_probe_handler(s
+ 	return 1;
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ void __kprobes arch_prepare_kretprobe(struct kretprobe_instance *ri,
+ 				      struct pt_regs *regs)
+ {
+@@ -507,6 +508,7 @@ void __kprobes arch_prepare_kretprobe(st
+ 	/* Replace the return addr with trampoline addr */
+ 	regs->b0 = ((struct fnptr *)kretprobe_trampoline)->ip;
+ }
++#endif
+ 
+ /* Check the instruction in the slot is break */
+ static int __kprobes __is_ia64_break_inst(bundle_t *bundle, uint slot)
+@@ -1119,6 +1121,7 @@ int __init arch_init_kprobes(void)
+ 	return register_kprobe(&trampoline_p);
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ int __kprobes arch_trampoline_kprobe(struct kprobe *p)
+ {
+ 	if (p->addr ==
+@@ -1127,3 +1130,4 @@ int __kprobes arch_trampoline_kprobe(str
+ 
+ 	return 0;
+ }
++#endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/kernel/kprobes.c linux-4.9.24-pax/arch/mips/kernel/kprobes.c
+--- linux-4.9.24/arch/mips/kernel/kprobes.c	2016-12-13 12:08:22.446347129 +0100
++++ linux-4.9.24-pax/arch/mips/kernel/kprobes.c	2017-01-22 03:21:49.181199069 +0100
+@@ -535,6 +535,7 @@ static void __used kretprobe_trampoline_
+ 
+ void kretprobe_trampoline(void);
+ 
++#ifdef CONFIG_KRETPROBES
+ void __kprobes arch_prepare_kretprobe(struct kretprobe_instance *ri,
+ 				      struct pt_regs *regs)
+ {
+@@ -543,6 +544,7 @@ void __kprobes arch_prepare_kretprobe(st
+ 	/* Replace the return addr with trampoline addr */
+ 	regs->regs[31] = (unsigned long)kretprobe_trampoline;
+ }
++#endif
+ 
+ /*
+  * Called when the probe at kretprobe trampoline is hit
+@@ -611,6 +613,7 @@ static int __kprobes trampoline_probe_ha
+ 	return 1;
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ int __kprobes arch_trampoline_kprobe(struct kprobe *p)
+ {
+ 	if (p->addr == (kprobe_opcode_t *)kretprobe_trampoline)
+@@ -618,6 +621,7 @@ int __kprobes arch_trampoline_kprobe(str
+ 
+ 	return 0;
+ }
++#endif
+ 
+ static struct kprobe trampoline_p = {
+ 	.addr = (kprobe_opcode_t *)kretprobe_trampoline,
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/kernel/kprobes.c linux-4.9.24-pax/arch/powerpc/kernel/kprobes.c
+--- linux-4.9.24/arch/powerpc/kernel/kprobes.c	2016-10-03 11:27:25.963822324 +0200
++++ linux-4.9.24-pax/arch/powerpc/kernel/kprobes.c	2017-01-22 03:21:49.181199069 +0100
+@@ -131,6 +131,7 @@ static void __kprobes set_current_kprobe
+ 	kcb->kprobe_saved_msr = regs->msr;
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ void __kprobes arch_prepare_kretprobe(struct kretprobe_instance *ri,
+ 				      struct pt_regs *regs)
+ {
+@@ -139,6 +140,7 @@ void __kprobes arch_prepare_kretprobe(st
+ 	/* Replace the return addr with trampoline addr */
+ 	regs->link = (unsigned long)kretprobe_trampoline;
+ }
++#endif
+ 
+ static int __kprobes kprobe_handler(struct pt_regs *regs)
+ {
+@@ -547,6 +549,7 @@ int __init arch_init_kprobes(void)
+ 	return register_kprobe(&trampoline_p);
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ int __kprobes arch_trampoline_kprobe(struct kprobe *p)
+ {
+ 	if (p->addr == (kprobe_opcode_t *)&kretprobe_trampoline)
+@@ -554,3 +557,4 @@ int __kprobes arch_trampoline_kprobe(str
+ 
+ 	return 0;
+ }
++#endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/s390/kernel/kprobes.c linux-4.9.24-pax/arch/s390/kernel/kprobes.c
+--- linux-4.9.24/arch/s390/kernel/kprobes.c	2016-12-13 12:08:25.478367758 +0100
++++ linux-4.9.24-pax/arch/s390/kernel/kprobes.c	2017-01-22 03:21:49.181199069 +0100
+@@ -269,6 +269,7 @@ static void pop_kprobe(struct kprobe_ctl
+ }
+ NOKPROBE_SYMBOL(pop_kprobe);
+ 
++#ifdef CONFIG_KRETPROBES
+ void arch_prepare_kretprobe(struct kretprobe_instance *ri, struct pt_regs *regs)
+ {
+ 	ri->ret_addr = (kprobe_opcode_t *) regs->gprs[14];
+@@ -277,6 +278,7 @@ void arch_prepare_kretprobe(struct kretp
+ 	regs->gprs[14] = (unsigned long) &kretprobe_trampoline;
+ }
+ NOKPROBE_SYMBOL(arch_prepare_kretprobe);
++#endif
+ 
+ static void kprobe_reenter_check(struct kprobe_ctlblk *kcb, struct kprobe *p)
+ {
+@@ -740,8 +742,10 @@ int __init arch_init_kprobes(void)
+ 	return register_kprobe(&trampoline);
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ int arch_trampoline_kprobe(struct kprobe *p)
+ {
+ 	return p->addr == (kprobe_opcode_t *) &kretprobe_trampoline;
+ }
+ NOKPROBE_SYMBOL(arch_trampoline_kprobe);
++#endif
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sh/kernel/kprobes.c linux-4.9.24-pax/arch/sh/kernel/kprobes.c
+--- linux-4.9.24/arch/sh/kernel/kprobes.c	2014-08-04 01:36:55.682880121 +0200
++++ linux-4.9.24-pax/arch/sh/kernel/kprobes.c	2017-01-22 03:21:49.181199069 +0100
+@@ -72,6 +72,7 @@ void __kprobes arch_disarm_kprobe(struct
+ 			   (unsigned long)p->addr + sizeof(kprobe_opcode_t));
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ int __kprobes arch_trampoline_kprobe(struct kprobe *p)
+ {
+ 	if (*p->addr == BREAKPOINT_INSTRUCTION)
+@@ -79,6 +80,7 @@ int __kprobes arch_trampoline_kprobe(str
+ 
+ 	return 0;
+ }
++#endif
+ 
+ /**
+  * If an illegal slot instruction exception occurs for an address
+@@ -203,6 +205,7 @@ static void __kprobes prepare_singlestep
+ }
+ 
+ /* Called with kretprobe_lock held */
++#ifdef CONFIG_KRETPROBES
+ void __kprobes arch_prepare_kretprobe(struct kretprobe_instance *ri,
+ 				      struct pt_regs *regs)
+ {
+@@ -211,6 +214,7 @@ void __kprobes arch_prepare_kretprobe(st
+ 	/* Replace the return addr with trampoline addr */
+ 	regs->pr = (unsigned long)kretprobe_trampoline;
+ }
++#endif
+ 
+ static int __kprobes kprobe_handler(struct pt_regs *regs)
+ {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/kernel/kprobes.c linux-4.9.24-pax/arch/sparc/kernel/kprobes.c
+--- linux-4.9.24/arch/sparc/kernel/kprobes.c	2016-12-13 12:08:25.878370481 +0100
++++ linux-4.9.24-pax/arch/sparc/kernel/kprobes.c	2017-01-22 03:21:49.181199069 +0100
+@@ -499,6 +499,7 @@ int __kprobes longjmp_break_handler(stru
+  * value kept in ri->ret_addr so we don't need to keep adjusting it
+  * back and forth.
+  */
++#ifdef CONFIG_KRETPROBES
+ void __kprobes arch_prepare_kretprobe(struct kretprobe_instance *ri,
+ 				      struct pt_regs *regs)
+ {
+@@ -508,6 +509,7 @@ void __kprobes arch_prepare_kretprobe(st
+ 	regs->u_regs[UREG_RETPC] =
+ 		((unsigned long)kretprobe_trampoline) - 8;
+ }
++#endif
+ 
+ /*
+  * Called when the probe at kretprobe trampoline is hit
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/tile/kernel/kprobes.c linux-4.9.24-pax/arch/tile/kernel/kprobes.c
+--- linux-4.9.24/arch/tile/kernel/kprobes.c	2016-03-14 11:51:46.581260457 +0100
++++ linux-4.9.24-pax/arch/tile/kernel/kprobes.c	2017-01-22 03:21:49.181199069 +0100
+@@ -430,6 +430,7 @@ static void __used kretprobe_trampoline_
+ 
+ void kretprobe_trampoline(void);
+ 
++#ifdef CONFIG_KRETPROBES
+ void __kprobes arch_prepare_kretprobe(struct kretprobe_instance *ri,
+ 				      struct pt_regs *regs)
+ {
+@@ -438,6 +439,7 @@ void __kprobes arch_prepare_kretprobe(st
+ 	/* Replace the return addr with trampoline addr */
+ 	regs->lr = (unsigned long)kretprobe_trampoline;
+ }
++#endif
+ 
+ /*
+  * Called when the probe at kretprobe trampoline is hit.
+@@ -507,6 +509,7 @@ static int __kprobes trampoline_probe_ha
+ 	return 1;
+ }
+ 
++#ifdef CONFIG_KRETPROBES
+ int __kprobes arch_trampoline_kprobe(struct kprobe *p)
+ {
+ 	if (p->addr == (kprobe_opcode_t *)kretprobe_trampoline)
+@@ -514,6 +517,7 @@ int __kprobes arch_trampoline_kprobe(str
+ 
+ 	return 0;
+ }
++#endif
+ 
+ static struct kprobe trampoline_p = {
+ 	.addr = (kprobe_opcode_t *)kretprobe_trampoline,

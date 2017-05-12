@@ -1,0 +1,249 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/alpha/kernel/module.c linux-4.9.24-pax/arch/alpha/kernel/module.c
+--- linux-4.9.24/arch/alpha/kernel/module.c	2016-03-14 11:51:23.220649434 +0100
++++ linux-4.9.24-pax/arch/alpha/kernel/module.c	2017-01-01 22:57:10.517520519 +0100
+@@ -160,7 +160,7 @@ apply_relocate_add(Elf64_Shdr *sechdrs,
+ 
+ 	/* The small sections were sorted to the end of the segment.
+ 	   The following should definitely cover them.  */
+-	gp = (u64)me->core_layout.base + me->core_layout.size - 0x8000;
++	gp = (u64)me->core_layout.base_rw + me->core_layout.size_rw - 0x8000;
+ 	got = sechdrs[me->arch.gotsecindex].sh_addr;
+ 
+ 	for (i = 0; i < n; i++) {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/ia64/kernel/module.c linux-4.9.24-pax/arch/ia64/kernel/module.c
+--- linux-4.9.24/arch/ia64/kernel/module.c	2016-03-14 11:51:31.638633815 +0100
++++ linux-4.9.24-pax/arch/ia64/kernel/module.c	2017-01-01 22:57:10.557520617 +0100
+@@ -486,13 +486,13 @@ module_frob_arch_sections (Elf_Ehdr *ehd
+ static inline int
+ in_init (const struct module *mod, uint64_t addr)
+ {
+-	return addr - (uint64_t) mod->init_layout.base < mod->init_layout.size;
++	return within_module_init(addr, mod);
+ }
+ 
+ static inline int
+ in_core (const struct module *mod, uint64_t addr)
+ {
+-	return addr - (uint64_t) mod->core_layout.base < mod->core_layout.size;
++	return within_module_core(addr, mod);
+ }
+ 
+ static inline int
+@@ -676,6 +676,14 @@ do_reloc (struct module *mod, uint8_t r_
+ 
+ 	      case RV_BDREL:
+ 		val -= (uint64_t) (in_init(mod, val) ? mod->init_layout.base : mod->core_layout.base);
++		if (within_module_rx(val, &mod->init_layout))
++			val -= mod->init_layout.base_rx;
++		else if (within_module_rw(val, &mod->init_layout))
++			val -= mod->init_layout.base_rw;
++		else if (within_module_rx(val, &mod->core_layout))
++			val -= mod->core_layout.base_rx;
++		else if (within_module_rw(val, &mod->core_layout))
++			val -= mod->core_layout.base_rw;
+ 		break;
+ 
+ 	      case RV_LTV:
+@@ -810,15 +818,15 @@ apply_relocate_add (Elf64_Shdr *sechdrs,
+ 		 *     addresses have been selected...
+ 		 */
+ 		uint64_t gp;
+-		if (mod->core_layout.size > MAX_LTOFF)
++		if (mod->core_layout.size_rx + mod->core_layout.size_rw > MAX_LTOFF)
+ 			/*
+ 			 * This takes advantage of fact that SHF_ARCH_SMALL gets allocated
+ 			 * at the end of the module.
+ 			 */
+-			gp = mod->core_layout.size - MAX_LTOFF / 2;
++			gp = mod->core_layout.size_rx + mod->core_layout.size_rw - MAX_LTOFF / 2;
+ 		else
+-			gp = mod->core_layout.size / 2;
+-		gp = (uint64_t) mod->core_layout.base + ((gp + 7) & -8);
++			gp = (mod->core_layout.size_rx + mod->core_layout.size_rw) / 2;
++		gp = (uint64_t) mod->core_layout.base_rx + ((gp + 7) & -8);
+ 		mod->arch.gp = gp;
+ 		DEBUGP("%s: placing gp at 0x%lx\n", __func__, gp);
+ 	}
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/parisc/kernel/module.c linux-4.9.24-pax/arch/parisc/kernel/module.c
+--- linux-4.9.24/arch/parisc/kernel/module.c	2016-05-22 01:55:28.571569665 +0200
++++ linux-4.9.24-pax/arch/parisc/kernel/module.c	2017-01-01 22:57:10.569520647 +0100
+@@ -100,14 +100,12 @@
+  * or init pieces the location is */
+ static inline int in_init(struct module *me, void *loc)
+ {
+-	return (loc >= me->init_layout.base &&
+-		loc <= (me->init_layout.base + me->init_layout.size));
++	within_module_init((unsigned long)loc, me);
+ }
+ 
+ static inline int in_core(struct module *me, void *loc)
+ {
+-	return (loc >= me->core_layout.base &&
+-		loc <= (me->core_layout.base + me->core_layout.size));
++	within_module_core((unsigned long)loc, me);
+ }
+ 
+ static inline int in_local(struct module *me, void *loc)
+@@ -367,13 +365,13 @@ int module_frob_arch_sections(CONST Elf_
+ 	}
+ 
+ 	/* align things a bit */
+-	me->core_layout.size = ALIGN(me->core_layout.size, 16);
+-	me->arch.got_offset = me->core_layout.size;
+-	me->core_layout.size += gots * sizeof(struct got_entry);
+-
+-	me->core_layout.size = ALIGN(me->core_layout.size, 16);
+-	me->arch.fdesc_offset = me->core_layout.size;
+-	me->core_layout.size += fdescs * sizeof(Elf_Fdesc);
++	me->core_layout.size_rw = ALIGN(me->core_layout.size_rw, 16);
++	me->arch.got_offset = me->core_layout.size_rw;
++	me->core_layout.size_rw += gots * sizeof(struct got_entry);
++
++	me->core_layout.size_rw = ALIGN(me->core_layout.size_rw, 16);
++	me->arch.fdesc_offset = me->core_layout.size_rw;
++	me->core_layout.size_rw += fdescs * sizeof(Elf_Fdesc);
+ 
+ 	me->arch.got_max = gots;
+ 	me->arch.fdesc_max = fdescs;
+@@ -391,7 +389,7 @@ static Elf64_Word get_got(struct module
+ 
+ 	BUG_ON(value == 0);
+ 
+-	got = me->core_layout.base + me->arch.got_offset;
++	got = me->core_layout.base_rw + me->arch.got_offset;
+ 	for (i = 0; got[i].addr; i++)
+ 		if (got[i].addr == value)
+ 			goto out;
+@@ -409,7 +407,7 @@ static Elf64_Word get_got(struct module
+ #ifdef CONFIG_64BIT
+ static Elf_Addr get_fdesc(struct module *me, unsigned long value)
+ {
+-	Elf_Fdesc *fdesc = me->core_layout.base + me->arch.fdesc_offset;
++	Elf_Fdesc *fdesc = me->core_layout.base_rw + me->arch.fdesc_offset;
+ 
+ 	if (!value) {
+ 		printk(KERN_ERR "%s: zero OPD requested!\n", me->name);
+@@ -427,7 +425,7 @@ static Elf_Addr get_fdesc(struct module
+ 
+ 	/* Create new one */
+ 	fdesc->addr = value;
+-	fdesc->gp = (Elf_Addr)me->core_layout.base + me->arch.got_offset;
++	fdesc->gp = (Elf_Addr)me->core_layout.base_rw + me->arch.got_offset;
+ 	return (Elf_Addr)fdesc;
+ }
+ #endif /* CONFIG_64BIT */
+@@ -847,7 +845,7 @@ register_unwind_table(struct module *me,
+ 
+ 	table = (unsigned char *)sechdrs[me->arch.unwind_section].sh_addr;
+ 	end = table + sechdrs[me->arch.unwind_section].sh_size;
+-	gp = (Elf_Addr)me->core_layout.base + me->arch.got_offset;
++	gp = (Elf_Addr)me->core_layout.base_rw + me->arch.got_offset;
+ 
+ 	DEBUGP("register_unwind_table(), sect = %d at 0x%p - 0x%p (gp=0x%lx)\n",
+ 	       me->arch.unwind_section, table, end, gp);
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/powerpc/kernel/module_32.c linux-4.9.24-pax/arch/powerpc/kernel/module_32.c
+--- linux-4.9.24/arch/powerpc/kernel/module_32.c	2016-05-22 01:55:28.651568812 +0200
++++ linux-4.9.24-pax/arch/powerpc/kernel/module_32.c	2017-01-01 22:57:10.577520667 +0100
+@@ -188,11 +188,16 @@ static uint32_t do_plt_call(void *locati
+ 
+ 	pr_debug("Doing plt for call to 0x%x at 0x%x\n", val, (unsigned int)location);
+ 	/* Init, or core PLT? */
+-	if (location >= mod->core_layout.base
+-	    && location < mod->core_layout.base + mod->core_layout.size)
++	if ((location >= mod->core_layout.base_rx && location < mod->core_layout.base_rx + mod->core_layout.size_rx) ||
++	    (location >= mod->core_layout.base_rw && location < mod->core_layout.base_rw + mod->core_layout.size_rw))
+ 		entry = (void *)sechdrs[mod->arch.core_plt_section].sh_addr;
+-	else
++	else if ((location >= mod->init_layout.base_rx && location < mod->init_layout.base_rx + mod->init_layout.size_rx) ||
++		 (location >= mod->init_layout.base_rw && location < mod->init_layout.base_rw + mod->init_layout.size_rw))
+ 		entry = (void *)sechdrs[mod->arch.init_plt_section].sh_addr;
++	else {
++		printk(KERN_ERR "%s: invalid R_PPC_REL24 entry found\n", mod->name);
++		return ~0UL;
++	}
+ 
+ 	/* Find this entry, or if that fails, the next avail. entry */
+ 	while (entry->jump[0]) {
+@@ -301,7 +306,7 @@ int apply_relocate_add(Elf32_Shdr *sechd
+ #ifdef CONFIG_DYNAMIC_FTRACE
+ int module_finalize_ftrace(struct module *module, const Elf_Shdr *sechdrs)
+ {
+-	module->arch.tramp = do_plt_call(module->core_layout.base,
++	module->arch.tramp = do_plt_call(module->core_layout.base_rx,
+ 					 (unsigned long)ftrace_caller,
+ 					 sechdrs, module);
+ 	if (!module->arch.tramp)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/s390/kernel/module.c linux-4.9.24-pax/arch/s390/kernel/module.c
+--- linux-4.9.24/arch/s390/kernel/module.c	2016-07-25 02:13:18.375285434 +0200
++++ linux-4.9.24-pax/arch/s390/kernel/module.c	2017-01-01 22:57:10.581520676 +0100
+@@ -163,11 +163,11 @@ int module_frob_arch_sections(Elf_Ehdr *
+ 
+ 	/* Increase core size by size of got & plt and set start
+ 	   offsets for got and plt. */
+-	me->core_layout.size = ALIGN(me->core_layout.size, 4);
+-	me->arch.got_offset = me->core_layout.size;
+-	me->core_layout.size += me->arch.got_size;
+-	me->arch.plt_offset = me->core_layout.size;
+-	me->core_layout.size += me->arch.plt_size;
++	me->core_layout.size_rw = ALIGN(me->core_layout.size_rw, 4);
++	me->arch.got_offset = me->core_layout.size_rw;
++	me->core_layout.size_rw += me->arch.got_size;
++	me->arch.plt_offset = me->core_layout.size_rx;
++	me->core_layout.size_rx += me->arch.plt_size;
+ 	return 0;
+ }
+ 
+@@ -283,7 +283,7 @@ static int apply_rela(Elf_Rela *rela, El
+ 		if (info->got_initialized == 0) {
+ 			Elf_Addr *gotent;
+ 
+-			gotent = me->core_layout.base + me->arch.got_offset +
++			gotent = me->core_layout.base_rw + me->arch.got_offset +
+ 				info->got_offset;
+ 			*gotent = val;
+ 			info->got_initialized = 1;
+@@ -306,7 +306,7 @@ static int apply_rela(Elf_Rela *rela, El
+ 			rc = apply_rela_bits(loc, val, 0, 64, 0);
+ 		else if (r_type == R_390_GOTENT ||
+ 			 r_type == R_390_GOTPLTENT) {
+-			val += (Elf_Addr) me->core_layout.base - loc;
++			val += (Elf_Addr) me->core_layout.base_rw - loc;
+ 			rc = apply_rela_bits(loc, val, 1, 32, 1);
+ 		}
+ 		break;
+@@ -319,7 +319,7 @@ static int apply_rela(Elf_Rela *rela, El
+ 	case R_390_PLTOFF64:	/* 16 bit offset from GOT to PLT. */
+ 		if (info->plt_initialized == 0) {
+ 			unsigned int *ip;
+-			ip = me->core_layout.base + me->arch.plt_offset +
++			ip = me->core_layout.base_rx + me->arch.plt_offset +
+ 				info->plt_offset;
+ 			ip[0] = 0x0d10e310; /* basr 1,0; lg 1,10(1); br 1 */
+ 			ip[1] = 0x100a0004;
+@@ -338,7 +338,7 @@ static int apply_rela(Elf_Rela *rela, El
+ 			       val - loc + 0xffffUL < 0x1ffffeUL) ||
+ 			      (r_type == R_390_PLT32DBL &&
+ 			       val - loc + 0xffffffffULL < 0x1fffffffeULL)))
+-				val = (Elf_Addr) me->core_layout.base +
++				val = (Elf_Addr) me->core_layout.base_rx +
+ 					me->arch.plt_offset +
+ 					info->plt_offset;
+ 			val += rela->r_addend - loc;
+@@ -360,7 +360,7 @@ static int apply_rela(Elf_Rela *rela, El
+ 	case R_390_GOTOFF32:	/* 32 bit offset to GOT.  */
+ 	case R_390_GOTOFF64:	/* 64 bit offset to GOT. */
+ 		val = val + rela->r_addend -
+-			((Elf_Addr) me->core_layout.base + me->arch.got_offset);
++			((Elf_Addr) me->core_layout.base_rw + me->arch.got_offset);
+ 		if (r_type == R_390_GOTOFF16)
+ 			rc = apply_rela_bits(loc, val, 0, 16, 0);
+ 		else if (r_type == R_390_GOTOFF32)
+@@ -370,7 +370,7 @@ static int apply_rela(Elf_Rela *rela, El
+ 		break;
+ 	case R_390_GOTPC:	/* 32 bit PC relative offset to GOT. */
+ 	case R_390_GOTPCDBL:	/* 32 bit PC rel. off. to GOT shifted by 1. */
+-		val = (Elf_Addr) me->core_layout.base + me->arch.got_offset +
++		val = (Elf_Addr) me->core_layout.base_rw + me->arch.got_offset +
+ 			rela->r_addend - loc;
+ 		if (r_type == R_390_GOTPC)
+ 			rc = apply_rela_bits(loc, val, 1, 32, 0);

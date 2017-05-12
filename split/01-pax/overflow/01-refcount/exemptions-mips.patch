@@ -1,0 +1,185 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/include/asm/hw_irq.h linux-4.9.24-pax/arch/mips/include/asm/hw_irq.h
+--- linux-4.9.24/arch/mips/include/asm/hw_irq.h	2015-03-18 15:21:50.192349252 +0100
++++ linux-4.9.24-pax/arch/mips/include/asm/hw_irq.h	2017-01-01 22:57:10.561520627 +0100
+@@ -10,7 +10,7 @@
+ 
+ #include <linux/atomic.h>
+ 
+-extern atomic_t irq_err_count;
++extern atomic_unchecked_t irq_err_count;
+ 
+ /*
+  * interrupt-retrigger: NOP for now. This may not be appropriate for all
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/kernel/irq.c linux-4.9.24-pax/arch/mips/kernel/irq.c
+--- linux-4.9.24/arch/mips/kernel/irq.c	2017-04-19 22:09:36.690318057 +0200
++++ linux-4.9.24-pax/arch/mips/kernel/irq.c	2017-04-19 22:12:02.842426367 +0200
+@@ -36,17 +36,17 @@ void ack_bad_irq(unsigned int irq)
+ 	printk("unexpected IRQ # %d\n", irq);
+ }
+ 
+-atomic_t irq_err_count;
++atomic_unchecked_t irq_err_count;
+ 
+ int arch_show_interrupts(struct seq_file *p, int prec)
+ {
+-	seq_printf(p, "%*s: %10u\n", prec, "ERR", atomic_read(&irq_err_count));
++	seq_printf(p, "%*s: %10u\n", prec, "ERR", atomic_read_unchecked(&irq_err_count));
+ 	return 0;
+ }
+ 
+ asmlinkage void spurious_interrupt(void)
+ {
+-	atomic_inc(&irq_err_count);
++	atomic_inc_unchecked(&irq_err_count);
+ }
+ 
+ void __init init_IRQ(void)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/kernel/irq-gt641xx.c linux-4.9.24-pax/arch/mips/kernel/irq-gt641xx.c
+--- linux-4.9.24/arch/mips/kernel/irq-gt641xx.c	2015-03-18 15:21:50.196349252 +0100
++++ linux-4.9.24-pax/arch/mips/kernel/irq-gt641xx.c	2017-01-01 22:57:10.565520637 +0100
+@@ -110,7 +110,7 @@ void gt641xx_irq_dispatch(void)
+ 		}
+ 	}
+ 
+-	atomic_inc(&irq_err_count);
++	atomic_inc_unchecked(&irq_err_count);
+ }
+ 
+ void __init gt641xx_irq_init(void)
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/kernel/sync-r4k.c linux-4.9.24-pax/arch/mips/kernel/sync-r4k.c
+--- linux-4.9.24/arch/mips/kernel/sync-r4k.c	2016-03-14 11:51:32.491775149 +0100
++++ linux-4.9.24-pax/arch/mips/kernel/sync-r4k.c	2017-01-01 22:57:10.565520637 +0100
+@@ -18,8 +18,8 @@
+ #include <asm/mipsregs.h>
+ 
+ static unsigned int initcount = 0;
+-static atomic_t count_count_start = ATOMIC_INIT(0);
+-static atomic_t count_count_stop = ATOMIC_INIT(0);
++static atomic_unchecked_t count_count_start = ATOMIC_INIT(0);
++static atomic_unchecked_t count_count_stop = ATOMIC_INIT(0);
+ 
+ #define COUNTON 100
+ #define NR_LOOPS 3
+@@ -46,13 +46,13 @@ void synchronise_count_master(int cpu)
+ 
+ 	for (i = 0; i < NR_LOOPS; i++) {
+ 		/* slaves loop on '!= 2' */
+-		while (atomic_read(&count_count_start) != 1)
++		while (atomic_read_unchecked(&count_count_start) != 1)
+ 			mb();
+-		atomic_set(&count_count_stop, 0);
++		atomic_set_unchecked(&count_count_stop, 0);
+ 		smp_wmb();
+ 
+ 		/* Let the slave writes its count register */
+-		atomic_inc(&count_count_start);
++		atomic_inc_unchecked(&count_count_start);
+ 
+ 		/* Count will be initialised to current timer */
+ 		if (i == 1)
+@@ -67,11 +67,11 @@ void synchronise_count_master(int cpu)
+ 		/*
+ 		 * Wait for slave to leave the synchronization point:
+ 		 */
+-		while (atomic_read(&count_count_stop) != 1)
++		while (atomic_read_unchecked(&count_count_stop) != 1)
+ 			mb();
+-		atomic_set(&count_count_start, 0);
++		atomic_set_unchecked(&count_count_start, 0);
+ 		smp_wmb();
+-		atomic_inc(&count_count_stop);
++		atomic_inc_unchecked(&count_count_stop);
+ 	}
+ 	/* Arrange for an interrupt in a short while */
+ 	write_c0_compare(read_c0_count() + COUNTON);
+@@ -96,8 +96,8 @@ void synchronise_count_slave(int cpu)
+ 	 */
+ 
+ 	for (i = 0; i < NR_LOOPS; i++) {
+-		atomic_inc(&count_count_start);
+-		while (atomic_read(&count_count_start) != 2)
++		atomic_inc_unchecked(&count_count_start);
++		while (atomic_read_unchecked(&count_count_start) != 2)
+ 			mb();
+ 
+ 		/*
+@@ -106,8 +106,8 @@ void synchronise_count_slave(int cpu)
+ 		if (i == NR_LOOPS-1)
+ 			write_c0_count(initcount);
+ 
+-		atomic_inc(&count_count_stop);
+-		while (atomic_read(&count_count_stop) != 2)
++		atomic_inc_unchecked(&count_count_stop);
++		while (atomic_read_unchecked(&count_count_stop) != 2)
+ 			mb();
+ 	}
+ 	/* Arrange for an interrupt in a short while */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/sgi-ip27/ip27-nmi.c linux-4.9.24-pax/arch/mips/sgi-ip27/ip27-nmi.c
+--- linux-4.9.24/arch/mips/sgi-ip27/ip27-nmi.c	2016-07-25 02:13:17.026263066 +0200
++++ linux-4.9.24-pax/arch/mips/sgi-ip27/ip27-nmi.c	2017-01-01 22:57:10.569520647 +0100
+@@ -187,9 +187,9 @@ void
+ cont_nmi_dump(void)
+ {
+ #ifndef REAL_NMI_SIGNAL
+-	static atomic_t nmied_cpus = ATOMIC_INIT(0);
++	static atomic_unchecked_t nmied_cpus = ATOMIC_INIT(0);
+ 
+-	atomic_inc(&nmied_cpus);
++	atomic_inc_unchecked(&nmied_cpus);
+ #endif
+ 	/*
+ 	 * Only allow 1 cpu to proceed
+@@ -233,7 +233,7 @@ cont_nmi_dump(void)
+ 		udelay(10000);
+ 	}
+ #else
+-	while (atomic_read(&nmied_cpus) != num_online_cpus());
++	while (atomic_read_unchecked(&nmied_cpus) != num_online_cpus());
+ #endif
+ 
+ 	/*
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/sni/rm200.c linux-4.9.24-pax/arch/mips/sni/rm200.c
+--- linux-4.9.24/arch/mips/sni/rm200.c	2016-07-25 02:13:17.042275350 +0200
++++ linux-4.9.24-pax/arch/mips/sni/rm200.c	2017-01-01 22:57:10.569520647 +0100
+@@ -270,7 +270,7 @@ spurious_8259A_irq:
+ 			       "spurious RM200 8259A interrupt: IRQ%d.\n", irq);
+ 			spurious_irq_mask |= irqmask;
+ 		}
+-		atomic_inc(&irq_err_count);
++		atomic_inc_unchecked(&irq_err_count);
+ 		/*
+ 		 * Theoretically we do not have to handle this IRQ,
+ 		 * but in Linux this does not cause problems and is
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/vr41xx/common/icu.c linux-4.9.24-pax/arch/mips/vr41xx/common/icu.c
+--- linux-4.9.24/arch/mips/vr41xx/common/icu.c	2015-03-18 15:21:50.200349252 +0100
++++ linux-4.9.24-pax/arch/mips/vr41xx/common/icu.c	2017-01-01 22:57:10.569520647 +0100
+@@ -653,7 +653,7 @@ static int icu_get_irq(unsigned int irq)
+ 
+ 	printk(KERN_ERR "spurious ICU interrupt: %04x,%04x\n", pend1, pend2);
+ 
+-	atomic_inc(&irq_err_count);
++	atomic_inc_unchecked(&irq_err_count);
+ 
+ 	return -1;
+ }
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/mips/vr41xx/common/irq.c linux-4.9.24-pax/arch/mips/vr41xx/common/irq.c
+--- linux-4.9.24/arch/mips/vr41xx/common/irq.c	2015-03-18 15:21:50.200349252 +0100
++++ linux-4.9.24-pax/arch/mips/vr41xx/common/irq.c	2017-01-01 22:57:10.569520647 +0100
+@@ -64,7 +64,7 @@ static void irq_dispatch(unsigned int ir
+ 	irq_cascade_t *cascade;
+ 
+ 	if (irq >= NR_IRQS) {
+-		atomic_inc(&irq_err_count);
++		atomic_inc_unchecked(&irq_err_count);
+ 		return;
+ 	}
+ 
+@@ -84,7 +84,7 @@ static void irq_dispatch(unsigned int ir
+ 		ret = cascade->get_irq(irq);
+ 		irq = ret;
+ 		if (ret < 0)
+-			atomic_inc(&irq_err_count);
++			atomic_inc_unchecked(&irq_err_count);
+ 		else
+ 			irq_dispatch(irq);
+ 		if (!irqd_irq_disabled(idata) && chip->irq_unmask)

@@ -1,0 +1,256 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/linux/slab_def.h linux-4.9.24-pax/include/linux/slab_def.h
+--- linux-4.9.24/include/linux/slab_def.h	2016-10-03 11:28:31.081302375 +0200
++++ linux-4.9.24-pax/include/linux/slab_def.h	2017-01-01 22:57:17.889538611 +0100
+@@ -40,7 +40,7 @@ struct kmem_cache {
+ /* 4) cache creation/removal */
+ 	const char *name;
+ 	struct list_head list;
+-	int refcount;
++	atomic_t refcount;
+ 	int object_size;
+ 	int align;
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/linux/slub_def.h linux-4.9.24-pax/include/linux/slub_def.h
+--- linux-4.9.24/include/linux/slub_def.h	2016-10-03 11:28:31.081302375 +0200
++++ linux-4.9.24-pax/include/linux/slub_def.h	2017-01-01 22:57:17.917538680 +0100
+@@ -74,7 +74,7 @@ struct kmem_cache {
+ 	struct kmem_cache_order_objects max;
+ 	struct kmem_cache_order_objects min;
+ 	gfp_t allocflags;	/* gfp flags to use on each alloc */
+-	int refcount;		/* Refcount for slab cache destroy */
++	atomic_t refcount;	/* Refcount for slab cache destroy */
+ 	void (*ctor)(void *);
+ 	int inuse;		/* Offset to metadata */
+ 	int align;		/* Alignment */
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/slab.c linux-4.9.24-pax/mm/slab.c
+--- linux-4.9.24/mm/slab.c	2017-03-28 01:15:32.550952528 +0200
++++ linux-4.9.24-pax/mm/slab.c	2017-03-28 01:42:30.354666558 +0200
+@@ -1923,7 +1927,7 @@ __kmem_cache_alias(const char *name, siz
+ 
+ 	cachep = find_mergeable(size, align, flags, name, ctor);
+ 	if (cachep) {
+-		cachep->refcount++;
++		atomic_inc(&cachep->refcount);
+ 
+ 		/*
+ 		 * Adjust the object sizes so that we clear
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/slab_common.c linux-4.9.24-pax/mm/slab_common.c
+--- linux-4.9.24/mm/slab_common.c	2017-03-28 01:15:32.550952528 +0200
++++ linux-4.9.24-pax/mm/slab_common.c	2017-03-28 01:42:30.354666558 +0200
+@@ -244,7 +268,7 @@ int slab_unmergeable(struct kmem_cache *
+ 	/*
+ 	 * We may have set a slab to be unmergeable during bootstrap.
+ 	 */
+-	if (s->refcount < 0)
++	if (atomic_read(&s->refcount) < 0)
+ 		return 1;
+ 
+ 	return 0;
+@@ -348,7 +377,7 @@ static struct kmem_cache *create_cache(c
+ 	if (err)
+ 		goto out_free_cache;
+ 
+-	s->refcount = 1;
++	atomic_set(&s->refcount, 1);
+ 	list_add(&s->list, &slab_caches);
+ out:
+ 	if (err)
+@@ -741,8 +793,7 @@ void kmem_cache_destroy(struct kmem_cach
+ 	kasan_cache_destroy(s);
+ 	mutex_lock(&slab_mutex);
+ 
+-	s->refcount--;
+-	if (s->refcount)
++	if (!atomic_dec_and_test(&s->refcount))
+ 		goto out_unlock;
+ 
+ 	err = shutdown_memcg_caches(s, &release, &need_rcu_barrier);
+@@ -809,6 +809,6 @@ void __init create_boot_cache(struct kme
+ 		panic("Creation of kmalloc slab %s size=%zu failed. Reason %d\n",
+ 					name, size, err);
+ 
+-	s->refcount = -1;	/* Exempt from merging for now */
++	atomic_set(&s->refcount, -1);	/* Exempt from merging for now */
+ }
+ 
+@@ -820,7 +820,7 @@ void __init create_boot_cache(struct kme
+ 
+ 	create_boot_cache(s, name, size, flags);
+ 	list_add(&s->list, &slab_caches);
+-	s->refcount = 1;
++	atomic_set(&s->refcount, 1);
+ 	return s;
+ }
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/mm/slub.c linux-4.9.24-pax/mm/slub.c
+--- linux-4.9.24/mm/slub.c	2017-03-28 01:15:32.550952528 +0200
++++ linux-4.9.24-pax/mm/slub.c	2017-03-28 01:42:30.358673334 +0200
+@@ -4169,7 +4214,7 @@ __kmem_cache_alias(const char *name, siz
+ 
+ 	s = find_mergeable(size, align, flags, name, ctor);
+ 	if (s) {
+-		s->refcount++;
++		atomic_inc(&s->refcount);
+ 
+ 		/*
+ 		 * Adjust the object sizes so that we clear
+@@ -4185,7 +4230,7 @@ __kmem_cache_alias(const char *name, siz
+ 		}
+ 
+ 		if (sysfs_slab_alias(s, name)) {
+-			s->refcount--;
++			atomic_dec(&s->refcount);
+ 			s = NULL;
+ 		}
+ 	}
+@@ -4892,7 +4939,7 @@ SLAB_ATTR_RO(ctor);
+ 
+ static ssize_t aliases_show(struct kmem_cache *s, char *buf)
+ {
+-	return sprintf(buf, "%d\n", s->refcount < 0 ? 0 : s->refcount - 1);
++	return sprintf(buf, "%d\n", atomic_read(&s->refcount) < 0 ? 0 : atomic_read(&s->refcount) - 1);
+ }
+ SLAB_ATTR_RO(aliases);
+ 
+@@ -5035,7 +5098,7 @@ static ssize_t trace_store(struct kmem_c
+ 	 * as well as cause other issues like converting a mergeable
+ 	 * cache into an umergeable one.
+ 	 */
+-	if (s->refcount > 1)
++	if (atomic_read(&s->refcount) > 1)
+ 		return -EINVAL;
+ 
+ 	s->flags &= ~SLAB_TRACE;
+@@ -5153,7 +5216,7 @@ static ssize_t failslab_show(struct kmem
+ static ssize_t failslab_store(struct kmem_cache *s, const char *buf,
+ 							size_t length)
+ {
+-	if (s->refcount > 1)
++	if (atomic_read(&s->refcount) > 1)
+ 		return -EINVAL;
+ 
+ 	s->flags &= ~SLAB_FAILSLAB;
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/linux/tty_ldisc.h linux-4.9.24-pax/include/linux/tty_ldisc.h
+--- linux-4.9.24/include/linux/tty_ldisc.h	2016-05-22 01:55:49.035355410 +0200
++++ linux-4.9.24-pax/include/linux/tty_ldisc.h	2017-01-01 22:57:18.025538945 +0100
+@@ -202,7 +202,7 @@ struct tty_ldisc_ops {
+ 
+ 	struct  module *owner;
+ 
+-	int refcount;
++	atomic_t refcount;
+ };
+ 
+ struct tty_ldisc {
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/drivers/tty/tty_ldisc.c linux-4.9.24-pax/drivers/tty/tty_ldisc.c
+--- linux-4.9.24/drivers/tty/tty_ldisc.c	2016-05-22 01:55:47.999366063 +0200
++++ linux-4.9.24-pax/drivers/tty/tty_ldisc.c	2017-01-01 22:57:13.689528306 +0100
+@@ -68,7 +68,7 @@ int tty_register_ldisc(int disc, struct
+ 	raw_spin_lock_irqsave(&tty_ldiscs_lock, flags);
+ 	tty_ldiscs[disc] = new_ldisc;
+ 	new_ldisc->num = disc;
+-	new_ldisc->refcount = 0;
++	atomic_set(&new_ldisc->refcount, 0);
+ 	raw_spin_unlock_irqrestore(&tty_ldiscs_lock, flags);
+ 
+ 	return ret;
+@@ -96,7 +96,7 @@ int tty_unregister_ldisc(int disc)
+ 		return -EINVAL;
+ 
+ 	raw_spin_lock_irqsave(&tty_ldiscs_lock, flags);
+-	if (tty_ldiscs[disc]->refcount)
++	if (atomic_read(&tty_ldiscs[disc]->refcount))
+ 		ret = -EBUSY;
+ 	else
+ 		tty_ldiscs[disc] = NULL;
+@@ -117,7 +117,7 @@ static struct tty_ldisc_ops *get_ldops(i
+ 	if (ldops) {
+ 		ret = ERR_PTR(-EAGAIN);
+ 		if (try_module_get(ldops->owner)) {
+-			ldops->refcount++;
++			atomic_inc(&ldops->refcount);
+ 			ret = ldops;
+ 		}
+ 	}
+@@ -130,7 +130,7 @@ static void put_ldops(struct tty_ldisc_o
+ 	unsigned long flags;
+ 
+ 	raw_spin_lock_irqsave(&tty_ldiscs_lock, flags);
+-	ldops->refcount--;
++	atomic_dec(&ldops->refcount);
+ 	module_put(ldops->owner);
+ 	raw_spin_unlock_irqrestore(&tty_ldiscs_lock, flags);
+ }
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/drivers/tty/n_tty.c linux-4.9.24-pax/drivers/tty/n_tty.c
+--- linux-4.9.24/drivers/tty/n_tty.c	2016-07-25 02:14:06.041273042 +0200
++++ linux-4.9.24-pax/drivers/tty/n_tty.c	2017-01-01 22:57:13.593528071 +0100
+@@ -2465,7 +2466,8 @@ void n_tty_inherit_ops(struct tty_ldisc_
+ {
+ 	*ops = n_tty_ops;
+ 	ops->owner = NULL;
+-	ops->refcount = ops->flags = 0;
++	atomic_set(&ops->refcount, 0);
++	ops->flags = 0;
+ }
+ EXPORT_SYMBOL_GPL(n_tty_inherit_ops);
+ 
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/drivers/gpu/drm/drm_global.c linux-4.9.24-pax/drivers/gpu/drm/drm_global.c
+--- linux-4.9.24/drivers/gpu/drm/drm_global.c	2016-12-13 12:11:18.631571009 +0100
++++ linux-4.9.24-pax/drivers/gpu/drm/drm_global.c	2017-01-01 22:57:10.789521187 +0100
+@@ -36,7 +36,7 @@
+ struct drm_global_item {
+ 	struct mutex mutex;
+ 	void *object;
+-	int refcount;
++	atomic_t refcount;
+ };
+ 
+ static struct drm_global_item glob[DRM_GLOBAL_NUM];
+@@ -49,7 +49,7 @@ void drm_global_init(void)
+ 		struct drm_global_item *item = &glob[i];
+ 		mutex_init(&item->mutex);
+ 		item->object = NULL;
+-		item->refcount = 0;
++		atomic_set(&item->refcount, 0);
+ 	}
+ }
+ 
+@@ -59,7 +59,7 @@ void drm_global_release(void)
+ 	for (i = 0; i < DRM_GLOBAL_NUM; ++i) {
+ 		struct drm_global_item *item = &glob[i];
+ 		BUG_ON(item->object != NULL);
+-		BUG_ON(item->refcount != 0);
++		BUG_ON(atomic_read(&item->refcount) != 0);
+ 	}
+ }
+ 
+@@ -69,7 +69,7 @@ int drm_global_item_ref(struct drm_globa
+ 	struct drm_global_item *item = &glob[ref->global_type];
+ 
+ 	mutex_lock(&item->mutex);
+-	if (item->refcount == 0) {
++	if (atomic_read(&item->refcount) == 0) {
+ 		ref->object = kzalloc(ref->size, GFP_KERNEL);
+ 		if (unlikely(ref->object == NULL)) {
+ 			ret = -ENOMEM;
+@@ -84,7 +84,7 @@ int drm_global_item_ref(struct drm_globa
+ 		ref->object = item->object;
+ 	}
+ 
+-	++item->refcount;
++	atomic_inc(&item->refcount);
+ 	mutex_unlock(&item->mutex);
+ 	return 0;
+ 
+@@ -102,9 +102,9 @@ void drm_global_item_unref(struct drm_gl
+ 	struct drm_global_item *item = &glob[ref->global_type];
+ 
+ 	mutex_lock(&item->mutex);
+-	BUG_ON(item->refcount == 0);
++	BUG_ON(atomic_read(&item->refcount) == 0);
+ 	BUG_ON(ref->object != item->object);
+-	if (--item->refcount == 0) {
++	if (atomic_dec_and_test(&item->refcount)) {
+ 		ref->release(ref);
+ 		item->object = NULL;
+ 	}

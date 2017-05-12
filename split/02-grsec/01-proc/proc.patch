@@ -1,0 +1,115 @@
+diff --git a/fs/proc/base.c b/fs/proc/base.c
+index 4fb5a1bc4831..a4332371b62e 100644
+--- a/fs/proc/base.c
++++ b/fs/proc/base.c
+@@ -709,6 +731,30 @@ static bool has_pid_permissions(struct pid_namespace *pid,
+ 				 struct task_struct *task,
+ 				 int hide_pid_min)
+ {
++	if (gr_pid_is_chrooted(task) || gr_check_hidden_task(task))
++		return false;
++
++#if defined(CONFIG_GRKERNSEC_PROC_USER) || defined(CONFIG_GRKERNSEC_PROC_USERGROUP)
++	rcu_read_lock();
++	{
++		const struct cred *tmpcred = current_cred();
++		const struct cred *cred = __task_cred(task);
++
++		if (uid_eq(tmpcred->uid, GLOBAL_ROOT_UID) || uid_eq(tmpcred->uid, cred->uid)
++#ifdef CONFIG_GRKERNSEC_PROC_USERGROUP
++			|| in_group_p(grsec_proc_gid)
++#endif
++		) {
++			rcu_read_unlock();
++			return true;
++		}
++	}
++	rcu_read_unlock();
++
++	if (!pid->hide_pid)
++		return ptrace_may_access(task, PTRACE_MODE_READ_FSCREDS | PTRACE_MODE_NOAUDIT);
++#endif
++
+ 	if (pid->hide_pid < hide_pid_min)
+ 		return true;
+ 	if (in_group_p(pid->pid_gid))
+@@ -730,7 +776,11 @@ static int proc_pid_permission(struct inode *inode, int mask)
+ 	put_task_struct(task);
+ 
+ 	if (!has_perms) {
++#if defined(CONFIG_GRKERNSEC_PROC_USER) || defined(CONFIG_GRKERNSEC_PROC_USERGROUP)
++		{
++#else
+ 		if (pid->hide_pid == 2) {
++#endif
+ 			/*
+ 			 * Let's make getdents(), stat(), and open()
+ 			 * consistent with each other.  If a process
+@@ -1696,7 +1814,11 @@ struct inode *proc_pid_make_inode(struct super_block * sb, struct task_struct *t
+ 		rcu_read_lock();
+ 		cred = __task_cred(task);
+ 		inode->i_uid = cred->euid;
++#ifdef CONFIG_GRKERNSEC_PROC_USERGROUP
++		inode->i_gid = grsec_proc_gid;
++#else
+ 		inode->i_gid = cred->egid;
++#endif
+ 		rcu_read_unlock();
+ 	}
+ 	security_task_to_inode(task, inode);
+@@ -1732,10 +1854,19 @@ int pid_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
+ 			return -ENOENT;
+ 		}
+ 		if ((inode->i_mode == (S_IFDIR|S_IRUGO|S_IXUGO)) ||
++#ifdef CONFIG_GRKERNSEC_PROC_USER
++		    (inode->i_mode == (S_IFDIR|S_IRUSR|S_IXUSR)) ||
++#elif defined(CONFIG_GRKERNSEC_PROC_USERGROUP)
++		    (inode->i_mode == (S_IFDIR|S_IRUSR|S_IRGRP|S_IXUSR|S_IXGRP)) ||
++#endif
+ 		    task_dumpable(task)) {
+ 			cred = __task_cred(task);
+ 			stat->uid = cred->euid;
++#ifdef CONFIG_GRKERNSEC_PROC_USERGROUP
++			stat->gid = grsec_proc_gid;
++#else
+ 			stat->gid = cred->egid;
++#endif
+ 		}
+ 	}
+ 	rcu_read_unlock();
+@@ -1773,11 +1904,20 @@ int pid_revalidate(struct dentry *dentry, unsigned int flags)
+ 
+ 	if (task) {
+ 		if ((inode->i_mode == (S_IFDIR|S_IRUGO|S_IXUGO)) ||
++#ifdef CONFIG_GRKERNSEC_PROC_USER
++		    (inode->i_mode == (S_IFDIR|S_IRUSR|S_IXUSR)) ||
++#elif defined(CONFIG_GRKERNSEC_PROC_USERGROUP)
++		    (inode->i_mode == (S_IFDIR|S_IRUSR|S_IRGRP|S_IXUSR|S_IXGRP)) ||
++#endif
+ 		    task_dumpable(task)) {
+ 			rcu_read_lock();
+ 			cred = __task_cred(task);
+ 			inode->i_uid = cred->euid;
++#ifdef CONFIG_GRKERNSEC_PROC_USERGROUP
++			inode->i_gid = grsec_proc_gid;
++#else
+ 			inode->i_gid = cred->egid;
++#endif
+ 			rcu_read_unlock();
+ 		} else {
+ 			inode->i_uid = GLOBAL_ROOT_UID;
+@@ -3066,7 +3217,14 @@ static int proc_pid_instantiate(struct inode *dir,
+ 	if (!inode)
+ 		goto out;
+ 
++#ifdef CONFIG_GRKERNSEC_PROC_USER
++	inode->i_mode = S_IFDIR|S_IRUSR|S_IXUSR;
++#elif defined(CONFIG_GRKERNSEC_PROC_USERGROUP)
++	inode->i_gid = grsec_proc_gid;
++	inode->i_mode = S_IFDIR|S_IRUSR|S_IRGRP|S_IXUSR|S_IXGRP;
++#else
+ 	inode->i_mode = S_IFDIR|S_IRUGO|S_IXUGO;
++#endif
+ 	inode->i_op = &proc_tgid_base_inode_operations;
+ 	inode->i_fop = &proc_tgid_base_operations;
+ 	inode->i_flags|=S_IMMUTABLE;

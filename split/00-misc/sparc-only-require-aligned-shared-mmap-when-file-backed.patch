@@ -1,0 +1,21 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/sparc/kernel/sys_sparc_64.c linux-4.9.24-pax/arch/sparc/kernel/sys_sparc_64.c
+--- linux-4.9.24/arch/sparc/kernel/sys_sparc_64.c	2016-05-22 01:55:28.987565226 +0200
++++ linux-4.9.24-pax/arch/sparc/kernel/sys_sparc_64.c	2017-01-01 22:57:10.589520696 +0100
+@@ -95,7 +95,7 @@ unsigned long arch_get_unmapped_area(str
+ 		/* We do not accept a shared mapping if it would violate
+ 		 * cache aliasing constraints.
+ 		 */
+-		if ((flags & MAP_SHARED) &&
++		if ((filp || (flags & MAP_SHARED)) &&
+ 		    ((addr - (pgoff << PAGE_SHIFT)) & (SHMLBA - 1)))
+ 			return -EINVAL;
+ 		return addr;
+@@ -159,7 +168,7 @@ arch_get_unmapped_area_topdown(struct fi
+ 		/* We do not accept a shared mapping if it would violate
+ 		 * cache aliasing constraints.
+ 		 */
+-		if ((flags & MAP_SHARED) &&
++		if ((filp || (flags & MAP_SHARED)) &&
+ 		    ((addr - (pgoff << PAGE_SHIFT)) & (SHMLBA - 1)))
+ 			return -EINVAL;
+ 		return addr;

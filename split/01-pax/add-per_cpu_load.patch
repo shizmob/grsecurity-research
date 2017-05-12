@@ -1,0 +1,38 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/ia64/kernel/vmlinux.lds.S linux-4.9.24-pax/arch/ia64/kernel/vmlinux.lds.S
+--- linux-4.9.24/arch/ia64/kernel/vmlinux.lds.S	2016-12-13 12:08:21.218338777 +0100
++++ linux-4.9.24-pax/arch/ia64/kernel/vmlinux.lds.S	2017-01-01 22:57:10.557520617 +0100
+@@ -172,7 +172,7 @@ SECTIONS {
+ 	/* Per-cpu data: */
+ 	. = ALIGN(PERCPU_PAGE_SIZE);
+ 	PERCPU_VADDR(SMP_CACHE_BYTES, PERCPU_ADDR, :percpu)
+-	__phys_per_cpu_start = __per_cpu_load;
++	__phys_per_cpu_start = per_cpu_load;
+ 	/*
+ 	 * ensure percpu data fits
+ 	 * into percpu page size
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/include/asm-generic/vmlinux.lds.h linux-4.9.24-pax/include/asm-generic/vmlinux.lds.h
+--- linux-4.9.24/include/asm-generic/vmlinux.lds.h	2016-12-13 12:11:59.143858718 +0100
++++ linux-4.9.24-pax/include/asm-generic/vmlinux.lds.h	2017-01-22 03:21:49.169101203 +0100
+@@ -794,17 +813,18 @@
+  * section in the linker script will go there too.  @phdr should have
+  * a leading colon.
+  *
+- * Note that this macros defines __per_cpu_load as an absolute symbol.
++ * Note that this macros defines per_cpu_load as an absolute symbol.
+  * If there is no need to put the percpu section at a predetermined
+  * address, use PERCPU_SECTION.
+  */
+ #define PERCPU_VADDR(cacheline, vaddr, phdr)				\
+-	VMLINUX_SYMBOL(__per_cpu_load) = .;				\
+-	.data..percpu vaddr : AT(VMLINUX_SYMBOL(__per_cpu_load)		\
++	per_cpu_load = .;						\
++	.data..percpu vaddr : AT(VMLINUX_SYMBOL(per_cpu_load)		\
+ 				- LOAD_OFFSET) {			\
++		VMLINUX_SYMBOL(__per_cpu_load) = . + per_cpu_load;	\
+ 		PERCPU_INPUT(cacheline)					\
+ 	} phdr								\
+-	. = VMLINUX_SYMBOL(__per_cpu_load) + SIZEOF(.data..percpu);
++	. = VMLINUX_SYMBOL(per_cpu_load) + SIZEOF(.data..percpu);
+ 
+ /**
+  * PERCPU_SECTION - define output section for percpu area, simple version

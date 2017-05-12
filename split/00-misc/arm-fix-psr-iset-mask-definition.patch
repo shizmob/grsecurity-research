@@ -1,0 +1,12 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/include/uapi/asm/ptrace.h linux-4.9.24-pax/arch/arm/include/uapi/asm/ptrace.h
+--- linux-4.9.24/arch/arm/include/uapi/asm/ptrace.h	2015-03-18 15:21:50.172349252 +0100
++++ linux-4.9.24-pax/arch/arm/include/uapi/asm/ptrace.h	2017-01-01 22:57:10.529520549 +0100
+@@ -92,7 +92,7 @@
+  * ARMv7 groups of PSR bits
+  */
+ #define APSR_MASK	0xf80f0000	/* N, Z, C, V, Q and GE flags */
+-#define PSR_ISET_MASK	0x01000010	/* ISA state (J, T) mask */
++#define PSR_ISET_MASK	0x01000020	/* ISA state (J, T) mask */
+ #define PSR_IT_MASK	0x0600fc00	/* If-Then execution state mask */
+ #define PSR_ENDIAN_MASK	0x00000200	/* Endianness state mask */
+ 

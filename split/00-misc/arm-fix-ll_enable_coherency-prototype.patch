@@ -1,0 +1,12 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/arm/mach-mvebu/pmsu.c linux-4.9.24-pax/arch/arm/mach-mvebu/pmsu.c
+--- linux-4.9.24/arch/arm/mach-mvebu/pmsu.c	2016-10-03 11:27:17.032762633 +0200
++++ linux-4.9.24-pax/arch/arm/mach-mvebu/pmsu.c	2017-01-01 22:57:10.537520569 +0100
+@@ -93,7 +93,7 @@
+ #define ARMADA_370_CRYPT0_ENG_ATTR     0x1
+ 
+ extern void ll_disable_coherency(void);
+-extern void ll_enable_coherency(void);
++extern int ll_enable_coherency(void);
+ 
+ extern void armada_370_xp_cpu_resume(void);
+ extern void armada_38x_cpu_resume(void);

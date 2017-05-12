@@ -1,0 +1,25 @@
+diff -NurpX linux-4.9.24-pax/Documentation/dontdiff linux-4.9.24/arch/alpha/kernel/osf_sys.c linux-4.9.24-pax/arch/alpha/kernel/osf_sys.c
+--- linux-4.9.24/arch/alpha/kernel/osf_sys.c	2016-07-25 02:12:29.792470771 +0200
++++ linux-4.9.24-pax/arch/alpha/kernel/osf_sys.c	2017-01-01 22:57:10.517520519 +0100
+@@ -1343,6 +1343,10 @@ arch_get_unmapped_area(struct file *filp
+ 	   merely specific addresses, but regions of memory -- perhaps
+ 	   this feature should be incorporated into all ports?  */
+ 
++#ifdef CONFIG_PAX_RANDMMAP
++	if (!(current->mm->pax_flags & MF_PAX_RANDMMAP))
++#endif
++
+ 	if (addr) {
+ 		addr = arch_get_unmapped_area_1 (PAGE_ALIGN(addr), len, limit);
+ 		if (addr != (unsigned long) -ENOMEM)
+@@ -1350,8 +1354,8 @@ arch_get_unmapped_area(struct file *filp
+ 	}
+ 
+ 	/* Next, try allocating at TASK_UNMAPPED_BASE.  */
+-	addr = arch_get_unmapped_area_1 (PAGE_ALIGN(TASK_UNMAPPED_BASE),
+-					 len, limit);
++	addr = arch_get_unmapped_area_1 (PAGE_ALIGN(current->mm->mmap_base), len, limit);
++
+ 	if (addr != (unsigned long) -ENOMEM)
+ 		return addr;
+ 
